@@ -1,0 +1,15 @@
+TITLE:: SCLOrkChat
+summary:: User interface for a SCLOrkChatClient object.
+categories:: Quarks>SCLOrkChat
+related:: Classes/SCLOrkChatClient, Classes/SCLOrkChatServer
+
+DESCRIPTION::
+SCLOrkChat
+
+CLASSMETHODS::
+
+
+INSTANCEMETHODS::
+private:: init
+
+EXAMPLES::

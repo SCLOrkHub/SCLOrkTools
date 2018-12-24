@@ -73,7 +73,7 @@ SCLOrkChat {
 				chatMessage = chatMessageQueue.pop;
 				chatMessageQueueSemaphore.signal;
 
-				chatMessageView = ChatMessageView.new(chatMessage, chatMessageIndex);
+				chatMessageView = SCLOrkChatMessageView.new(chatMessage, chatMessageIndex);
 				chatMessageIndex = chatMessageIndex + 1;
 				chatItemScrollView.canvas.layout.add(chatMessageView);
 				addedElements = true;
