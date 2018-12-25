@@ -198,3 +198,4 @@ table::
 ## client || link::#/clientTimeOut:: || Server will send one timeout message to client on detection of timeout, and will respond with a clientTimeOut message to all future requests from the client with that userId.
 ## peer || link::#/chatChangeClient:: userId strong::\timeout:: || Server will send a client change timeout message to all remaining connected peers.
 ::
+

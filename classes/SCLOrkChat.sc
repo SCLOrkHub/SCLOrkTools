@@ -3,6 +3,7 @@ SCLOrkChat {
 
 	var nickName;
 	var asDirector;
+	var chatClient;
 	var quitTasks;
 
 	var window;
@@ -15,23 +16,29 @@ SCLOrkChat {
 	var chatMessageIndex;
 	var updateChatUiTask;
 
-	*new { | nickName = nil, asDirector = false |
-		^super.newCopyArgs(nickName, asDirector);
+	*new { | nickName, asDirector = false, chatClient = nil |
+		^super.newCopyArgs(nickName, asDirector, chatClient).init;
 	}
 
 	init {
+		if (chatClient.isNil, {
+			chatClient = SCLOrkChatClient.new(
+				NetAddr.new("sclork-server-01", SCLOrkChatServer.defaultListenPort));
+		});
 		quitTasks = false;
 
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
 		window.front;
+
+		chatClient.connect(nickName);
 	}
 
 	prConstructUiElements {
 		var scrollCanvas;
 
 		// By default we occupy the right quarter of the screen.
-		window = Window.new("chat",
+		window = Window.new("SCLOrkChat",
 			Rect.new(Window.screenBounds.right, 0,
 				Window.screenBounds.width / 4,
 				Window.screenBounds.height)
@@ -63,6 +70,10 @@ SCLOrkChat {
 		chatMessageQueueSemaphore = Semaphore.new(1);
 		autoScroll = true;
 		chatMessageIndex = 0;
+
+		chatClient.onMessageReceived = { | chatMessage |
+			this.prEnqueueChatMessage(chatMessage);
+		};
 
 		updateChatUiTask = SkipJack.new({
 			var addedElements = false;

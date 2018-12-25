@@ -1,9 +1,17 @@
 SCLOrkChatClient {
+<<<<<<< HEAD
 	var serverAddress;
 	var serverPort;
 	var listenPort;
 	var wire;
 	var <userId;
+=======
+	const defaultListenPort = 7705;
+
+	var serverNetAddr;
+	var listenPort;
+	var <nickName;  // self-assigned nickname, can be changed.
+>>>>>>> more documentation, starting UI work
 
 	var <name;  // self-assigned name, can be changed.
 
@@ -14,6 +22,7 @@ SCLOrkChatClient {
 	var <>onMessageReceived;  // called with chatMessage object on receipt
 	var <>onUserChanged;  // called with user changes, type, userid, nickname.
 
+<<<<<<< HEAD
 	*new { | serverAddress = "sclork-s01.local", serverPort = 8000, listenPort = 7705 |
 		^super.newCopyArgs(serverAddress, serverPort, listenPort).init;
 	}
@@ -24,6 +33,78 @@ SCLOrkChatClient {
 			switch (state,
 				\connected, {
 					wire.sendMsg('/chatSignIn', name);
+=======
+	*new { | serverNetAddr, listenPort = 7705 |
+		^super.newCopyArgs(serverNetAddr, listenPort).init;
+	}
+
+	init {
+		nickName = "default-nickname";
+		userDictionary = Dictionary.new;
+		isConnected = false;
+		onConnected = {};
+		onMessageReceived = {};
+		onUserChanged = {};
+
+		signInCompleteOscFunc = OSCFunc.new({ | msg, time, addr |
+			// TODO: Can double-check isConnected to be false here, throw
+			// error if receiving duplicate signInComplete message.
+			isConnected = true;
+			userId = msg[1];
+			// Send a request for a list of all connected clients,
+			// as well as our first ping message.
+			serverNetAddr.sendMsg('/chatGetAllClients', listenPort);
+			serverNetAddr.sendMsg('/chatPing', userId);
+		},
+		path: '/chatSignInComplete',
+		recvPort: listenPort
+		);
+
+		setAllClientsOscFunc = OSCFunc.new({ | msg, time, addr |
+			var num, id;
+			userDictionary.clear;
+			num = msg[1];
+			msg.do({ | i, item |
+				if (i >= 2, {
+					if (i % 2 == 0, {
+						id = item;
+					}, {
+						userDictionary.put(id, item);
+					});
+				});
+			});
+			// TODO: Can double-check size and throw error if mismatch.
+
+			// We consider the client to be connected when it has both
+			// a valid userId and userDictionary.
+			onConnected.(true);
+		},
+		path: '/chatSetAllClients',
+		recvPort: listenPort
+		);
+
+		pongOscFunc = OSCFunc.new({ | msg, time, addr |
+			var serverTimeout = msg[2];
+
+			// TODO: cmd-period survival - maybe just send
+			// a fresh ping?
+			SystemClock.sched(serverTimeout - 1, {
+				serverNetAddr.sendMsg('/chatPing', userId);
+			});
+		},
+		path: '/chatPong',
+		recvPort: listenPort
+		);
+
+		changeClientOscFunc = OSCFunc.new({ | msg, time, addr |
+			var changeType, id, nickname;
+			changeType = msg[1];
+			id = msg[2];
+			nickname = msg[3];
+			switch (changeType,
+				\add, {
+					userDictionary.put(id, nickname);
+>>>>>>> more documentation, starting UI work
 				},
 				\failureTimeout, {
 					onConnected.(false);

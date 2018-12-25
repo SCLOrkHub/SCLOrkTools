@@ -4,12 +4,36 @@ categories:: Quarks>SCLOrkChat
 related:: Classes/SCLOrkChatClient, Classes/SCLOrkChatServer
 
 DESCRIPTION::
-SCLOrkChat
+Provides a graphical user interface for a provided link::Classes/SCLOrkChatClient::, or can construct one from defaults. Serves as the primary user interface to the SCLOrkChat system.
 
 CLASSMETHODS::
 
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: nickName
+(describe argument here)
+
+ARGUMENT:: asDirector
+(describe argument here)
+
+returns:: (describe returnvalue here)
 
 INSTANCEMETHODS::
-private:: init
+private:: prConnectChatUiUpdateLogic, prConstructUiElements, prEnqueueChatMessage, init
 
 EXAMPLES::
+
+code::
+// Create a new SCLOrkChat window with defaults, providing a name.
+~sclorkChat = SCLOrkChat.new("Luke");
+
+/*
+
+... Time passes ...
+
+*/
+
+// Close the window, destroy the chat client, cleanup resources.
+~sclorkChat.free;
+::
