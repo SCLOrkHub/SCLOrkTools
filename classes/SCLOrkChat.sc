@@ -23,7 +23,8 @@ SCLOrkChat {
 	init {
 		if (chatClient.isNil, {
 			chatClient = SCLOrkChatClient.new(
-				NetAddr.new("sclork-server-01", SCLOrkChatServer.defaultListenPort));
+				NetAddr.new("sclork-server-01",
+					SCLOrkChatServer.defaultListenPort));
 		});
 		quitTasks = false;
 
@@ -41,10 +42,13 @@ SCLOrkChat {
 		window = Window.new("SCLOrkChat",
 			Rect.new(Window.screenBounds.right, 0,
 				Window.screenBounds.width / 4,
-				Window.screenBounds.height)
+				Window.screenBounds.height),
+			resizeable: false,
+			border: false
 		);
 		window.alwaysOnTop = true;
 		// window.userCanClose = false;
+
 		window.layout = VLayout.new(
 			HLayout.new(
 				chatItemScrollView = ScrollView.new()
@@ -57,6 +61,7 @@ SCLOrkChat {
 		scrollCanvas = View();
 		scrollCanvas.layout = VLayout(nil);
 		chatItemScrollView.canvas = scrollCanvas;
+		chatItemScrollView.hasHorizontalScroller = false;
 	}
 
 	prEnqueueChatMessage { | chatMessage |
@@ -77,6 +82,7 @@ SCLOrkChat {
 
 		updateChatUiTask = SkipJack.new({
 			var addedElements = false;
+
 			chatMessageQueueSemaphore.wait;
 			while ({ chatMessageQueue.size > 0 }, {
 				var chatMessage, chatMessageView;
@@ -84,7 +90,12 @@ SCLOrkChat {
 				chatMessage = chatMessageQueue.pop;
 				chatMessageQueueSemaphore.signal;
 
-				chatMessageView = SCLOrkChatMessageView.new(chatMessage, chatMessageIndex);
+				chatMessageView = SCLOrkChatMessageView.new(
+					chatItemScrollView.canvas,
+					chatItemScrollView.bounds.width -
+					(SCLOrkChatMessageView.messageViewPadding * 2.0),
+					chatMessage,
+					chatMessageIndex);
 				chatMessageIndex = chatMessageIndex + 1;
 				chatItemScrollView.canvas.layout.add(chatMessageView);
 				addedElements = true;
