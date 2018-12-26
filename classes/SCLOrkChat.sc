@@ -84,15 +84,15 @@ SCLOrkChat {
 
 		messageTypeLabel.string = "Message Type:";
 		messageTypePopUpMenu.items = [
-			"plain",
-			"code"
+			\plain,
+			\code
 		];
 
 		sendTextField.action = { | v |
 			var chatMessage = SCLOrkChatMessage(
 				chatClient.userId,
 				[ 0 ],  // TODO: targeted recipients
-				\plain,  // TODO: source from message type box
+				messageTypePopUpMenu.item,
 				v.string,
 				chatClient.nickName
 			);
@@ -161,23 +161,79 @@ SCLOrkChat {
 		);
 	}
 
+	prRebuildClientListView { | clearFirst = false |
+		AppClock.sched(0, {
+			var selectedUserIds, pairs, names, selectedIndices;
+
+			if (clearFirst, { clientListView.clear; });
+
+			// Store currently selected userIds for reconstructing
+			// selection after list rebuild.
+			selectedUserIds = clientIdList.at(clientListView.selection).as(Set);
+
+			// Build list of clients name, id pairs, then sort by names.
+			pairs = Array.new(chatClient.userDictionary.size);
+			chatClient.userDictionary.keysValuesDo({ | key, value |
+				pairs = pairs.add([ value, key ]);
+			});
+			pairs.sort({ | a, b | a[0] < b[0] });
+
+			// Split pairs list into sorted list of names and their
+			// corresponding ids. This handling is designed to support
+			// duplicate names with unique userIds.
+			names = Array.new(pairs.size);
+			clientIdList = Array.new(pairs.size);
+			pairs.do({ | item, index |
+				names = names.add(item[0]);
+				clientIdList = clientIdList.add(item[1]);
+			});
+
+			clientListView.items = names;
+
+			selectedIndices = Array.new(selectedUserIds.size);
+			clientIdList.do({ | item, index |
+				if (selectedUserIds.includes(item), {
+					selectedIndices = selectedIndices.add(index);
+				});
+			});
+			clientListView.selection = selectedIndices;
+		});
+	}
+
 	prConnectClientListViewUpdateLogic {
 		clientIdList = Array.new;
 
 		chatClient.onConnected = { | isConnected |
 			if (isConnected, {
-				AppClock.sched(0, {
-					"building dictionary from % items".format(
-						chatClient.userDictionary.size).postln;
-					// The client user dictionary should now be complete,
-					// so we can rebuild the clientListView.
-					clientListView.clear;
-					clientIdList = chatClient.userDictionary.order;
-					clientListView.items = chatClient.userDictionary.atAll(
-						clientIdList);
-					clientListView.selection = nil;
-				});
+				this.prRebuildClientListView(true);
 			});
+		};
+
+		chatClient.onUserChanged = { | changeType, id, nickName, oldName = nil |
+			this.prRebuildClientListView(false);
+			switch (changeType,
+				\add, {
+					this.prEnqueueChatMessage(SCLOrkChatMessage.new(
+						chatClient.userId,
+						[ chatClient.userId ],
+						\system,
+						"% signed in.".format(nickName)));
+				},
+				\remove, {
+					this.prEnqueueChatMessage(SCLOrkChatMessage.new(
+						chatClient.userId,
+						[ chatClient.userId ],
+						\system,
+						"% signed out.".format(nickName)));
+				},
+				\rename, {
+					this.prEnqueueChatMessage(SCLOrkChatMessage.new(
+						chatClient.userId,
+						[ chatClient.userId ],
+						\system,
+						"% now known as %".format(oldName, nickName)));
+				}
+			);
 		};
 	}
 }

@@ -13,15 +13,20 @@ SCLOrkChatMessageView : View {
 		var messageWidth, defaultBackground;
 
 		senderNameLabel = StaticText.new(this);
+		if (chatMessage.type != \system, {
 		senderNameLabel.align = \topRight;
 		senderNameLabel.string = chatMessage.senderName ++ ":";
+		senderNameLabel.font = Font.new(Font.defaultSansFace, bold: true);
 		senderNameLabel.bounds = Rect.new(
 			messageViewPadding, messageViewPadding,
 			senderNameLabel.sizeHint.width,
-			senderNameLabel.sizeHint.height);
-
-		messageWidth = containerViewWidth -
+			senderNameLabel.sizeHint.height
+			);
+			messageWidth = containerViewWidth -
 			(messageViewPadding * 5.0) - senderNameLabel.bounds.width;
+		}, {
+			messageWidth = containerViewWidth - (messageViewPadding * 2.0);
+		});
 
 		contentsTextView = StaticText.new(this);
 		contentsTextView.fixedWidth = messageWidth;
@@ -52,10 +57,14 @@ SCLOrkChatMessageView : View {
 			\director, {
 			},
 			\system, {
+				contentsTextView.align = \center;
+				contentsTextView.font = Font.new(Font.defaultSansFace,
+					italic: true);
 			},
 			\shout, {
 			},
 			\code, {
+				contentsTextView.font = Font.new(Font.defaultMonoFace);
 			},
 			{ "ChatItemView got unknown chatMessage.type!".postln; }
 		);
