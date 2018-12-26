@@ -101,7 +101,7 @@ SCLOrkChat {
 		};
 	}
 
-	prEnqueueChatMessage { | chatMessage |
+	enqueueChatMessage { | chatMessage |
 		chatMessageQueueSemaphore.wait;
 		chatMessageQueue.add(chatMessage);
 		chatMessageQueueSemaphore.signal;
@@ -114,7 +114,7 @@ SCLOrkChat {
 		chatMessageIndex = 0;
 
 		chatClient.onMessageReceived = { | chatMessage |
-			this.prEnqueueChatMessage(chatMessage);
+			this.enqueueChatMessage(chatMessage);
 		};
 
 		updateChatUiTask = SkipJack.new({
@@ -132,7 +132,9 @@ SCLOrkChat {
 					chatItemScrollView.bounds.width -
 					(SCLOrkChatMessageView.messageViewPadding * 2.0),
 					chatMessage,
-					chatMessageIndex);
+					chatMessageIndex,
+					this
+				);
 				chatMessageIndex = chatMessageIndex + 1;
 				chatItemScrollView.canvas.layout.add(chatMessageView);
 				addedElements = true;
@@ -213,21 +215,21 @@ SCLOrkChat {
 			this.prRebuildClientListView(false);
 			switch (changeType,
 				\add, {
-					this.prEnqueueChatMessage(SCLOrkChatMessage.new(
+					this.enqueueChatMessage(SCLOrkChatMessage.new(
 						chatClient.userId,
 						[ chatClient.userId ],
 						\system,
 						"% signed in.".format(nickName)));
 				},
 				\remove, {
-					this.prEnqueueChatMessage(SCLOrkChatMessage.new(
+					this.enqueueChatMessage(SCLOrkChatMessage.new(
 						chatClient.userId,
 						[ chatClient.userId ],
 						\system,
 						"% signed out.".format(nickName)));
 				},
 				\rename, {
-					this.prEnqueueChatMessage(SCLOrkChatMessage.new(
+					this.enqueueChatMessage(SCLOrkChatMessage.new(
 						chatClient.userId,
 						[ chatClient.userId ],
 						\system,
