@@ -125,7 +125,7 @@ table::
 
 Note that message format is identical to that of link::#/chatReceive::. Server will respond to every call to link::#/chatSendMessage:: with a link::#/chatEcho::.
 
-section:: Message Types
+subsection:: /chatEcho
 
 This table details the currently supported values of the emphasis::messageType:: argument included in link::#/chatSendMessage::, link::#/chatReceive::, and link::#/chatEcho:: commands.
 

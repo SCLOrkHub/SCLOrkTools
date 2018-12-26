@@ -8,13 +8,20 @@ SCLOrkChat {
 
 	var window;
 	var chatItemScrollView;
+	var clientListView;
 	var sendTextField;
+	var messageTypeLabel;
+	var messageTypePopUpMenu;
 
 	var chatMessageQueue;
 	var chatMessageQueueSemaphore;
 	var autoScroll;
 	var chatMessageIndex;
 	var updateChatUiTask;
+
+	// List of clientIds in the same order as the clientListView
+	// list of usernames.
+	var clientIdList;
 
 	*new { | nickName, asDirector = false, chatClient = nil |
 		^super.newCopyArgs(nickName, asDirector, chatClient).init;
@@ -30,6 +37,7 @@ SCLOrkChat {
 
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
+		this.prConnectClientListViewUpdateLogic();
 		window.front;
 
 		chatClient.connect(nickName);
@@ -37,13 +45,16 @@ SCLOrkChat {
 
 	prConstructUiElements {
 		var scrollCanvas;
+		var windowWidth = Window.screenBounds.width / 4.0;
 
 		// By default we occupy the right quarter of the screen.
 		window = Window.new("SCLOrkChat",
-			Rect.new(Window.screenBounds.right, 0,
-				Window.screenBounds.width / 4,
+			Rect.new(
+				Window.screenBounds.right,
+				0,
+				windowWidth,
 				Window.screenBounds.height),
-			resizeable: false,
+//			resizable: false,
 			border: false
 		);
 		window.alwaysOnTop = true;
@@ -51,10 +62,16 @@ SCLOrkChat {
 
 		window.layout = VLayout.new(
 			HLayout.new(
-				chatItemScrollView = ScrollView.new()
+				chatItemScrollView = ScrollView.new(),
+				clientListView = ListView.new().fixedWidth_(windowWidth / 4.0),
 			),
 			HLayout.new(
 				sendTextField = TextField.new()
+			),
+			HLayout.new(
+				[ messageTypeLabel = StaticText.new(), align: \left ],
+				[ messageTypePopUpMenu = PopUpMenu.new(), align: \left ],
+				nil
 			)
 		);
 
@@ -62,6 +79,26 @@ SCLOrkChat {
 		scrollCanvas.layout = VLayout(nil);
 		chatItemScrollView.canvas = scrollCanvas;
 		chatItemScrollView.hasHorizontalScroller = false;
+
+		clientListView.selectionMode = \multi;
+
+		messageTypeLabel.string = "Message Type:";
+		messageTypePopUpMenu.items = [
+			"plain",
+			"code"
+		];
+
+		sendTextField.action = { | v |
+			var chatMessage = SCLOrkChatMessage(
+				chatClient.userId,
+				[ 0 ],  // TODO: targeted recipients
+				\plain,  // TODO: source from message type box
+				v.string,
+				chatClient.nickName
+			);
+			chatClient.sendMessage(chatMessage);
+			v.string = "";
+		};
 	}
 
 	prEnqueueChatMessage { | chatMessage |
@@ -122,5 +159,25 @@ SCLOrkChat {
 		clock: AppClock,
 		autostart: true
 		);
+	}
+
+	prConnectClientListViewUpdateLogic {
+		clientIdList = Array.new;
+
+		chatClient.onConnected = { | isConnected |
+			if (isConnected, {
+				AppClock.sched(0, {
+					"building dictionary from % items".format(
+						chatClient.userDictionary.size).postln;
+					// The client user dictionary should now be complete,
+					// so we can rebuild the clientListView.
+					clientListView.clear;
+					clientIdList = chatClient.userDictionary.order;
+					clientListView.items = chatClient.userDictionary.atAll(
+						clientIdList);
+					clientListView.selection = nil;
+				});
+			});
+		};
 	}
 }

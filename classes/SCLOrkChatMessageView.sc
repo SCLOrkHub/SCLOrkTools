@@ -1,5 +1,5 @@
 SCLOrkChatMessageView : View {
-	const <messageViewPadding = 8.0;
+	const <messageViewPadding = 9.0;
 
 	var senderNameLabel;
 	var contentsTextView;
@@ -10,7 +10,7 @@ SCLOrkChatMessageView : View {
 	}
 
 	init { | containerViewWidth, chatMessage, messageIndex |
-		var messageWidth;
+		var messageWidth, defaultBackground;
 
 		senderNameLabel = StaticText.new(this);
 		senderNameLabel.align = \topRight;
@@ -38,6 +38,8 @@ SCLOrkChatMessageView : View {
 		this.fixedHeight = max(contentsTextView.bounds.height,
 			senderNameLabel.bounds.height) + (messageViewPadding * 2);
 
+		defaultBackground = this.background;
+
 		// Style the item based on message type.
 		switch (chatMessage.type,
 			\plain, {
@@ -57,5 +59,9 @@ SCLOrkChatMessageView : View {
 			},
 			{ "ChatItemView got unknown chatMessage.type!".postln; }
 		);
+
+		if (chatMessage.isEcho, {
+			this.background = defaultBackground;
+		});
 	}
 }
