@@ -9,7 +9,9 @@ SCLOrkChat {
 	var window;
 	var chatItemScrollView;
 	var clientListView;
+	var clearSelectionButton;
 	var sendTextField;
+	var autoScrollCheckBox;
 	var messageTypeLabel;
 	var messageTypePopUpMenu;
 
@@ -63,15 +65,19 @@ SCLOrkChat {
 		window.layout = VLayout.new(
 			HLayout.new(
 				chatItemScrollView = ScrollView.new(),
-				clientListView = ListView.new().fixedWidth_(windowWidth / 4.0),
+				VLayout.new(
+					clientListView = ListView.new(),
+					clearSelectionButton = Button.new()
+				)
 			),
 			HLayout.new(
 				sendTextField = TextField.new()
 			),
 			HLayout.new(
-				[ messageTypeLabel = StaticText.new(), align: \left ],
-				[ messageTypePopUpMenu = PopUpMenu.new(), align: \left ],
-				nil
+				[ autoScrollCheckBox = CheckBox.new(), align: \left ],
+				nil,
+				[ messageTypeLabel = StaticText.new(), align: \right ],
+				[ messageTypePopUpMenu = PopUpMenu.new(), align: \right ],
 			)
 		);
 
@@ -82,6 +88,20 @@ SCLOrkChat {
 
 		clientListView.selectionMode = \multi;
 
+		clearSelectionButton.string = "Clear Selection";
+		clearSelectionButton.action = {
+			clientListView.selection =  [ ];
+		};
+
+		clientListView.fixedWidth = clearSelectionButton.sizeHint.width;
+		clearSelectionButton.fixedWidth = clearSelectionButton.sizeHint.width;
+
+		autoScrollCheckBox.value = true;
+		autoScrollCheckBox.string = "Auto-Scroll";
+		autoScrollCheckBox.action = { | v |
+			autoScroll = v.value;
+		};
+
 		messageTypeLabel.string = "Message Type:";
 		messageTypePopUpMenu.items = [
 			\plain,
@@ -89,15 +109,27 @@ SCLOrkChat {
 		];
 
 		sendTextField.action = { | v |
-			var chatMessage = SCLOrkChatMessage(
+			var recipientIds, chatMessage;
+
+			if (clientListView.selection.size == 0, {
+				recipientIds = [ 0 ];
+			}, {
+				recipientIds = clientIdList.at(clientListView.selection);
+			});
+
+			chatMessage = SCLOrkChatMessage(
 				chatClient.userId,
-				[ 0 ],  // TODO: targeted recipients
+				recipientIds,
 				messageTypePopUpMenu.item,
 				v.string,
 				chatClient.nickName
 			);
 			chatClient.sendMessage(chatMessage);
+
+			// Reset contents of text UI, and reset message type selector
+			// to plain.
 			v.string = "";
+			messageTypePopUpMenu.value = 0;
 		};
 	}
 

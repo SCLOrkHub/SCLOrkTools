@@ -12,7 +12,7 @@ SCLOrkChatMessageView : View {
 	}
 
 	init { | containerViewWidth, chatMessage, messageIndex, sclorkChat |
-		var labelWidth, labelHeight, messageWidth, defaultBackground;
+		var labelWidth, labelHeight, messageWidth, isPrivate;
 		sclorkChat = sclorkChat;
 
 		senderNameLabel = StaticText.new(this);
@@ -92,30 +92,36 @@ SCLOrkChatMessageView : View {
 		this.fixedHeight = max(contentsTextView.bounds.height,
 			labelHeight) + (messageViewPadding * 2);
 
-		defaultBackground = this.background;
+		// Add a tooltip with recipients and darken the color for messages
+		// sent only to some recipients.
+		if (chatMessage.type != \system and: {
+			chatMessage.recipientIds[0] != 0}, {
+			this.toolTip = "Sent only to: " ++
+			chatMessage.recipientNames.join(", ") ++ ".";
+			isPrivate = true;
+		}, {
+			isPrivate = false;
+		});
 
-		// Style the item based on message type.
-		switch (chatMessage.type,
-			\plain, {
-				if ((messageIndex % 2) == 0, {
-					this.background = Color.new(0.9, 0.9, 0.9);
-				}, {
-					this.background = Color.new(0.8, 0.8, 0.8);
-				});
-			},
-			\director, {
-			},
-			\system, {
-			},
-			\shout, {
-			},
-			\code, {
-			},
-			{ "ChatItemView got unknown chatMessage.type!".postln; }
-		);
-
-		if (chatMessage.isEcho, {
-			this.background = defaultBackground;
+		// Echo messages always get plain background, as well as
+		// system-type messages.
+		if (chatMessage.isEcho.not, {
+			if (chatMessage.type == \plain or:
+				{ chatMessage.type == \code }, {
+					if ((messageIndex % 2) == 0, {
+						if (isPrivate, {
+							this.background = Color.new(0.7, 0.7, 0.7);
+						}, {
+							this.background = Color.new(0.9, 0.9, 0.9);
+						});
+					}, {
+						if (isPrivate, {
+							this.background = Color.new(0.6, 0.6, 0.6);
+						}, {
+							this.background = Color.new(0.8, 0.8, 0.8);
+						});
+					});
+			});
 		});
 	}
 }
