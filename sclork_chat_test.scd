@@ -14,13 +14,10 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 ~chatServer = SCLOrkChatServer.new;
 ~uiChatClient = SCLOrkChatClient.new(
 	NetAddr.new("127.0.0.1", SCLOrkChatServer.defaultListenPort), 7705);
-~uiChatClient2 = SCLOrkChatClient.new(
-	NetAddr.new("127.0.0.1", SCLOrkChatServer.defaultListenPort), 7706);
 
 ~chatUi = SCLOrkChat.new("luke", false, ~uiChatClient);
-~chatUiDir = SCLOrkChat.new("director", true, ~uiChatClient2);
 
-10.do({| i |
+5.do({| i |
 	Task.new({
 		var bot = SCLOrkChatClient.new(
 			NetAddr.new("127.0.0.1", SCLOrkChatServer.defaultListenPort),
@@ -30,14 +27,18 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 			bot.connect("bot-%-%".format(i, Main.elapsedTime.round));
 			1.wait;
 			10.rand.do({
-				var off = (~loremIpsum.size - 128).rand;
+				var off = (~loremIpsum.size - 256).rand;
 				(10.rand + 1).wait;
 				bot.sendMessage(SCLOrkChatMessage.new(
 					bot.userId,
 					[ 0 ],
 					\plain,
-					~loremIpsum[off .. off + 128.rand])
+					~loremIpsum[off .. off + 256.rand])
 				);
+				if (10.rand > 7, {
+					bot.nickName = "new-%-%".format(i,
+						Main.elapsedTime.round);
+				});
 			});
 			1.wait;
 			bot.disconnect;
@@ -45,5 +46,3 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 	}, SystemClock).start;
 });
 )
-
-["a", "b", "c", "d"].join(", ")

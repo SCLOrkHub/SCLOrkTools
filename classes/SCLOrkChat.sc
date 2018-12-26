@@ -40,6 +40,7 @@ SCLOrkChat {
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
 		this.prConnectClientListViewUpdateLogic();
+
 		window.front;
 
 		chatClient.connect(nickName);
@@ -56,7 +57,7 @@ SCLOrkChat {
 				0,
 				windowWidth,
 				Window.screenBounds.height),
-//			resizable: false,
+			resizable: false,
 			border: false
 		);
 		window.alwaysOnTop = true;
@@ -109,27 +110,38 @@ SCLOrkChat {
 		];
 
 		sendTextField.action = { | v |
-			var recipientIds, chatMessage;
-
-			if (clientListView.selection.size == 0, {
-				recipientIds = [ 0 ];
+			"'%'".format(v.string[0..5]).postln;
+			// Check for nickName change first with the /nick command.
+			if (v.string[0..5] == "/nick ", {
+				var newName = v.string[6..];
+				if (newName.size > 0, {
+					("setting nickname to " ++ newName).postln;
+					chatClient.nickName = newName;
+				});
+				v.string = "";
 			}, {
-				recipientIds = clientIdList.at(clientListView.selection);
+				var recipientIds, chatMessage;
+
+				if (clientListView.selection.size == 0, {
+					recipientIds = [ 0 ];
+				}, {
+					recipientIds = clientIdList.at(clientListView.selection);
+				});
+
+				chatMessage = SCLOrkChatMessage(
+					chatClient.userId,
+					recipientIds,
+					messageTypePopUpMenu.item,
+					v.string,
+					chatClient.nickName
+				);
+				chatClient.sendMessage(chatMessage);
+
+				// Reset contents of text UI, and reset message type selector
+				// to plain.
+				v.string = "";
+				messageTypePopUpMenu.value = 0;
 			});
-
-			chatMessage = SCLOrkChatMessage(
-				chatClient.userId,
-				recipientIds,
-				messageTypePopUpMenu.item,
-				v.string,
-				chatClient.nickName
-			);
-			chatClient.sendMessage(chatMessage);
-
-			// Reset contents of text UI, and reset message type selector
-			// to plain.
-			v.string = "";
-			messageTypePopUpMenu.value = 0;
 		};
 	}
 
@@ -176,8 +188,8 @@ SCLOrkChat {
 			chatMessageQueueSemaphore.signal;
 
 			// Wait a short while before scrolling the view to the bottom, or the
-			// new layout dimensions will not have been computed, so the view won't
-			// always make it to the new bottom when it scrolls.
+			// new layout dimensions will not have been computed, so the view
+			// won't always make it to the new bottom when it scrolls.
 			if (addedElements and: { autoScroll }, {
 				AppClock.sched(chatUiUpdatePeriodSeconds / 2, {
 					chatItemScrollView.visibleOrigin = Point.new(0,
