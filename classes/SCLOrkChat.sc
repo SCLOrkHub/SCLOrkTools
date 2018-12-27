@@ -1,5 +1,6 @@
 SCLOrkChat {
 	const chatUiUpdatePeriodSeconds = 0.2;
+	const keepLastMessageCount = 100;
 
 	var nickName;
 	var asDirector;
@@ -26,6 +27,7 @@ SCLOrkChat {
 	// List of clientIds in the same order as the clientListView
 	// list of usernames.
 	var clientIdList;
+	var messageViewRingBuffer;
 
 	*new { | nickName, asDirector = false, chatClient = nil |
 		^super.newCopyArgs(nickName, asDirector, chatClient).init;
@@ -66,6 +68,9 @@ SCLOrkChat {
 
 	free {
 		quitTasks = true;
+		messageViewRingBuffer.do({ | item, index |
+			item.remove;
+		});
 		updateChatUiTask.stop;
 		window.close;
 		window.free;
@@ -124,6 +129,8 @@ SCLOrkChat {
 
 		clientListView.fixedWidth = clearSelectionButton.sizeHint.width;
 		clearSelectionButton.fixedWidth = clearSelectionButton.sizeHint.width;
+
+		sendTextField.enabled = false;
 
 		autoScrollCheckBox.value = true;
 		autoScrollCheckBox.string = "Auto-Scroll";
@@ -250,6 +257,7 @@ SCLOrkChat {
 
 	prConnectChatUiUpdateLogic {
 		chatMessageQueue = RingBuffer.new(16);
+		messageViewRingBuffer = RingBuffer.new(keepLastMessageCount);
 		chatMessageQueueSemaphore = Semaphore.new(1);
 		autoScroll = true;
 		chatMessageIndex = 0;
@@ -278,6 +286,16 @@ SCLOrkChat {
 				);
 				chatMessageIndex = chatMessageIndex + 1;
 				chatItemScrollView.canvas.layout.add(chatMessageView);
+
+				// Delete old message views, so as not to clog up our
+				// UI with infinite messages.
+				if (messageViewRingBuffer.size ==
+					(messageViewRingBuffer.maxSize - 1), {
+					var oldMessageView = messageViewRingBuffer.pop();
+					oldMessageView.remove;
+				});
+				messageViewRingBuffer.add(chatMessageView);
+
 				addedElements = true;
 
 				chatMessageQueueSemaphore.wait;
@@ -355,6 +373,7 @@ SCLOrkChat {
 					"Connected to server."));
 				AppClock.sched(0, {
 					connectionStatusLabel.string = "connected";
+					sendTextField.enabled = true;
 				});
 				this.prRebuildClientListView(true);
 			}, {
@@ -366,6 +385,7 @@ SCLOrkChat {
 				AppClock.sched(0, {
 					connectionStatusLabel.visible = false;
 					reconnectButton.visible = true;
+					sendTextField.enabled = false;
 				});
 			});
 		};

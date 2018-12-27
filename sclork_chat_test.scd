@@ -25,14 +25,17 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 			bot.connect("bot-%-%".format(i, Main.elapsedTime.round));
 			1.wait;
 			10.rand.do({
+				var msgType = \plain;
 				var off = (~loremIpsum.size - 256).rand;
-				(10.rand + 1).wait;
+				(5.rand + 1).wait;
+				if (10.rand == 0, { msgType = \shout; });
 				bot.sendMessage(SCLOrkChatMessage.new(
 					bot.userId,
 					[ 0 ],
-					\plain,
+					msgType,
 					~loremIpsum[off .. off + 256.rand])
 				);
+				(5.rand + 1).wait;
 				if (10.rand > 7, {
 					bot.nickName = "new-%-%".format(i,
 						Main.elapsedTime.round);

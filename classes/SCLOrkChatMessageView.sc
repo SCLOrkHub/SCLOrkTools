@@ -6,6 +6,10 @@ SCLOrkChatMessageView : View {
 	var actionButton;
 	var contentsTextView;
 
+	var stopShouting;
+	var shoutColorOn;
+	var shoutTask;
+
 	*new { | parent, containerViewWidth, chatMessage, messageIndex, sclorkChat |
 		^super.new(parent).init(
 			containerViewWidth, chatMessage, messageIndex, sclorkChat);
@@ -123,7 +127,40 @@ SCLOrkChatMessageView : View {
 							this.background = Color.new(0.8, 0.8, 0.8);
 						});
 					});
+				}, {
+					if (chatMessage.type == \shout, {
+						stopShouting = false;
+						shoutColorOn = true;
+						this.acceptsMouse = true;
+						this.mouseDownAction = {
+							stopShouting = true;
+							this.acceptsMouse = false;
+						};
+						shoutTask = SkipJack.new({
+							if (shoutColorOn, {
+								shoutColorOn = false;
+								this.background = Color.white;
+								senderNameLabel.stringColor = Color.black;
+								contentsTextView.stringColor = Color.black;
+							}, {
+								shoutColorOn = true;
+								this.background = Color.black;
+								senderNameLabel.stringColor = Color.white;
+								contentsTextView.stringColor = Color.white;
+							});
+						},
+						dt: 0.5,
+						stopTest: { stopShouting },
+						clock: AppClock,
+						autostart: true
+						);
+					});
 			});
 		});
+	}
+
+	remove {
+		stopShouting = true;
+		super.remove;
 	}
 }
