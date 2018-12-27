@@ -57,7 +57,7 @@ SCLOrkChat {
 				0,
 				windowWidth,
 				Window.screenBounds.height),
-			resizable: false,
+//			resizable: false,
 			border: false
 		);
 		window.alwaysOnTop = true;

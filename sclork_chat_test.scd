@@ -1,5 +1,5 @@
 (
-OSCFunc.trace(true);
+OSCFunc.trace(false);
 
 ~loremIpsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Integer quis auctor elit sed vulputate. Sed euismod nisi porta lorem. Volutpat lacus laoreet non curabitur gravida arcu ac. Tincidunt ornare massa eget egestas purus viverra. Vitae purus faucibus ornare suspendisse sed. Ac odio tempor orci dapibus ultrices in iaculis nunc. Vulputate sapien nec sagittis aliquam malesuada bibendum arcu vitae elementum. Suspendisse sed nisi lacus sed viverra tellus. Purus in mollis nunc sed id. Phasellus vestibulum lorem sed risus ultricies. Risus nec feugiat in fermentum posuere urna nec. Nibh praesent tristique magna sit amet purus gravida quis blandit. Purus faucibus ornare suspendisse sed nisi lacus sed viverra tellus. Mi in nulla posuere sollicitudin aliquam ultrices. Dolor sit amet consectetur adipiscing elit.
 
