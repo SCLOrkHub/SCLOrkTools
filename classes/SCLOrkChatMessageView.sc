@@ -102,7 +102,7 @@ SCLOrkChatMessageView : View {
 		// sent only to some recipients.
 		if (chatMessage.type != \system and: {
 			chatMessage.recipientIds[0] != 0}, {
-			this.toolTip = "Sent only to: " ++
+			this.toolTip = "To: " ++
 			chatMessage.recipientNames.join(", ") ++ ".";
 			isPrivate = true;
 		}, {

@@ -154,10 +154,18 @@ SCLOrkChat {
 		reconnectButton.action = { this.connect; };
 
 		messageTypeLabel.string = "Message Type:";
-		messageTypePopUpMenu.items = [
-			\plain,
-			\code
-		];
+		if (asDirector, {
+			messageTypePopUpMenu.items = [
+				\plain,
+				\code,
+				\shout
+			];
+		}, {
+			messageTypePopUpMenu.items = [
+				\plain,
+				\code
+			];
+		});
 
 		sendTextField.action = { | v |
 			var isCommand = false;
