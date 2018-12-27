@@ -12,6 +12,8 @@ SCLOrkChat {
 	var clearSelectionButton;
 	var sendTextField;
 	var autoScrollCheckBox;
+	var connectionStatusLabel;
+	var reconnectButton;
 	var messageTypeLabel;
 	var messageTypePopUpMenu;
 
@@ -42,8 +44,32 @@ SCLOrkChat {
 		this.prConnectClientListViewUpdateLogic();
 
 		window.front;
+		this.connect;
+	}
 
-		chatClient.connect(nickName);
+	connect {
+		if (chatClient.isConnected.not, {
+			chatClient.connect(nickName);
+			AppClock.sched(0, {
+				reconnectButton.visible = false;
+				connectionStatusLabel.string = "connecting..";
+				connectionStatusLabel.visible = true;
+			});
+		}, {
+			this.enqueueChatMessage(SCLOrkChatMessage.new(
+				chatClient.userId,
+				[ chatClient.userId ],
+				\system,
+				"You are already connected."));
+		});
+	}
+
+	free {
+		quitTasks = true;
+		updateChatUiTask.stop;
+		window.close;
+		window.free;
+		chatClient.free;
 	}
 
 	prConstructUiElements {
@@ -57,11 +83,10 @@ SCLOrkChat {
 				0,
 				windowWidth,
 				Window.screenBounds.height),
-//			resizable: false,
 			border: false
 		);
 		window.alwaysOnTop = true;
-		// window.userCanClose = false;
+		window.userCanClose = false;
 
 		window.layout = VLayout.new(
 			HLayout.new(
@@ -77,6 +102,9 @@ SCLOrkChat {
 			HLayout.new(
 				[ autoScrollCheckBox = CheckBox.new(), align: \left ],
 				nil,
+				[ connectionStatusLabel = StaticText.new(), align: \center ],
+				[ reconnectButton = Button.new(), align: \center ],
+				nil,
 				[ messageTypeLabel = StaticText.new(), align: \right ],
 				[ messageTypePopUpMenu = PopUpMenu.new(), align: \right ],
 			)
@@ -91,7 +119,7 @@ SCLOrkChat {
 
 		clearSelectionButton.string = "Clear Selection";
 		clearSelectionButton.action = {
-			clientListView.selection =  [ ];
+			clientListView.selection = [ ];
 		};
 
 		clientListView.fixedWidth = clearSelectionButton.sizeHint.width;
@@ -103,6 +131,21 @@ SCLOrkChat {
 			autoScroll = v.value;
 		};
 
+		connectionStatusLabel.string = "connecting..";
+		connectionStatusLabel.visible = false;
+		// Testing only, disable in production
+		connectionStatusLabel.action = {
+			this.enqueueChatMessage(SCLOrkChatMessage.new(
+				chatClient.userId,
+				[ chatClient.userId ],
+				\system,
+				"Forcing timeout."));
+			chatClient.prForceTimeout;
+		};
+
+		reconnectButton.string = "Connect";
+		reconnectButton.action = { this.connect; };
+
 		messageTypeLabel.string = "Message Type:";
 		messageTypePopUpMenu.items = [
 			\plain,
@@ -110,15 +153,69 @@ SCLOrkChat {
 		];
 
 		sendTextField.action = { | v |
-			// Check for nickName change first with the /nick command.
-			if (v.string[0..5] == "/nick ", {
-				var newName = v.string[6..];
-				if (newName.size > 0, {
-					("setting nickname to " ++ newName).postln;
-					chatClient.nickName = newName;
+			var isCommand = false;
+			var sendString = v.string;
+			var sendType = messageTypePopUpMenu.item;
+
+			if (v.string[0] == $/, {
+				var commandString;
+				var firstSpace = v.string.find(" ");
+				if (firstSpace.isNil, {
+					firstSpace = v.string.size;
 				});
-				v.string = "";
-			}, {
+				commandString = v.string[0..firstSpace - 1];
+				isCommand = true;
+				switch (commandString,
+					"/code", {
+						isCommand = false;
+						sendType = \code;
+						sendString = sendString[firstSpace + 1..];
+					},
+					"/fail", {
+						chatClient.prForceTimeout;
+						this.enqueueChatMessage(SCLOrkChatMessage.new(
+							chatClient.userId,
+							[ chatClient.userId ],
+							\system,
+							"Timeout forced."));
+					},
+					"/nick", {
+						var newName = v.string[firstSpace + 1..];
+						if (newName.size > 0, {
+							chatClient.nickName = newName;
+						});
+					},
+					"/plain", {
+						isCommand = false;
+						sendType = \plain;
+						sendString = sendString[firstSpace + 1..];
+					},
+					"/quit", {
+						AppClock.sched(0.1, {
+							this.free;
+						});
+					},
+					"/shout", {
+						isCommand = false;
+						if (asDirector, { sendType = \shout; });
+						sendString = sendString[firstSpace + 1..];
+					},
+					{
+						this.enqueueChatMessage(SCLOrkChatMessage.new(
+							chatClient.userId,
+							[ chatClient.userId ],
+							\system,
+							"Supported commands:\n" ++
+							"/code <code string>\n" ++
+							"/nick <new name>\n" ++
+							"/plain <plain string>\n" ++
+							"/quit"));
+					}
+				);
+			});
+
+			// Check for nickName change first with the /nick command.
+			if (isCommand.not, {
 				var recipientIds, chatMessage;
 
 				if (clientListView.selection.size == 0, {
@@ -130,17 +227,18 @@ SCLOrkChat {
 				chatMessage = SCLOrkChatMessage(
 					chatClient.userId,
 					recipientIds,
-					messageTypePopUpMenu.item,
-					v.string,
+					sendType,
+					sendString,
 					chatClient.nickName
 				);
 				chatClient.sendMessage(chatMessage);
 
 				// Reset contents of text UI, and reset message type selector
 				// to plain.
-				v.string = "";
 				messageTypePopUpMenu.value = 0;
 			});
+
+			v.string = "";
 		};
 	}
 
@@ -250,7 +348,25 @@ SCLOrkChat {
 
 		chatClient.onConnected = { | isConnected |
 			if (isConnected, {
+				this.enqueueChatMessage(SCLOrkChatMessage.new(
+					chatClient.userId,
+					[ chatClient.userId ],
+					\system,
+					"Connected to server."));
+				AppClock.sched(0, {
+					connectionStatusLabel.string = "connected";
+				});
 				this.prRebuildClientListView(true);
+			}, {
+				this.enqueueChatMessage(SCLOrkChatMessage.new(
+					chatClient.userId,
+					[ chatClient.userId ],
+					\system,
+					"Disconnected from server."));
+				AppClock.sched(0, {
+					connectionStatusLabel.visible = false;
+					reconnectButton.visible = true;
+				});
 			});
 		};
 
