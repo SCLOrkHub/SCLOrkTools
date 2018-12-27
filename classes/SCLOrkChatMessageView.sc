@@ -15,8 +15,8 @@ SCLOrkChatMessageView : View {
 		var labelWidth, labelHeight, messageWidth, isPrivate;
 		sclorkChat = sclorkChat;
 
-		senderNameLabel = StaticText.new(this);
 		if (chatMessage.type != \system, {
+			senderNameLabel = StaticText.new(this);
 			senderNameLabel.align = \topRight;
 			senderNameLabel.string = chatMessage.senderName ++ ":";
 			senderNameLabel.font = Font.new(Font.defaultSansFace, bold: true);
@@ -71,6 +71,7 @@ SCLOrkChatMessageView : View {
 		contentsTextView.fixedWidth = messageWidth;
 		contentsTextView.align = \topLeft;
 		contentsTextView.string = chatMessage.contents;
+
 		// Manipulate font before setting size, so that sizeHint will
 		// be correct for the font.
 		if (chatMessage.type == \system, {
@@ -81,6 +82,7 @@ SCLOrkChatMessageView : View {
 		if (chatMessage.type == \code, {
 				contentsTextView.font = Font.new(Font.defaultMonoFace);
 		});
+
 		contentsTextView.bounds = Rect.new(
 			labelWidth + (messageViewPadding * 2.0),
 			messageViewPadding,

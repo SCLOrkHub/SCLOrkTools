@@ -110,7 +110,6 @@ SCLOrkChat {
 		];
 
 		sendTextField.action = { | v |
-			"'%'".format(v.string[0..5]).postln;
 			// Check for nickName change first with the /nick command.
 			if (v.string[0..5] == "/nick ", {
 				var newName = v.string[6..];
@@ -278,6 +277,13 @@ SCLOrkChat {
 						[ chatClient.userId ],
 						\system,
 						"% now known as %".format(oldName, nickName)));
+				},
+				\timeout, {
+					this.enqueueChatMessage(SCLOrkChatMessage.new(
+						chatClient.userId,
+						[ chatClient.userId ],
+						\system,
+						"% timed out.".format(nickName)));
 				}
 			);
 		};
