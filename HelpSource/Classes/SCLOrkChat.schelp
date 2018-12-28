@@ -1,7 +1,7 @@
 TITLE:: SCLOrkChat
-summary:: User interface for a SCLOrkChatClient object.
+summary:: Provides a Graphical User Interface for a SCLOrkChatClient object.
 categories:: Quarks>SCLOrkChat
-related:: Classes/SCLOrkChatClient, Classes/SCLOrkChatServer
+related:: Guides/SCLOrkChat-User-Guide, Classes/SCLOrkChatClient
 
 DESCRIPTION::
 Provides a graphical user interface for a provided link::Classes/SCLOrkChatClient::, or can construct one from defaults. Serves as the primary user interface to the SCLOrkChat system.
@@ -9,18 +9,35 @@ Provides a graphical user interface for a provided link::Classes/SCLOrkChatClien
 CLASSMETHODS::
 
 METHOD:: new
-(describe method here)
+Construct, initialize, and return a new SCLOrkChat object. Will show the window.
 
 ARGUMENT:: nickName
-(describe argument here)
+The name to use in the chat. Will be shown to other users as your name.
 
 ARGUMENT:: asDirector
-(describe argument here)
+Activate some additional features for the director.
 
-returns:: (describe returnvalue here)
+ARGUMENT:: chatClient
+Optional link::Classes/SCLOrkChatClient:: object to use for communication. If not provided the class will construct one with sensible defaults, at least sensible for the Santa Clara Laptop Orchestra. Will automatically call link::#connect::.
+
+note::
+If a link::Classes/SCLOrkChatClient:: object is provided, the SCLOrkChat UI will take ownership of that client object, including overriding all of its callback functions and object deletion. Subsequent usage of the provided client object is therefore discouraged.
+::
 
 INSTANCEMETHODS::
-private:: prConnectChatUiUpdateLogic, prConstructUiElements, prEnqueueChatMessage, init
+private:: prConnectChatUiUpdateLogic, prConstructUiElements, prEnqueueChatMessage, init, prConnectClientListViewUpdateLogic, prRebuildClientListView
+
+METHOD:: connect
+Attempt to connect to the server via the link::Classes/SCLOrkChatClient::.
+
+METHOD:: enqueueChatMessage
+Adds the provided chat message to the UI view of all messages.
+
+ARGUMENT:: chatMessage
+The link::Classes/SCLOrkChatMessage:: object to render in the UI.
+
+METHOD:: free
+Disconnects from the server, deletes all UI elements, closes the window.
 
 EXAMPLES::
 

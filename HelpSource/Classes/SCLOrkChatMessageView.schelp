@@ -1,0 +1,38 @@
+TITLE:: SCLOrkChatMessageView
+summary:: Internal class for SCLOrkChat UI, represents a single SCLOrkChatMessage.
+categories:: Quarks>SCLOrkChat
+related:: Classes/SCLOrkChat, Classes/SCLOrkChatMessage
+
+DESCRIPTION::
+An internal class intended for use by the link::Classes/SCLOrkChat:: user interface code. It contains logic about how to display a link::Classes/SCLOrkChatMessage::, and includes some simple interactivity, specifically to copy code from a code message or silence the blink of a shout message.
+
+CLASSMETHODS::
+
+METHOD:: messageViewPadding
+A constant used by the view to calculate distance between UI elements.
+
+METHOD:: new
+Create, initialize, and return a new SCLOrkChatMessageView object.
+
+ARGUMENT:: parent
+The containing parent view, this is passed on to the superclass link::Classes/View:: constructor.
+
+ARGUMENT:: containerViewWidth
+How wide this view should be within the larger container.
+
+ARGUMENT:: chatMessage
+The link::Classes/SCLOrkChatMessage:: object the view is to represent.
+
+ARGUMENT:: messageIndex
+An integer describing the position of this view in the larger view container, used to calculate background color for ease of reading.
+
+ARGUMENT:: sclorkChat
+The containing link::Classes/SCLOrkChat:: object, used in case chat has to send back any messages.
+
+returns:: A new SCLOrkChatMessageView object.
+
+INSTANCEMETHODS::
+private:: init
+
+METHOD:: remove
+Stops any tasks associated with this particular view (namely shout flashing), then calls link::Classes/View#remove::.

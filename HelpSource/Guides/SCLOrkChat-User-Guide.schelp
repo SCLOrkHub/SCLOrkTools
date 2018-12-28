@@ -1,0 +1,78 @@
+TITLE:: SCLOrkChat User Guide
+summary:: General user manual for the SCLOrkChat system.
+categories:: Quarks>SCLOrkChat
+related:: Classes/SCLOrkChat
+
+SECTION::Introduction
+
+The SCLOrkChat Quark is a collection of classes designed for use by the Santa Clara Laptop Orchestra, but as it is open source it is free for use for anyone. It is designed to be a network chat interface useful for communication during live performance by the orchestra. As such it includes many features specifically to facilitate that, such as minimal default configuration, ability to operate without an Internet connection, lightweight code sharing, and special features for the director's use.
+
+This Quark lives on GitHub at https://github.com/lnihlen/SCLOrkChat, and is maintained by its primary author Luke Nihlen. Issues can be filed there, or just send me email. PRs are also invited. If you find this Quark useful, particularly if you aren't a part of SCLOrk, I'd be delighted to hear it.
+
+SECTION::Quick Start
+
+In a SuperCollider document, write the following, replacing the "my name" string with your name:
+
+code::
+~chat = SCLOrkChat.new("my name");
+::
+
+Then highlight the line and execute it. This should open a chat window. You may notice that the window does not close normally, this has been disabled in order to help protect against accidental closure during performance. When done using the chat program, you can type the strong::/quit:: slash command in the message sending box (see link::#Message Sending And Options:: for details), or execute the following line of code:
+
+code::
+~chat.free;
+::
+
+This will close the window and disconnect you from the chat server.
+
+SECTION::User Interface
+
+In this section we'll take a tour through each part of the user interface, explaining how it works and all of the available features.
+
+SUBSECTION::UI Overview
+
+IMAGE::SCLOrkChat-screenshot.png#A Screenshot of the SCLOrkChat User Interface::
+
+The above screenshot shows the user interface with some example/test code running. The large area on the top left is link::#The Message View::, where all chat messages can be read. The thinner vertical strip to the right is called link::#The Peer List::, which lists all of the connected users, and also allows for sending messages to individual users instead of broadcasting them to everyone, which is the default. The bottom area is reserved for link::#Message Sending And Options::. The long single-line horizontal strip is where you can type messages. To send a message you've typed simply press Enter or Return, it will send the message and clear the view for you, and you'll see your message repated in the message view as well.
+
+SUBSECTION::The Message View
+
+IMAGE::SCLOrkChat-message-view.png#The Message View::
+
+There are several types of messages, and some are shown in the example image. The message by Alice represents a normal chat message, what other users will see if you select "plain" in the Message Type selector down in the far right of the chat window. Bob has sent two code snippet messages, which you can send by selecting "code" in the Message Type selector. Code messages can be identified by the code font that they print in, as well as the "Append" button that appears on the message. If you click the append button the contents of the message will be automatically inserted at the end of the currently open Document within the SuperCollider IDE. Lastly, Bruno has sent a special kind of message that only a director can normally send, called a "shout". These shout messages are designed to catch your attention, so they blink from black to white. The blinking can be stopped by clicking on the shout message.
+
+Some messages are only sent to a limited audience, instead of being broadcast. Should you receive one of them, these messages will appear with a darker color than the normal "plain" messages. To see who the message was sent to, just hover over that private message and a recipients list should pop up as a tooltip, over the message.
+
+In the example screenshot, the client is signed in with the username "luke". You can see an "echo" message in the message view, appearing as the same color background as the message view itself. Although not pictured, there are also "system" messages, which appear in italics and centered in the message view. These are used to announce the arrival and departure of other users, or other system information as needed.
+
+SUBSECTION::The Peer List
+
+IMAGE::SCLOrkChat-peer-list.png#The Peer List::
+
+The peer list serves two primary functions. First it is a indicator of who else is signed into the chat system. It updates every time there is a change reported by the server. The peer list also allows you to pick a set of individuals to send a private message to, instead of broadcasting to everyone by default. To select or deselect individuals in the list simply click on their names. The peer list will remember your selection between messages, so if you'd like to return to broadcasting you can either manually deselect all individuals or click the "Clear Selection" button found at the bottom of the peer list.
+
+SUBSECTION::Message Sending And Options
+
+IMAGE::SCLOrkChat-message-entry-and-options.png#Message Sending And Options::
+
+The long horizontal box is where you can type messages for sending. To send a message type it in the box and then press the Enter or Return key on your keyboard. There are also a few special commands, called "slash commands" because they all start with a forward slash "/" that can be typed into the message box, that won't send a message but instead will cause the client to do various things. They are listed here:
+
+strong::Message Box Slash Commands::
+table::
+## strong::Command::                    || strong::Description::
+## strong::/code:: emphasis::message::  || Send emphasis::message:: as code, ignoring the value of the Message Type selector.
+## strong::/nick:: emphasis::new name:: || Change your nickname to emphasis::new name::
+## strong::/plain:: emphasis::message:: || Send emphasis::message:: as plain text, ignoring the value of the Message Type selector.
+## strong::/quit::                      || Exit the chat program and close the window.
+## strong::/shout:: emphasis::message:: || (Director Mode only) - Send emphasis::message:: as a shout.
+::
+
+The Auto-Scroll checkbox at the lower left of the window allows you to enable or disable the behavior of the message view to automatically scroll to the bottom of the window whenever a new message arrives. This can be useful if you are trying to read something, or target the "Append" button of a code message in a busy chatroom.
+
+note::
+Shout messages always ignore the auto-scroll setting and will forcably scroll the message view to the bottom.
+::
+
+In the middle of bottom area you see the words "connected", indicating that the chat program is connected to the chat server. Should the client lose its connection, this will switch to a button reading "Connect", which you can press to attempt to reconnect to the server.
+
+Lastly, on the lower right of the window is the Message Type picker. This allows you to pick what kind of message you want to send. Options are plain or code, with the addional shout option available in Director Mode. Message Type will automatically switch back to the default plain option after sending of the next message.

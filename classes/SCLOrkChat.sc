@@ -36,7 +36,7 @@ SCLOrkChat {
 	init {
 		if (chatClient.isNil, {
 			chatClient = SCLOrkChatClient.new(
-				NetAddr.new("sclork-server-01",
+				NetAddr.new("sclork-s01.local",
 					SCLOrkChatServer.defaultListenPort));
 		});
 		quitTasks = false;
@@ -87,8 +87,7 @@ SCLOrkChat {
 				Window.screenBounds.right,
 				0,
 				windowWidth,
-				Window.screenBounds.height),
-			border: false
+				Window.screenBounds.height)
 		);
 		window.alwaysOnTop = true;
 		window.userCanClose = false;
@@ -276,6 +275,7 @@ SCLOrkChat {
 
 		updateChatUiTask = SkipJack.new({
 			var addedElements = false;
+			var shouldScroll = autoScroll;
 
 			chatMessageQueueSemaphore.wait;
 			while ({ chatMessageQueue.size > 0 }, {
@@ -305,6 +305,9 @@ SCLOrkChat {
 				messageViewRingBuffer.add(chatMessageView);
 
 				addedElements = true;
+				if (chatMessage.type == '\shout', {
+					shouldScroll = true;
+				});
 
 				chatMessageQueueSemaphore.wait;
 			});
@@ -313,7 +316,7 @@ SCLOrkChat {
 			// Wait a short while before scrolling the view to the bottom, or the
 			// new layout dimensions will not have been computed, so the view
 			// won't always make it to the new bottom when it scrolls.
-			if (addedElements and: { autoScroll }, {
+			if (addedElements and: { shouldScroll }, {
 				AppClock.sched(chatUiUpdatePeriodSeconds / 2, {
 					chatItemScrollView.visibleOrigin = Point.new(0,
 						chatItemScrollView.canvas.bounds.height -

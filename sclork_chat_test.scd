@@ -52,6 +52,44 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 		});
 	}, SystemClock).start;
 });
+
+3.do({| i |
+	Task.new({
+		var bot = SCLOrkChatClient.new(
+			NetAddr.new("127.0.0.1", SCLOrkChatServer.defaultListenPort),
+			7720 + i);
+		while({ true }, {
+			var name = case
+				{ i == 0 } { "Alice" }
+				{ i == 1 } { "Bob" }
+				{ i == 2 } { "Bruno" };
+			(5.rand).wait;
+			bot.connect(name);
+			1.wait;
+			10.rand.do({
+				var msgType = \plain;
+				var off = (~loremIpsum.size - 256).rand;
+				var contents = ~loremIpsum[off .. off + 256.rand];
+				(5.rand + 1).wait;
+				switch (i,
+					1, { msgType = \code;
+						contents = "{ SinOsc.ar }.play";
+					},
+					2, { msgType = \shout; });
+				bot.sendMessage(SCLOrkChatMessage.new(
+					bot.userId,
+					[ 0 ],
+					msgType,
+					contents
+					)
+				);
+				(5.rand + 1).wait;
+			});
+			1.wait;
+			bot.disconnect;
+		});
+	}, SystemClock).start;
+});
 )
 
 (

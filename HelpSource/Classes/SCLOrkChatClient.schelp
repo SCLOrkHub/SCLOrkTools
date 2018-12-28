@@ -57,7 +57,6 @@ The new string name to associate with this client.
 
 METHOD:: onUserChanged
 Function the client will call after applying any updates to its link::#userDictionary::. The client will call the provided function with four arguments: emphasis::type, userId, name, oldName::. The emphasis::type:: argument is an enumeration documented  at link::Reference/SCLOrkChat-OSC-Command-Reference#changeType enumeration::. The emphasis::userId:: and emphasis::name:: arguments are the id and name associated with the client that is changing. Lastly the emphasis::oldName:: argument is only valid if the emphasis::type:: values is strong::\rename::, in which case the client will supply the old name the user was going by, and the new name will be in emphasis::name::.
-
 METHOD:: free
 Will automatically call link::#disconnect:: if the client is connected to the server. Then unbinds all listener functions and destroys the object.
 
@@ -70,7 +69,6 @@ Accessor method for the integer userId associated with this particular client.
 METHOD:: disconnect
 If connected to the server the client will send a sign-out message to the server. It will then call link::#onConnected:: with a false value in the argument to indicate disconnection has occurred.
 
-EXAMPLES::
 
 code::
 // Create a simple chatBot that echoes all messages it receives back to
