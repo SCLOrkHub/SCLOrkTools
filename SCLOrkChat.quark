@@ -3,7 +3,7 @@
 	summary: "Chat program used by Santa Clara Laptop Orchestra",
 	author: "Luke Nihlen",
 	version: "0.0.1",
-	schelp: "SCLOrkChat",
+	schelp: "Guides/SCLOrkChat-User-Guide",
 	dependencies: [ ],
 	license: "GPL",
 	copyright: "Luke Nihlen 2018",
