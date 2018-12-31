@@ -1,0 +1,60 @@
+TITLE:: SCLOrkClock
+summary:: A TempoClock that takes its timing from a SCLOrkTimeClient.
+categories:: Quarks>SCLOrkClock
+related:: Classes/SCLOrkTimeClient, Classes/TempoClock, Reference/SCLOrkClock-Time-Synchronization-Design
+
+DESCRIPTION::
+SCLOrkClock can be used as a link::Classes/TempoClock:: but takes its synchronization information from a link::Classes/SCLOrkTimeClient::, so will be synchronized in time to all other clocks connected to the same link::Classes/SCLOrkTimeServer::. This means that the code::beats:: value of each SCLOrkClock talking to the same time server, and with the same tempo, is synchronized. This allows for patterns and events to be played with the same quantization or scheduling on different computers in synchronicity.
+
+CLASSMETHODS::
+
+METHOD:: new
+Create and return a new SCLOrkClock object. The first argument is for the network synchronization, and the remaining arguments are passed on to link::Classes/TempoClock#new::.
+
+ARGUMENT:: timeClient
+Required link::Classes/SCLOrkTimeClient:: object, used by all SCLOrkClocks on the computer to synchronize with the server.
+
+ARGUMENT:: tempo
+Starting tempo for the clock.
+
+ARGUMENT:: beats
+Starting beats value. Note that beats will be quickly overriden by the server synchronization code.
+
+ARGUMENT:: seconds
+Starting seconds value. Note that seconds will be quickly overriden by the server synchronization code.
+
+ARGUMENT:: queueSize
+Size of storage of the TempoClock scheduling queue.
+
+returns:: A newly initialized SCLOrkClock.
+
+INSTANCEMETHODS::
+private:: setVars, init
+
+METHOD:: beats
+Allows for reading, but not changing, of the TempoClock beats count. The SCLOrkClock computes its beats value from the link::Classes/SCLOrkTimeClient:: time value.
+
+METHOD:: seconds
+Allows for reading, but not changing, of the TempoClock beats count. The SCLOrkClock computes its seconds value from the link::Classes/SCLOrkTimeClient:: time value.
+
+
+EXAMPLES::
+
+code::
+// Create a new time client with defaults.
+~timeClient = SCLOrkTimeClient.new;
+
+// Print a notification with our best estimate of the server clock.
+~clock = SCLOrkClock.new(~timeClient);
+~clock.play({ "server beats: %".format(~clock.beats).postln; ^1 });
+)
+
+// ... Let some time pass ...
+
+(
+~clock.stop;
+
+// Release the client. All dependent clocks still running will break.
+~timeClient.free;
+)
+::

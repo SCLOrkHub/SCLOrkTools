@@ -1,0 +1,25 @@
+title:: SCLOrkClock User Guide
+summary:: A user guide to the classes inside the SCLOrkClock Quark.
+categories:: Quarks>SCLOrkClock
+
+SECTION::Introduction
+
+The SCLOrkClock Quark is a collection of classes designed for use by the Santa Clara Laptop Orchestra, but as it is open source it is free for use by anyone. This is a collection of classes designed to facilitate network clock synchronization and control, optimized and configured by default for the live performance environment of the orchestra.
+
+This Quark lives on GitHub at https://github.com/lnihlen/SCLOrkClock, and is maintained by its primary author Luke Nihlen. Issues can be filed there, or just send me email. PRs are also invited. If you find this Quark useful, particularly if you aren't a part of SCLOrk, I'd be delighted to hear it.
+
+SECTION::Class Overview
+
+SUBSECTION::Network Clock Synchronization
+
+table::
+## link::Classes/SCLOrkClock:: || A link::Classes/TempoClock:: that uses a link::Classes/SCLOrkTimeClient:: to synchronize its code::beats:: count with the server.
+## link::Classes/SCLOrkTimeClient:: || Create one per computer, synchronizes the timing between client and server.
+## link::Classes/SCLOrkTimeServer:: || Answers requests for synchronization from the clients.
+::
+
+SUBSECTION::Network Clock Remote Control
+
+table::
+## TBD || TBD
+::
