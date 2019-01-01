@@ -34,6 +34,9 @@ SCLOrkChat {
 	}
 
 	init {
+		if (nickName.isNil, {
+			nickName = "noname";
+		});
 		if (chatClient.isNil, {
 			chatClient = SCLOrkChatClient.new(
 				NetAddr.new("sclork-s01.local",
