@@ -1,0 +1,57 @@
+TITLE:: SCLOrkChatMessage
+summary:: Wrapper class for a chat message in the SCLOrkChat system.
+categories:: Quarks>SCLOrkChat
+related:: Classes/SCLOrkChatClient, Classes/SCLOrkChatServer, Reference/SCLOrkChat-OSC-Command-Reference
+
+DESCRIPTION::
+
+CLASSMETHODS::
+
+METHOD:: new
+Construct, initialize, and return a new SCLOrkChatMessage object.
+
+ARGUMENT:: senderId
+The integer id of the sender of this message.
+
+ARGUMENT:: recipientIds
+A list of integer ids of the intended recipients of the message. There needs to be at least one element in the list, and if the first element of the list is the special broadcast userId of 0 the message is intended for all connected clients.
+
+ARGUMENT:: type
+A label enumerated type of the message, supported types documented in link::Reference/SCLOrkChat-OSC-Command-Reference#Message Types::.
+
+ARGUMENT:: contents
+A string with the text contents of the chat message.
+
+ARGUMENT:: senderName
+Optional argument, not part of the chat message wire format, the string name associated with the senderId.
+
+ARGUMENT:: isEcho
+Optional argument, not part of the chat message wire format, a boolean describing if this is an echo from the server or a new message.
+
+returns:: A new SCLOrkChatMessage object.
+
+INSTANCEMETHODS::
+
+METHOD:: senderName
+A string containing the associated name of the senderId, not part of the wire format is an optional value and may be nil.
+
+METHOD:: postln
+Convenience utility method to print the wire format values only of the object to the post window.
+
+METHOD:: isEcho
+A boolean. Not part of the wire format, but if true indicates that this message was received as an echo from the server.
+
+METHOD:: recipientIds
+An link::Classes/Array:: of recipiendIds that the message was intended for. If the first element of the array is 0 then this was a broadcast message sent to all connected clients.
+
+METHOD:: contents
+A string containing the text contents of the message.
+
+METHOD:: recipientNames
+An array containing the string names associated with the integer values in link::#recipientIds::. May be nil, not part of the wire format.
+
+METHOD:: senderId
+An integer with the userId of the sending client.
+
+METHOD:: type
+A label decribing the enumerated type of the message, supported types documented in link::Reference/SCLOrkChat-OSC-Command-Reference#Message Types::.
