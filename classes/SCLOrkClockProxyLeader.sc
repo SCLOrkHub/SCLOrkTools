@@ -60,7 +60,8 @@ SCLOrkClockProxyLeader {
 	}
 
 	permanent_ { | val |
-		/* TODO */
+		registerOscFunc.permanent_(val);
+		clock.permanent_(val);
 	}
 
 	beatDur {

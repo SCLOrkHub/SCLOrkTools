@@ -71,8 +71,10 @@ SCLOrkClockProxyFollower {
 	}
 
 	free {
+		serverNetAddr.sendMsg('/registerClock', \remove, listenPort);
 	}
 
 	stop {
+		clock.stop;
 	}
 }
