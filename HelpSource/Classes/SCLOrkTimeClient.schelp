@@ -1,6 +1,6 @@
 TITLE:: SCLOrkTimeClient
 summary:: Provides a per-machine difference between the local clock and that of the server clock.
-categories:: Quarks>SCLOrkClock
+categories:: Quarks>SCLOrkNet
 related:: Classes/SCLOrkTimeServer
 
 DESCRIPTION::

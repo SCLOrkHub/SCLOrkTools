@@ -1,6 +1,6 @@
 title:: SCLOrkChat OSC Command Reference
 summary:: Chat Network Protocol Command Reference
-categories:: Quarks>SCLOrkChat
+categories:: Quarks>SCLOrkNet
 related:: Classes/SCLOrkChatServer, Classes/SCLOrkChatClient
 
 The following is a list of all link::Classes/SCLOrkChatServer:: and link::Classes/SCLOrkChatClient:: commands and their arguments, including some documentation around typical communication scenarios of client sign-in and sign-out, sending a broadcast message, sending a targeted message, and nickname change.

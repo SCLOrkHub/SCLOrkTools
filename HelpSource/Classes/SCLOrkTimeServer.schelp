@@ -1,6 +1,6 @@
 TITLE:: SCLOrkTimeServer
 summary:: Shares local elapsed time with all clients.
-categories:: Quarks>SCLOrkClock
+categories:: Quarks>SCLOrkNet
 related:: Classes/SCLOrkTimeClient
 
 DESCRIPTION::

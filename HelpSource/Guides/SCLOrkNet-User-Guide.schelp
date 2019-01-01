@@ -4,7 +4,7 @@ categories:: Quarks>SCLOrkNet
 
 SECTION::Introduction
 
-TBD
+SCLOrkNet is a collection of SuperCollider classes useful for network communication in the laptop -> server environment used for performances and rehersals of the Santa Clara Laptop Orchestra. This Quark is designed to operate on the server and so must not contain any GUI code. The Client objects have followed thier server counterparts for completeness.
 
 This Quark lives on GitHub at https://github.com/lnihlen/SCLOrkNet, and is maintained by its primary author Luke Nihlen. Issues can be filed there, or just send me email. PRs are also invited. If you find this Quark useful, particularly if you aren't a part of SCLOrk, I'd be delighted to hear it.
 
@@ -20,5 +20,7 @@ table::
 SUBSECTION::Network Chat Support
 
 table::
-## TBD || TBD
+## link::Classes/SCLOrkChatClient:: || A programmatic client interface to the SCLOrkChat system.
+## link::Classes/SCLOrkChatServer:: || A chat server, run one per chat system instance.
+## link::Classes/SCLOrkChatMessage:: || A simple wrapper class around the chat message format.
 ::
