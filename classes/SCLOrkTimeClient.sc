@@ -48,6 +48,10 @@ SCLOrkTimeClient {
 		roundTripTimes = Array.newClear(historySize);
 		roundTripSum = 0.0;
 		sumIndex = 0;
+		timeDiff = 0.0;
+		roundTripTime = 0.0;
+		requestLastSent = Main.elapsedTime;
+
 		setTimeBaseOscFunc = OSCFunc({ | msg, time, addr |
 			var diff, rtt, n;
 			diff = Float.from64Bits(msg[1], msg[2]);

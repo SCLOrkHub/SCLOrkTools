@@ -8,7 +8,7 @@
 # automatically at boot.
 
 command=/usr/local/bin/sclang
-command_args="/home/luken/local/share/SuperCollider/Extensions/SCLOrkNet/server_bot.scd"
+command_args="/usr/local/share/SuperCollider/Extensions/SCLOrkNet/server_bot.scd"
 pidfile=/var/run/sclork-server.pid
 
 description="Runs a few SCLOrkNet Quark objects for SCLOrk."
