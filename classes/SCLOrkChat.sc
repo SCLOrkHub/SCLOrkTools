@@ -88,7 +88,7 @@ SCLOrkChat {
 		// By default we occupy the right quarter of the screen.
 		window = Window.new("SCLOrkChat",
 			Rect.new(
-				Window.screenBounds.right,
+				Window.screenBounds.right - windowWidth,
 				0,
 				windowWidth,
 				Window.screenBounds.height)
@@ -162,7 +162,7 @@ SCLOrkChat {
 		reconnectButton.font = font;
 		reconnectButton.action = { this.connect; };
 
-		messageTypeLabel.string = "Message Type:";
+		messageTypeLabel.string = "Type:";
 		messageTypeLabel.font = font;
 		if (asDirector, {
 			messageTypePopUpMenu.items = [

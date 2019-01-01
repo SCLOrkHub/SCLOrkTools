@@ -2,7 +2,7 @@
 	name: "SCLOrkChat",
 	summary: "Chat program used by Santa Clara Laptop Orchestra",
 	author: "Luke Nihlen",
-	version: "0.1.2",
+	version: "0.1.3",
 	schelp: "Guides/SCLOrkChat-User-Guide",
 	license: "GPL",
 	copyright: "Luke Nihlen 2018",
