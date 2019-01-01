@@ -1,6 +1,7 @@
 SCLOrkChat {
 	const chatUiUpdatePeriodSeconds = 0.2;
 	const keepLastMessageCount = 100;
+	const <fontSize = 24.0;
 
 	var nickName;
 	var asDirector;
@@ -81,7 +82,7 @@ SCLOrkChat {
 	}
 
 	prConstructUiElements {
-		var scrollCanvas;
+		var scrollCanvas, font;
 		var windowWidth = Window.screenBounds.width / 4.0;
 
 		// By default we occupy the right quarter of the screen.
@@ -122,9 +123,12 @@ SCLOrkChat {
 		chatItemScrollView.canvas = scrollCanvas;
 		chatItemScrollView.hasHorizontalScroller = false;
 
+		font = Font.new(Font.defaultSansFace, fontSize);
 		clientListView.selectionMode = \multi;
+		clientListView.font = font;
 
 		clearSelectionButton.string = "Clear Selection";
+		clearSelectionButton.font = font;
 		clearSelectionButton.action = {
 			clientListView.selection = [ ];
 		};
@@ -136,11 +140,13 @@ SCLOrkChat {
 
 		autoScrollCheckBox.value = true;
 		autoScrollCheckBox.string = "Auto-Scroll";
+		autoScrollCheckBox.font = font;
 		autoScrollCheckBox.action = { | v |
 			autoScroll = v.value;
 		};
 
 		connectionStatusLabel.string = "connecting..";
+		connectionStatusLabel.font = font;
 		connectionStatusLabel.visible = false;
 		// Testing only, disable in production
 		connectionStatusLabel.action = {
@@ -153,9 +159,11 @@ SCLOrkChat {
 		};
 
 		reconnectButton.string = "Connect";
+		reconnectButton.font = font;
 		reconnectButton.action = { this.connect; };
 
 		messageTypeLabel.string = "Message Type:";
+		messageTypeLabel.font = font;
 		if (asDirector, {
 			messageTypePopUpMenu.items = [
 				\plain,
@@ -169,6 +177,7 @@ SCLOrkChat {
 			];
 		});
 
+		sendTextField.font = font;
 		sendTextField.action = { | v |
 			var isCommand = false;
 			var sendString = v.string;
@@ -291,6 +300,7 @@ SCLOrkChat {
 					chatItemScrollView.canvas,
 					chatItemScrollView.bounds.width -
 					(SCLOrkChatMessageView.messageViewPadding * 2.0),
+					fontSize,
 					chatMessage,
 					chatMessageIndex,
 					this

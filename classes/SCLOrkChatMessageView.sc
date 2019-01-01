@@ -10,12 +10,12 @@ SCLOrkChatMessageView : View {
 	var shoutColorOn;
 	var shoutTask;
 
-	*new { | parent, containerViewWidth, chatMessage, messageIndex, sclorkChat |
+	*new { | parent, containerViewWidth, fontSize, chatMessage, messageIndex, sclorkChat |
 		^super.new(parent).init(
-			containerViewWidth, chatMessage, messageIndex, sclorkChat);
+			containerViewWidth, fontSize, chatMessage, messageIndex, sclorkChat);
 	}
 
-	init { | containerViewWidth, chatMessage, messageIndex, sclorkChat |
+	init { | containerViewWidth, fontSize, chatMessage, messageIndex, sclorkChat |
 		var labelWidth, labelHeight, messageWidth, isPrivate;
 		sclorkChat = sclorkChat;
 
@@ -23,7 +23,7 @@ SCLOrkChatMessageView : View {
 			senderNameLabel = StaticText.new(this);
 			senderNameLabel.align = \topRight;
 			senderNameLabel.string = chatMessage.senderName ++ ":";
-			senderNameLabel.font = Font.new(Font.defaultSansFace, bold: true);
+			senderNameLabel.font = Font.new(Font.defaultSansFace, fontSize, bold: true);
 			senderNameLabel.bounds = Rect.new(
 				messageViewPadding,
 				messageViewPadding,
@@ -74,6 +74,7 @@ SCLOrkChatMessageView : View {
 		contentsTextView = StaticText.new(this);
 		contentsTextView.fixedWidth = messageWidth;
 		contentsTextView.align = \topLeft;
+		contentsTextView.font = Font.new(Font.defaultSansFace, fontSize);
 		contentsTextView.string = chatMessage.contents;
 
 		// Manipulate font before setting size, so that sizeHint will
@@ -81,10 +82,11 @@ SCLOrkChatMessageView : View {
 		if (chatMessage.type == \system, {
 			contentsTextView.align = \center;
 			contentsTextView.font = Font.new(Font.defaultSansFace,
+				fontSize,
 				italic: true);
 		});
 		if (chatMessage.type == \code, {
-				contentsTextView.font = Font.new(Font.defaultMonoFace);
+			contentsTextView.font = Font.new(Font.defaultMonoFace, fontSize);
 		});
 
 		contentsTextView.bounds = Rect.new(
@@ -134,6 +136,13 @@ SCLOrkChatMessageView : View {
 						this.acceptsMouse = true;
 						this.mouseDownAction = {
 							stopShouting = true;
+							// Wait a short moment then freeze the color to
+							// white-on-black for consistency.
+							AppClock.sched(0.1, {
+								this.background = Color.black;
+								senderNameLabel.stringColor = Color.white;
+								contentsTextView.stringColor = Color.white;
+							});
 							this.acceptsMouse = false;
 						};
 						shoutTask = SkipJack.new({

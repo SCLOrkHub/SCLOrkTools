@@ -20,6 +20,9 @@ The containing parent view, this is passed on to the superclass link::Classes/Vi
 ARGUMENT:: containerViewWidth
 How wide this view should be within the larger container.
 
+ARGUMENT:: fontSize
+The size of the font to use when drawing text in this view.
+
 ARGUMENT:: chatMessage
 The link::Classes/SCLOrkChatMessage:: object the view is to represent.
 

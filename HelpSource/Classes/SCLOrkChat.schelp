@@ -24,6 +24,9 @@ note::
 If a link::Classes/SCLOrkChatClient:: object is provided, the SCLOrkChat UI will take ownership of that client object, including overriding all of its callback functions and object deletion. Subsequent usage of the provided client object is therefore discouraged.
 ::
 
+METHOD:: fontSize
+Returns the font size, a constant. This should be passed as the size for all Font object construction in dependant views.
+
 INSTANCEMETHODS::
 private:: prConnectChatUiUpdateLogic, prConstructUiElements, prEnqueueChatMessage, init, prConnectClientListViewUpdateLogic, prRebuildClientListView
 
