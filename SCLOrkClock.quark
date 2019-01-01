@@ -4,7 +4,7 @@
 	author: "Luke Nihlen",
 	version: "0.0.1",
 	schelp: "Guides/SCLOrkClock-User-Guide",
-	dependencies: [ ],
+	dependencies: [ "https://github.com/lnihlen/SCLOrkNet" ],
 	license: "GPL",
 	copyright: "Luke Nihlen 2018",
 	organization: "Santa Clara Laptop Orchestra",
