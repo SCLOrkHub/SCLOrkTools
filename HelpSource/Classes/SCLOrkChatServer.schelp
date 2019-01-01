@@ -1,0 +1,57 @@
+TITLE:: SCLOrkChatServer
+summary:: Chat server for the SCLOrkChatClient objects.
+categories:: Quarks>SCLOrkChat
+related:: Classes/SCLOrkChatClient, Reference/SCLOrkChat-OSC-Command-Reference
+
+DESCRIPTION::
+SCLOrkChatServer coordinates communication between multiple instances of link::Classes/SCLOrkChatClient:: objects.
+
+CLASSMETHODS::
+
+METHOD:: defaultListenPort
+
+returns:: The default port SCLOrkChatServer will listen for UDP messages on, if a different port number is not provided.
+
+METHOD:: new
+Creates a new SCLOrkChatServer object and sets up listening on associated OSC endpoints.
+
+argument:: listenPort
+The UDP port to listen on. The same value will need to be provided to all link::Classes/SCLOrkChatClient:: objects for them to be able to communicate.
+
+returns:: A new SCLOrkChatServer object.
+
+INSTANCEMETHODS::
+private:: init, prChangeClient, prSendAll, prScreenTimeout, prRemoveUserId
+
+METHOD:: free
+Unbinds all of the OSC endpoint listeners and deletes the server.
+
+METHOD:: nickNameMap
+Accessor for the internal map the server keeps between client userIds and nicknames.
+
+returns:: A link::Classes/Dictionary:: of all registered users, with the assigned userID as a key, and the current registered nickname as the value.
+
+METHOD:: netAddrMap
+Accessor for the internal map the server keeps between userIds to client network addresses. This is the reverse map of the link::#userIdMap:: the server also maintains. Maps both directions are kept for efficiency.
+
+METHOD:: userIdMap
+Accessor for the internal map the server keeps between client network addresses and userIds. This is the reverse map of the link::#netAddrMap:: the server also maintains. Maps both directions are kept for efficiency.
+
+returns:: A link::Classes/Dictionary:: of all registered users, with the associated link::Classes/NetAddr:: as the key, and the userId as the value.
+
+EXAMPLES::
+
+code::
+// Make a chat server with the default listening port.
+~chatServer = SCLOrkChatServer.new;
+
+/*
+
+... Some time passes while folks use the SCLOrkChatClient objects to
+    communicate.
+
+*/
+
+// Shut the chat server down.
+~chatServer.free;
+::

@@ -1,0 +1,237 @@
+title:: SCLOrkChat OSC Command Reference
+summary:: Chat Network Protocol Command Reference
+categories:: Quarks>SCLOrkChat
+related:: Classes/SCLOrkChatServer, Classes/SCLOrkChatClient
+
+The following is a list of all link::Classes/SCLOrkChatServer:: and link::Classes/SCLOrkChatClient:: commands and their arguments, including some documentation around typical communication scenarios of client sign-in and sign-out, sending a broadcast message, sending a targeted message, and nickname change.
+
+All commands are UDP-based OSC commands sent to specific ports on the client and server via regular Supercollider OSC messaging code. Communications are restricted to specific UDP ports on both client and server, to allow for multiple clients and servers to run on the same IP address.
+
+section:: Server Commands
+
+subsection:: /chatSignIn
+Register a new link::Classes/SCLOrkChatClient:: with the server.
+
+table::
+## strong::string:: || nickname || Desired nickname of client. Does not have to be unique.
+## strong::int::    || receivePort || UDP port the client will be listening on for return messages from the server.
+::
+
+Upon receipt, the server will reply to the sender on strong::receivePort:: with a link::#/chatSignInComplete:: command, as well as informing other connected clients of the sign-in via a link::#/chatChangeClient:: message.
+
+subsection:: /chatGetAllClients
+Process a request to enumerate all currently signed in clients.
+
+table::
+## strong::int:: || userId || The id of the requesting client to send the dictionary to.
+::
+
+The server will respond to the client on emphasis::receivePort:: with a link::#/chatSetAllClients:: command.
+
+subsection:: /chatPing
+Process a keepalive request from the client. Needs to be called periodically or the server will consider the client to be disconnected via timeout.
+
+table::
+## strong::int:: || userId || UserId of pinging chat client.
+::
+
+Server will respond with a link::#/chatPong:: command.
+
+subsection:: /chatSendMessage
+Send a message to some or all connected clients.
+
+table::
+## strong::int::   || senderId || The userId of the sending client.
+## strong::label:: || messageType || Enumerated type of message. See link::#Message Types:: section for list of types.
+## strong::string:: || contents || The contents of the message.
+## strong::int::   || recipientId0 || First element in recipientId list. If 0, the server will broadcast message to all connected clients. There should be at least 1 element in the list.
+## strong::...::   ||  ... || ...
+## strong::int::   || recipientIdN || Last element in the recipientId list.
+::
+
+Server will send provided message to all clients in recipient list via a link::#/chatReceive:: command, or to all connected clients (save the sender) if the first element in recipient list is 0. The server will also send a link::#/chatEcho:: command to the sending client.
+
+subsection:: /chatChangeNickName
+Changes the client nickname, broadcast the change to all connected clients.
+
+table::
+## strong::int::    || userId || The userId of the requesting client.
+## strong::string:: || newNickName || The requested new nickname of the client.
+::
+
+Server will send all clients notification of the name change via link::#/chatChangeClient::.
+
+subsection:: /chatSignOut
+Signs the client out from the chat server.
+
+table::
+## strong::int:: || userId || The userId of the client signing out.
+::
+
+Server will remove sending client from internal client lists, and then send all remianing clients notification of the signout via link::#/chatChangeClient::. The server will send no more commands to the client upon receipt of this message.
+
+section:: Client Commands
+
+subsection:: /chatSignInComplete
+Server acknowledges sign-in via link::#/chatSignIn:: and is providing a unique userId.
+
+table::
+## strong::int:: || userId || The server-assigned unique user Id for this client.
+::
+
+Client should include this userId as the first argument in all subsequent server calls.
+
+subsection:: /chatSetAllClients
+Server responding to link::#/chatGetAllClients:: command with a list of userIds and associated names in pairs.
+
+table::
+## strong::int::    || id0   || The id of the first client in the list.
+## strong::string:: || name0 || The name associated with the id of the first client in the list.
+## ...              ||  ...  ||  ...
+## strong::int::    || idN   || The id of the final client in the list.
+## strong::string:: || nameN || The name of the final client in the list.
+::
+
+subsection:: /chatPong
+Server responding to a link::#/chatPing:: command with the timeout value.
+
+table::
+## strong::float:: || timeout || The timeout value in seconds.
+::
+
+The server will respond to every link::#/chatPing:: command sent to it with a call to link::#/chatPong::. Clients that do not send a link::#/chatPing:: to the server at least every emphasis::timeout:: seconds may be timed out, in which case the server will respond to every command sent to it with that userId with a link::#/chatTimedOut:: command.
+
+note::
+The current client design assumes that the value of emphasis::timeout:: is
+constant for the lifetime of the client.
+::
+
+subsection:: /chatChangeClient
+Used by the server to notify the client of an update to a peer client.
+
+table::
+## strong::label::  || changeType || What type of change happened to the client. See link::#changeType enumeration values:: table below.
+## strong::int::    || userId || The clientId associated with this change.
+## strong::string:: || nickName || The nickname associated with  this client.
+::
+
+The server will send this command to all connected clients for all client changes. Clients are expected to use these command to update their own user dictionaries.
+
+note::
+It's possible when a client times out that there may be a few messages from it being processed by the server, so client code should be robust against receiving messages associated with userIds that have already been removed via server command.
+::
+
+strong::changeType enumeration values:: anchor::changeType enumeration values::
+
+table::
+## strong::\add::     || Clients should add a new user with provided id and name to their peer lists.
+## strong::\rename::  || Clients should update the name associated with the provided id to the new provided name.
+## strong::\remove::  || Clients should remove the userId from their dictionaries, the client associated with this userId has signed out normally using link::#/chatSignOut::.
+## strong::\timeout:: || Clients should remove the userId from their dictionaries, the client associated with this userId has timed out.
+::
+
+
+subsection:: /chatReceive
+Used to notify clients of a new chat message sent by another client.
+
+table::
+## strong::int::    || senderId     || Id of sending client.
+## strong::label::  || messageType  || Enumerated type of message being sent, see link::#/Message Types:: for list of supported types.
+## strong::string:: || contents     || Text contents of chat message.
+## strong::int::    || recipientId0 || Id of first intended recipient. If strong::0::, this was a broadcast message sent to all connected clients. There needs to be at least one recipientId present.
+## ...              ||  ...         || ...
+## strong::int::    || recipientIdN || Id of the last intended recipient.
+::
+
+Client should process the message send by emphasis::senderId::. Clients will not receive link::#/chatReceive:: commands for messages which they are not targeted as a recipient of.
+
+subsection:: /chatEcho
+Used to notify clients of the receipt by the server of the client's last sent message.
+
+table::
+## strong::int::    || senderId     || Id of sending client, should always be the userId of this client.
+## strong::label::  || messageType  || Enumerated type of message being sent, see link::#/Message Types:: for list of supported types.
+## strong::string:: || contents     || Text contents of chat message.
+## strong::int::    || recipientId0 || Id of first intended recipient. If strong::0::, this was a broadcast message sent to all connected clients. There needs to be at least one recipientId present.
+## ...              ||  ...         || ...
+## strong::int::    || recipientIdN || Id of the last intended recipient.
+::
+
+Note that message format is identical to that of link::#/chatReceive::. Server will respond to every call to link::#/chatSendMessage:: with a link::#/chatEcho::.
+
+subsection:: /chatTimedOut
+Sent with no arugments from the server as a response to every command sent by a client that has timed out. The client that receives this command has been signed out and the userId associated with the client is blacklisted by the server. The client should sign in again with a link::#/chatSignIn:: command and receive a new userId.
+
+section:: Message Types
+
+This table details the currently supported values of the emphasis::messageType:: argument included in link::#/chatSendMessage::, link::#/chatReceive::, and link::#/chatEcho:: commands.
+
+table::
+## strong::\code::   || The message contents are to be considered as supercollider source code.
+## strong::\plain::  || A normal chat message, the default value.
+## strong::\shout::  || A message requiring special emphasis in the UI.
+## strong::\system:: || Not normally sent by the server, but used by link::Classes/SCLOrkChatMessage:: to indicate a state change in the chat system.
+::
+
+section:: Example Scenarios
+
+This section lists typical scenarios in communication between client, server, and emphasis::peers::. The word emphasis::peer:: is used to describe another client signed into the same chat server.
+
+note::
+These are explicative examples only. Due to the nondeterministic nature of network communications some message may arrive in a different order than documented here.
+::
+
+subsection:: Client Signs In
+
+table::
+## strong::Recipient:: || strong::Command:: || strong::Description::
+## strong::server:: || link::#/chatSignIn:: nickName receivePort || Client sends initial nickname and the port it will receive commands from the server. Client's IP address is inferred by the server from the underlying UDP packet.
+## strong::client:: || link::#/chatSignInComplete:: userId || Server responds to client with a unique userId, which client should associated with all future commands sent to the server.
+## strong::server:: || link::#/chatGetAllClients:: userId || Client requesting the current userId to name dictionary from the server.
+## strong::server:: || link::#/chatPing:: userId || Client sending ping to the server.
+## strong::client:: || link::#/chatSetAllClients:: <userId, name pairs> || Server responding to client request with current user dictionary.
+## strong::client:: || link::#/chatPong:: timeOut || Server responding to client ping with the timeout value. Server will expect another call to link::#/chatPing:: with the clients userId before timeOut seconds has elapsed.
+::
+
+
+subsection:: Client Sends A Broadcast Message
+
+table::
+## strong::Recipient:: || strong::Command:: || strong::Description::
+## server || link::#/chatSendMessage:: userId messageType contents 0 || Client sends a message with a single recipientId, the broadcast userId of 0, to the server.
+## client || link::#/chatEcho:: userId messageType contents 0 || Server sends an echo command back to sending client.
+## peer   || link::#/chatReceive:: userId messageType contents 0 || Server sends the message to all connected peers.
+::
+
+subsection:: Client Sends A Targeted Message
+
+table::
+## strong::Recipient:: || strong::Command:: || strong::Description::
+## server || link::#/chatSendMessage:: userId messageType contents <recipientId list> || Client sends a message with one or more nonzero recipientIds to the server.
+## client || link::#/chatEcho:: userId messageType contents <recipientId list> || Server sends an echo command back to sending client.
+## peer   || link::#/chatReceive:: userId messageType contents <recipientId list> || Server sends the message to all peers identified on the list.
+::
+
+subsection:: Peer Sends A Message To Client
+
+table::
+## strong::Recipient:: || strong::Command:: || strong::Description::
+## server || link::#/chatSendMessage:: userId messageType contents <recipientId list> || Peer sends a message to server with client's userId in recipientId list.
+## client || link::#/chatReceive:: userId messageType contents <recipientId list> || Client receives message from peer via the server.
+::
+
+subsection:: Client Changes Nickname
+
+table::
+## strong::Recipient:: || strong::Command:: || strong::Description::
+## server || link::#/chatChangeNickName:: userId newName || Client sends userId and desired new nickname to server.
+## client || link::#/chatChangeClient:: /rename userId newName || Server sends user change command to all connected peers including sending client.
+::
+
+subsection:: Client Times Out
+
+table::
+## strong::Recipient:: || strong::Command:: || strong::Description::
+## client || link::#/clientTimeOut:: || Server will send one timeout message to client on detection of timeout, and will respond with a clientTimeOut message to all future requests from the client with that userId.
+## peer || link::#/chatChangeClient:: userId strong::\timeout:: || Server will send a client change timeout message to all remaining connected peers.
+::

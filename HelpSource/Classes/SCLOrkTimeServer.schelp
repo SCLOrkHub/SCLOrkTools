@@ -1,0 +1,51 @@
+TITLE:: SCLOrkTimeServer
+summary:: Shares local elapsed time with all clients.
+categories:: Quarks>SCLOrkClock
+related:: Classes/SCLOrkTimeClient
+
+DESCRIPTION::
+The SCLOrkTimeServer provides a centralized, authoritative clock for network synchronization of multiple link::Classes/SCLOrkClock:: objects via link::Classes/SCLOrkTimeClient:: instances on each client computer.
+
+CLASSMETHODS::
+
+METHOD:: new
+Create, initialize, and return a new SCLOrkTimeServer object.
+
+ARGUMENT:: oscPath
+An optional OSC path to listen to, if not provided the object will use the link::#defaultOscPath::.
+
+ARGUMENT:: oscPort
+An optional OSC port to listen on, if not provided the object will use the link::#defaultOscPort::.
+
+returns::
+A new SCLOrkTimeServer.
+
+METHOD:: defaultOscPath
+Returns the default OSC path the server will listen on.
+
+METHOD:: defaultOscPort
+Returns the default UDP port the server will listen on.
+
+INSTANCEMETHODS::
+private:: init, serverTestingOffset, serverTestingOffset_
+
+METHOD:: free
+Destroy the object, unbind the listening port.
+
+EXAMPLES::
+
+code::
+~timeServer = SCLOrkTimeServer.new;
+
+/*
+
+The time server is now ready to use.
+
+..  some time passes ..
+
+Now it is time to shut down.
+
+*/
+
+~timeServer.free;
+::

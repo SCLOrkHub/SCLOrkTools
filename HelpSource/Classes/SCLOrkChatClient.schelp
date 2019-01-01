@@ -1,0 +1,118 @@
+TITLE:: SCLOrkChatClient
+summary:: Programmatic client interface to SCLOrkChat system.
+categories:: Quarks>SCLOrkChat
+related:: Classes/SCLOrkChatServer, Reference/SCLOrkChat-OSC-Command-Reference
+
+DESCRIPTION::
+Provides a programmatic interface to the link::Guides/SCLOrkChat:: system. Used by link::Classes/SCLOrkChat::, the chat graphical user interface, and could also be used by other programs to make bots. The primary usage of the object revolves around providing callback functions to the client on the link::#onConnected::, link::#onMessageReceived::, and link::#onUserChanged:: accessors, and responding to server events from there.
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new SCLOrkChatClient object, initialize and return it.
+
+ARGUMENT:: serverNetAddr
+A link::Classes/NetAddr:: object for use in communication with the server. Note that the SCLOrkChatClient object will take ownership of this NetAddr object, and so subsequent client code should not attempt to share it.
+
+ARGUMENT:: listenPort
+The UDP port to listen to responses from the server on. Clients listen on only one port to enable multiple clients to run on the same IP address/machine.
+
+returns:: A new SCLOrkChatClient object.
+
+warning::
+Running two or more SCLOrkChatClients on the same computer and with the same listenPort will lead to undefined client behavior.
+::
+
+INSTANCEMETHODS::
+private:: init, prForceTimeout
+
+METHOD:: userDictionary
+Acessor method for the client's current map of userIds keys to nickName values.
+
+returns:: A link::Classes/Dictionary:: with integer userIds as keys and string nicknames as values.
+
+METHOD:: connect
+Connect to the server at the address specificed in link::#new::. Will call the function at link::#onConnected:: with results of the connection attempt.
+
+ARGUMENT:: name
+The nickName to associate with this client.
+
+METHOD:: isConnected
+Accessor for a boolean value indicating connection to the server status.
+
+returns:: If true, the client is connected to the server. If false, it is not.
+
+METHOD:: onMessageReceived
+Function the client will call upon receipt of any chat messages from the server. The client will call the function with a single argument, a link::Classes/SCLOrkChatMessage:: object containing the deserialized message.
+
+METHOD:: sendMessage
+Serializes the provided link::Classes/SCLOrkChatMessage:: object and sends it to the server, for sending to the targeted recipients on the client's behalf.
+
+ARGUMENT:: chatMessage
+A link::Classes/SCLOrkChatMessage:: object.
+
+METHOD:: nickName
+Access, or change the current nickname associated with this client to a new string value.
+
+ARGUMENT:: newNick
+The new string to associate with this client.
+
+METHOD:: onUserChanged
+Function the client will call after applying any updates to its link::#userDictionary::. The client will call the provided function with four arguments: emphasis::type, userId, nickName, oldName::. The emphasis::type:: argument is an enumeration documented  at link::Reference/SCLOrkChat-OSC-Command-Reference#changeType enumeration::. The emphasis::userId:: and emphasis::nickName:: arguments are the id and name associated with the client that is changing. Lastly the emphasis::oldName:: argument is only valid if the emphasis::type:: values is strong::\rename::, in which case the client will supply the old name the user was going by, and the new name will be in emphasis::nickName::.
+
+METHOD:: free
+Will automatically call link::#disconnect:: if the client is connected to the server. Then unbinds all listener functions and destroys the object.
+
+METHOD:: onConnected
+Function the client will call after any change in connection status. The client will call the provided function with a single boolean argument, if true the client has successfully connected, if false the client is disconnected.
+
+METHOD:: userId
+Accessor method for the integer userId associated with this particular client.
+
+METHOD:: disconnect
+If connected to the server the client will send a sign-out message to the server. It will then call link::#onConnected:: with a false value in the argument to indicate disconnection has occurred.
+
+EXAMPLES::
+
+code::
+// Create a simple chatBot that echoes all messages it receives back to
+// the recipients in the message.
+~chatBot = SCLOrkChatClient.new(
+	NetAddr.new("sclork-s01.local", SCLOrkChatServer.defaultListenPort));
+~echoBot.onUserChanged = { | type, userId, nickName, oldName |
+	switch (type,
+		\add, { "% signed in".format(nickName).postln; },
+		\remove, { "% signed out".format(nickName).postln; },
+		\rename, {
+			"% changed names to %".format(nickName, oldName).postln;
+		},
+		\timeout, {
+			"% timed out.".format(nickName);
+	});
+};
+~echoBot.onConnected = { | isConnected |
+	if (isConnected, {
+		"echoBot connected to server.".postln;
+	}, {
+		"echoBot disconnected from server.".postln;
+	});
+};
+~echoBot.onMessageReceived = { | chatMessage |
+	// Avoid infinite echo loop!
+	if (chatMessage.isEcho.not, {
+		var echoString = "% says: %".format(
+			chatMessage.senderName,
+			chatMessage.contents);
+		echoString.postln;
+		~echoBot.sendMessage(SCLOrkChatMessage.new(
+			~echoBot.userId,
+			chatMessage.recipientIds,
+			\plain,
+			echoString));
+	});
+};
+~echoBot.connect("echoBot");
+
+
+
+::
