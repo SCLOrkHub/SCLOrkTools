@@ -1,0 +1,69 @@
+title:: SCLOrkWire Design Document
+summary:: Design Discussion and Documentation for SCLOrkWire
+categories:: Quarks>SCLOrkNet
+related:: Classes/SCLOrkWire, Classes/SCLOrkSocket
+
+A link::Classes/SCLOrkWire:: class creates a reliable, two-way, connection-oriented OSC network connection between two computers using OSC over UDP as the underlying transport mechanism. To facilitate a server-like behavior where multiple connections to individual clients are serviced with the same underlying code, please see link::Classes/SCLOrkSocket::.
+
+section:: Background
+
+The SCLOrkWire protocol is designed for relatively infreqeunt (< ~10 per second) unicast messages between computers on a relatively relaible LAN. It makes no distinction betwen computers, the connection is symmetric. Either party can initiate a connection, and either party can terminate one. SCLOrkWire offers an strong::onMessageReceived:: function to users to bind a function to incoming messages, and provides a strong::sendMsg:: method just like a link::Classes/NetAddr::.
+
+Because UDP is a *datagram* protocol it may be susceptible to packet loss, either due to underlying detection of packet corruption, which causes packets to be dropped, or for packets being lost during sending. Furthermore, UDP is emphasis::connectionless::, meaning that datagrams are sent one-way and have no built-in facility for automatic two-way communication. Because packet receipt is not awknowledged, the sender has no way of understanding if the recipient has actually received any of the sent packets. Lastly, because each datagram is sent individually, there's no order of receipt guarantee on the recipient either, meaning that messages sent can arrive in any order (or not at all!) on the recipient side.
+
+Of course, TCP is usually used to provide connection-oriented network communications with drop detection and in-order arrival guarantees. While neither TCP or UDP offers any latency guarantees, UDP typically offers much better latencies due to the lack of underlying infrastructure around packet validation and in-order arrival. While TCP is the obvious right choice between the two for reliable data transmission over the open Internet, on a closed, relatively quiet LAN environment with high reliability in packet transmission a lighter-weight reliability protocol based on UDP can offer the best of both worlds.
+
+Lastly, by keeping the protocal based in OSC SCLOrkWire maintains all of the utility of OSC in the SuperCollider and broader OSC ecosystem.
+
+section:: Protocol Design
+
+In this section we discuss the message flow between clients in different scenarios, as well as discuss fail states and recovery scenarios.
+
+subsection:: Connection
+
+While the SCLOrkWire is designed to be bidirectional and either client and send or receive messages from the other, in connection the client takes on one of two roles, either connection emphasis::initiator:: or emphasis::responder::. To facilitate connection multiplexing with link::Classes/SCLOrkSocket::, on connection initiation each client can provide a unique identifier to the other. The clients will then include their respective provided ids in all subsequent communications with each other. The overall connection protocol is inspired by the Three-Way Handshake connection from TCP.
+
+table::
+## strong::Sender:: || strong::Path:: || strong::Message:: || strong::Discussion::
+## initiator || strong::/wireConnectRequest:: || returnPort, responderId || Responder will include responderId in all responses.
+## responder || strong::/wireConnectAccept:: || responderId, initiatorId || Upon receipt, initiator will consider connection complete.
+## initiator || strong::/wireConnectConfirm:: || initiatorId || Upon receipt, responder will consider connection complete.
+::
+
+If the strong::/wireConnectRequest:: packet is dropped, the initiator will time out receiving the strong::/wireConnectAccept:: response from the responder, and so will resend the request message.
+
+If the responder's packet strong::/wireConnectAccept:: is dropped, it will not receive the strong::/wireConnectConfirm:: response from the initator, and so will resend the accept message after timeout. It might also receive an additonal strong::/wireConnectRequest:: message from the initiator, as it times out waiting for the accept message, which will also cause the responder to retransmit the accept message.
+
+Lasty, if the strong::/wireConnectConfirm:: packet is dropped, the responder will time out waiting for it, and will resend the strong::/wireConnectAccept:: message, causing the client to resend the confirm.
+
+subsection:: Sending Data
+
+Each message sent has a sender-maintained serial number that is attached, along with the recipient-assigned senderId, to the message payload. While the serial numbers increase monotonically SCLOrkWire has no concept of a cumulative acknowledgment, each message must be acknowledged individually. In order to enforce in-order arrival of messages, out-of-order messages will be stored and not delivered to the client code until after the missing in-order messages are received.
+
+table::
+## strong::Sender:: || strong::Path:: || strong::Message:: || strong::Discussion::
+## sender || strong::/wireSend:: || senderId, serialNumber, ..message.. || The remaining arguments are the OSC message as originally formed.
+## recipient || strong::/wireAck:: || recipientId, serialNumber || The serial number must be identical to the one provided in /wireSend.
+## emphasis::or::
+## recipient || strong::/wireNak:: || recipientId, serialNumber, errorCode || Indicating receipt but some problem in processing the received message.
+## emphasis::or::
+## recipient || strong::/wireReAck:: || recipientId, lastSequential, serialNumber || Recipient got out-of-order packets, sender should resend all packets between (lastSequential, serialNumber) exclusive.
+::
+
+Its also possible for the receiving code to return a message to the sender in the form of a strong::/wireNak:: response, which acknowledges receipt of the package but indicates some higher-level error in its processing. This is used, for example, by the link::Classes/SCLOrkSocket:: to indicate receipt of a message that has no bound handling function, or failed to process the sent message.
+
+If the strong::/wireSend:: packet is dropped, the sender will never receive awknowledgment, and so will resend the data after timeout. The same situation will occur if the awknowledgment packet is dropped.
+
+For out-of-order packets, if the recipient recieves a packet with a later serial number than the next one it is expecting, the recipient should send an a strong::/wireReAck::, indicating that the sender should resend all packets between the recipient-provided serial numbers. This is an optimization to prevent having to wait for the sender to time out acknowledgement on each dropped packet when sending multiple packets in order. The tradeoff is that in the event that two packets arrive out-of-order, the packet with the lower serial number may be retransmitted.
+
+subsection:: Disconnection
+
+Normal disconnection can be initiated by either client, and follows the same roles as connection, those of disconnection emphasis::initiator:: and emphasis::responder::.
+
+table::
+## strong::Sender:: || strong::Path:: || strong::Message:: || strong::Discussion::
+## initiator || strong::/wireDisconnect:: || senderId || Normal disconnection initiated.
+## responder || strong::/wireDisconnectComplete:: || responderId || Serves as acknowledgment of disconnection.
+::
+
+If the strong::/wireDisconnect:: packet is dropped, the initiator not receive the completion message, and so will time out and retransmit the disconnect. If the strong::/wireDisconnectComplete:: packet is dropped, the initiator will once again retransmit the initial disconnect message, causing the recipient to retransmit the acknowledgment.
