@@ -29,7 +29,7 @@ Size of storage of the TempoClock scheduling queue.
 returns:: A newly initialized SCLOrkClock.
 
 INSTANCEMETHODS::
-private:: setVars, init
+private:: setVars, prInit, cmdPeriod
 
 METHOD:: beats
 Allows for reading, but not changing, of the TempoClock beats count. The SCLOrkClock computes its beats value from the link::Classes/SCLOrkTimeClient:: time value.
@@ -37,6 +37,11 @@ Allows for reading, but not changing, of the TempoClock beats count. The SCLOrkC
 METHOD:: seconds
 Allows for reading, but not changing, of the TempoClock beats count. The SCLOrkClock computes its seconds value from the link::Classes/SCLOrkTimeClient:: time value.
 
+METHOD:: permanent
+If true, the clock will survive calls to command+period. strong::Note:: that the default is true, unlike link::Classes/TempoClock::, for which the default is false.
+
+METHOD:: free
+Stops and destroys the SCLOrkClock.
 
 EXAMPLES::
 
