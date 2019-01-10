@@ -26,7 +26,7 @@ While the SCLOrkWire is designed to be bidirectional and either client and send 
 table::
 ## strong::Sender:: || strong::Path:: || strong::Message:: || strong::Discussion::
 ## initiator || strong::/wireConnectRequest:: || returnPort, responderId || Responder will include responderId in all responses.
-## responder || strong::/wireConnectAccept:: || responderId, initiatorId || Upon receipt, initiator will consider connection complete.
+## responder || strong::/wireConnectAccept:: || responderId, initiatorId || Responder provides a unique Id to the initiator.
 ## initiator || strong::/wireConnectConfirm:: || initiatorId || Upon receipt, responder will consider connection complete.
 ::
 
@@ -44,17 +44,13 @@ table::
 ## strong::Sender:: || strong::Path:: || strong::Message:: || strong::Discussion::
 ## sender || strong::/wireSend:: || senderId, serialNumber, ..message.. || The remaining arguments are the OSC message as originally formed.
 ## recipient || strong::/wireAck:: || recipientId, serialNumber || The serial number must be identical to the one provided in /wireSend.
-## emphasis::or::
-## recipient || strong::/wireNak:: || recipientId, serialNumber, errorCode || Indicating receipt but some problem in processing the received message.
-## emphasis::or::
-## recipient || strong::/wireReAck:: || recipientId, lastSequential, serialNumber || Recipient got out-of-order packets, sender should resend all packets between (lastSequential, serialNumber) exclusive.
 ::
 
-Its also possible for the receiving code to return a message to the sender in the form of a strong::/wireNak:: response, which acknowledges receipt of the package but indicates some higher-level error in its processing. This is used, for example, by the link::Classes/SCLOrkSocket:: to indicate receipt of a message that has no bound handling function, or failed to process the sent message.
+If the strong::/wireSend:: packet is dropped, the sender will never receive awknowledgment, and so will resend the data after timeout. The same situation will occur if the awknowledgment packet is dropped. In both cases the recipient will respond with a strong::/wireAck:: packet.
 
-If the strong::/wireSend:: packet is dropped, the sender will never receive awknowledgment, and so will resend the data after timeout. The same situation will occur if the awknowledgment packet is dropped.
+For out-of-order packets, if the recipient recieves a packet with a later serial number than the next one it is expecting, the recipient will not send a strong::/wireAck:: message for those until it receives the missing in-order packet. It will buffer those messages, so when the in-order packet does arrive, the recipient will send a series of strong::/wireAck:: messages in-order.
 
-For out-of-order packets, if the recipient recieves a packet with a later serial number than the next one it is expecting, the recipient should send an a strong::/wireReAck::, indicating that the sender should resend all packets between the recipient-provided serial numbers. This is an optimization to prevent having to wait for the sender to time out acknowledgement on each dropped packet when sending multiple packets in order. The tradeoff is that in the event that two packets arrive out-of-order, the packet with the lower serial number may be retransmitted.
+TCP has some advanced sequential acknowledgement logic here, so there's ample room for subsequent optimization work to lower retransmission rates if the strategy outlined here proves too naive.
 
 subsection:: Disconnection
 
@@ -63,7 +59,7 @@ Normal disconnection can be initiated by either client, and follows the same rol
 table::
 ## strong::Sender:: || strong::Path:: || strong::Message:: || strong::Discussion::
 ## initiator || strong::/wireDisconnect:: || senderId || Normal disconnection initiated.
-## responder || strong::/wireDisconnectComplete:: || responderId || Serves as acknowledgment of disconnection.
+## responder || strong::/wireDisconnectConfirm:: || responderId || Serves as acknowledgment of disconnection.
 ::
 
-If the strong::/wireDisconnect:: packet is dropped, the initiator not receive the completion message, and so will time out and retransmit the disconnect. If the strong::/wireDisconnectComplete:: packet is dropped, the initiator will once again retransmit the initial disconnect message, causing the recipient to retransmit the acknowledgment.
+If the strong::/wireDisconnect:: packet is dropped, the initiator not receive the completion message, and so will time out and retransmit the disconnect. If the strong::/wireDisconnectConfirm:: packet is dropped, the initiator will once again retransmit the initial disconnect message, causing the recipient to retransmit the confirmation.
