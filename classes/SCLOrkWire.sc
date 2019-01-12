@@ -22,6 +22,8 @@ SCLOrkWire {
 
 	// \neverConnected, \connected, \failureTimeout
 	var <connectionState;
+	var <>onConnected;
+	var <>onMessageReceived;
 
 	var netAddr;
 
@@ -32,9 +34,6 @@ SCLOrkWire {
 	var ackOSCFunc;
 	var disconnectOSCFunc;
 	var disconnectConfirmOSCFunc;
-
-	var <>onConnected;
-	var <>onMessageReceived;
 
 	*new { |
 		receivePort = 7666,
@@ -60,7 +59,7 @@ SCLOrkWire {
 			}
 		});
 		sendSemaphore = Semaphore.new(1);
-		sendSerial = 1;
+		sendSerial = 0;
 		sendBuffer = Array.newClear(bufferSize);
 		sendAckSerial = 0;
 
@@ -69,6 +68,8 @@ SCLOrkWire {
 		receiveBuffer = Array.newClear(bufferSize);
 
 		connectionState = \neverConnected;
+		onConnected = {};
+		onMessageReceived = {};
 
 		this.prBindConnectRequest;
 		this.prBindConnectAccept;
@@ -103,41 +104,39 @@ SCLOrkWire {
 	sendMsg { | ... args |
 		if (connectionState == \connected, {
 			var serial, message;
+
 			sendSemaphore.wait;
-			serial = sendSerial;
 			sendSerial = sendSerial + 1;
+			serial = sendSerial;
+			sendSemaphore.signal;
+
 			message = [
 				'/wireSend',
 				selfId,
 				serial] ++ args;
-			sendBuffer.wrapPut(serial, SCLOrkWireRetry.new(
+			sendBuffer.wrapPut(serial, SCLOrkWireSendRetry.new(
 				netAddr,
 				message,
-				{
-					var ackSerial;
-					sendSemaphore.wait;
-					ackSerial = sendAckSerial;
-					sendSemaphore.signal;
-					serial < ackSerial;
-				}, {
-					this.prChangeConnectionState(\failureTimeout)
-				},
+				{ sendAckSerial < serial },
+				{ this.prChangeConnectionState(\failureTimeout) },
 				maxRetries,
 				timeout));
-			sendSemaphore.signal;
 		});
 	}
 
 	// Useful mostly for testing, to avoid having to hard-code waits.
 	isIdle {
 		^((connectionState == \connected or:
-			{ connectionState == \disconnected }) and: {
+			{ connectionState == \disconnected }
+		) and: {
+			// Look for sent items waiting to be acknowledged.
 			var sendIdle;
 			sendSemaphore.wait;
-			sendIdle = (sendSerial == (sendAckSerial + 1));
+			sendIdle = (sendSerial == sendAckSerial);
 			sendSemaphore.signal;
 			sendIdle;
 		} and: {
+			// Look for out-of-order received items.
 			var receiveIdle = true;
 			receiveSemaphore.wait;
 			receiveBuffer.do({ | item, index |
@@ -168,6 +167,15 @@ SCLOrkWire {
 	}
 
 	free {
+		this.disconnect;
+
+		connectRequestOSCFunc.free;
+		connectAcceptOSCFunc.free;
+		connectConfirmOSCFunc.free;
+		sendOSCFunc.free;
+		ackOSCFunc.free;
+		disconnectOSCFunc.free;
+		disconnectConfirmOSCFunc.free;
 	}
 
 	prBindConnectRequest {
@@ -238,42 +246,43 @@ SCLOrkWire {
 			var senderId = msg[1];
 			if (senderId == targetId, {
 				var serial = msg[2];
-				receiveSemaphore.wait;
-				if (serial <= (receiveSerial + 1), {
-					netAddr.sendMsg('/wireAck', selfId, serial);
-					// If this is a novel message we should fire the
-					// message received function and increment the serial
-					// number.
-					if (serial == (receiveSerial + 1), {
-						var nextSerial = serial + 1;
-						var messageArray = msg[3..];
 
-						receiveSerial = serial;
-						this.onMessageRecieved.value(messageArray);
-						// Mark this buffer entry as nil, to indicate that
-						// we've passed these data on to the client.
-						receiveBuffer.wrapPut(serial, nil);
-						// There may be other entries we recieved out-of-order,
-						// advance through serial buffer until we encounter a
-						// nil entry.
-						while ({ receiveBuffer.wrapAt(nextSerial).notNil }, {
-							receiveSerial = nextSerial;
-							netAddr.sendMsg('/wireAck',
-								selfId,
-								receiveSerial);
-							this.onMessageReceived.value(
-								receiveBuffer.wrapAt(receiveSerial));
-							receiveBuffer.wrapPut(receiveSerial, nil);
-							nextSerial = nextSerial + 1;
-						});
-					});
+				receiveSemaphore.wait;
+				// If serial is next packet to receive
+				if (serial <= receiveSerial, {
+					// If serial <= receiveSerial this is a duplicate packet
+					// no need to notify client of reception, or to buffer.
 				}, {
-					// We've recieved an out-of-order packet, buffer it
-					// until such time we recieve the in-order packet.
 					var messageArray = msg[3..];
-					receiveBuffer.wrapPut(serial, messageArray);
+
+					if (serial == (receiveSerial + 1), {
+						receiveSerial = serial;
+
+						// In-order packet received, notify.
+						receiveSemaphore.signal;
+						this.onMessageReceived.value(messageArray);
+						receiveSemaphore.wait;
+
+						// See if there were further ahead-of-order buffered
+						// messages we can notify on.
+						while ({ receiveBuffer.wrapAt(receiveSerial + 1).notNil }, {
+							receiveSerial = receiveSerial + 1;
+							messageArray = receiveBuffer.wrapAt(receiveSerial);
+							receiveBuffer.wrapPut(receiveSerial, nil);
+
+							receiveSemaphore.signal;
+							this.onMessageReceived.value(messageArray);
+							receiveSemaphore.wait;
+						});
+					}, {
+						// Serial ahead of our next serial, buffer message until
+						// we are ready to notify.
+						receiveBuffer.wrapPut(serial, messageArray);
+					});
 				});
 				receiveSemaphore.signal;
+
+				netAddr.sendMsg('/wireAck', selfId, serial);
 			});
 		},
 		path: '/wireSend',
@@ -287,7 +296,6 @@ SCLOrkWire {
 			if (senderId == targetId, {
 				var serial = msg[2];
 
-				sendSemaphore.wait;
 				if (serial == (sendAckSerial + 1), {
 					sendAckSerial = serial;
 					if (sendBuffer.wrapAt(serial).notNil, {
@@ -295,7 +303,6 @@ SCLOrkWire {
 						sendBuffer.wrapPut(serial, nil);
 					});
 				});
-				sendSemaphore.signal;
 			});
 		},
 		path: '/wireAck',
@@ -395,6 +402,10 @@ SCLOrkWireSendRetry {
 		if (nextTime.notNil, {
 			SystemClock.schedAbs(nextTime, retryFunction);
 		});
+	}
+
+	isIdle {
+		^(nextTime.isNil);
 	}
 
 	stop {
