@@ -1,4 +1,8 @@
 SCLOrkWire {
+	classvar bindSemaphore = nil;
+	classvar portSerial = 9000;
+	classvar portMap = nil;
+
 	var receivePort;
 	var targetId;
 	var timeout;
@@ -7,7 +11,7 @@ SCLOrkWire {
 
 	var netAddrFactory;
 
-	var selfId;
+	var <selfId;
 	var connectionRetry;
 
 	var sendSemaphore;
@@ -34,6 +38,53 @@ SCLOrkWire {
 	var ackOSCFunc;
 	var disconnectOSCFunc;
 	var disconnectConfirmOSCFunc;
+
+	*bind { |
+		port = 7666,
+		wireIssueId,
+		wireOnConnected,
+		wireOnMessageReceived,
+		onKnock,
+		netAddrFactory = nil |
+		if (bindSemaphore.isNil, {
+			bindSemaphore = Semaphore.new(1);
+			portMap = Dictionary.new;
+		});
+
+		if (portMap.at(port).isNil, {
+			// Check if port is already bound, early out if so.
+			var knockOSCFunc = OSCFunc.new({ | msg, time, addr |
+				var localPort, wireId, wire;
+				var returnPort = msg[1];
+				// Allocate a port on this side for the wire endpoint.
+				bindSemaphore.wait;
+				localPort = portSerial;
+				portSerial = portSerial + 1;
+				bindSemaphore.signal;
+
+				wireId = wireIssueId.value;
+				wire = SCLOrkWire.new(localPort, wireId,
+					netAddrFactory: netAddrFactory);
+				wire.onConnected = wireOnConnected;
+				wire.onMessageReceived = wireOnMessageReceived;
+				wire.connect(addr.ip, returnPort);
+				onKnock.value(wire);
+			},
+			path: '/wireKnock',
+			recvPort: port
+			).permanent_(true);
+
+			portMap.put(port, knockOSCFunc);
+		});
+	}
+
+	*unbind { | port |
+		var knockOSCFunc = portMap.at(port);
+		if (knockOSCFunc.notNil, {
+			portMap.removeAt(port);
+			knockOSCFunc.free;
+		});
+	}
 
 	*new { |
 		receivePort = 7666,
@@ -80,9 +131,28 @@ SCLOrkWire {
 		this.prBindDisconnectConfirm;
 	}
 
-	connect { | hostname, requestPort = 7666 |
+	knock { | hostname, knockPort = 7666 |
 		if (connectionState == \neverConnected or: {
 			connectionState == \disconnected }, {
+			var message = [
+				'/wireKnock',
+				receivePort,
+				targetId ];
+			var knockAddr = netAddrFactory.value(hostname, knockPort);
+			this.prChangeConnectionState(\knocking);
+			connectionRetry = SCLOrkWireSendRetry.new(
+				knockAddr,
+				message,
+				{ connectionState == \knocking },
+				{ this.prChangeConnectionState(\failureTimeout) },
+				maxRetries,
+				timeout);
+		});
+	}
+
+	connect { | hostname, requestPort = 7666 |
+		if (connectionState == \neverConnected or: {
+				connectionState == \disconnected }, {
 			var message = [
 				'/wireConnectRequest',
 				receivePort,
@@ -186,7 +256,9 @@ SCLOrkWire {
 			// dropped our response packet. But we don't restart the retry
 			// count for a duplicate connection request, so we only start
 			// the response retry process once.
-			if (connectionState == \neverConnected, {
+			if (connectionState == \neverConnected or: {
+				connectionState == \knocking } or: {
+				connectionState == \disconnected }, {
 				var message;
 				this.prChangeConnectionState(\connectionAccepted);
 				netAddr = netAddrFactory.value(addr.ip, returnPort);

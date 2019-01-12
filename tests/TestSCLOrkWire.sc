@@ -1,4 +1,157 @@
 TestSCLOrkWire : UnitTest {
+
+	test_knock_normal_operation {
+		var boundWireId = 400;
+		var boundWires = Array.new(5);
+		var knockWireId = 500;
+		var knockWires = Array.new(5);
+		var knockPort = 7500;
+		var retries = 0;
+		var factory = { | hostname, port |
+			SCLOrkFlakyLocalNetAddr.new(port, { false });
+		};
+
+		SCLOrkWire.bind(8000,
+			{
+				var wireId = boundWireId;
+				boundWireId = boundWireId + 1;
+				wireId;
+			}, { }, { },
+			{ | wire |
+				boundWires = boundWires.add(wire);
+			},
+			factory);
+
+		5.do({ |index |
+			var wire = SCLOrkWire.new(knockPort, knockWireId,
+				netAddrFactory: factory);
+			knockPort = knockPort + 1;
+			knockWireId = knockWireId + 1;
+			wire.knock("127.0.0.1", 8000);
+			knockWires = knockWires.add(wire);
+		});
+
+		// Wait for bound wires to be created.
+		while ({retries < 10 and: { boundWires.size < 5 }}, {
+			0.2.wait;
+			retries = retries + 1;
+		});
+
+		this.assert(retries < 10);
+
+		// Wait for each pair to become idle, then validate connection.
+		5.do({ | index |
+			this.prWaitForIdle(knockWires[index], boundWires[index]);
+
+			this.assertEquals(knockWires[index].selfId, 400 + index);
+			this.assertEquals(knockWires[index].connectionState, \connected);
+
+			this.assertEquals(boundWires[index].selfId, 500 + index);
+			this.assertEquals(boundWires[index].connectionState, \connected);
+		});
+
+		SCLOrkWire.unbind(8000);
+	}
+
+	test_knock_drop_first_knock {
+		var knockWire;
+		var retries = 0;
+		var droppedFirst = false;
+		var boundWires = Array.new(5);
+		var factory = { | hostname, port |
+			SCLOrkFlakyLocalNetAddr.new(port, { | count, args |
+				if (args[0] == '/wireKnock' and: {
+					droppedFirst.not  }, {
+					droppedFirst = true;
+					true;
+				}, {
+					false;
+				});
+			});
+		};
+
+		SCLOrkWire.bind(8050, { 10 }, { }, { }, { | wire |
+				boundWires = boundWires.add(wire);
+		}, factory);
+
+		knockWire = SCLOrkWire.new(7550, 100, netAddrFactory: factory);
+		knockWire.knock("127.0.0.1", 8050);
+		// Wait for bound wires to be created.
+		while ({retries < 10 and: { boundWires.size < 1 }}, {
+			0.2.wait;
+			retries = retries + 1;
+		});
+
+		this.assert(retries < 10);
+		this.prWaitForIdle(knockWire, boundWires[0]);
+		this.assertEquals(knockWire.selfId, 10);
+		this.assertEquals(knockWire.connectionState, \connected);
+		this.assertEquals(boundWires[0].selfId, 100);
+		this.assertEquals(boundWires[0].connectionState, \connected);
+
+		SCLOrkWire.unbind(8050);
+	}
+
+	test_knock_drop_all_knocks {
+		var timedOut = false;
+
+		var factory = { | hostname, port |
+			SCLOrkFlakyLocalNetAddr.new(port, { | count, args |
+				args[0] == '/wireKnock'
+			});
+		};
+
+		var wire = SCLOrkWire.new(7050, 3, netAddrFactory: factory);
+		var retries = 0;
+
+		wire.onConnected = { | state | timedOut = (state == \failureTimeout) };
+		wire.knock("127.0.0.1", 8050);
+
+		// Wait for knock to timeout.
+		while ({retries < 10 and: { timedOut.not }}, {
+			0.2.wait;
+			retries = retries + 1;
+		});
+
+		this.assert(retries < 10);
+		this.assertEquals(wire.connectionState, \failureTimeout);
+	}
+
+	test_knock_drop_all_connection_callbacks {
+		var knockTimedOut = false;
+		var bindTimedOut = false;
+
+		var factory = { | hostname, port |
+			SCLOrkFlakyLocalNetAddr.new(port, { | count, args |
+				args[0] == '/wireConnectRequest'
+			});
+		};
+		var boundWires = Array.new(5);
+		var wire = SCLOrkWire.new(7551, netAddrFactory: factory);
+		var retries = 0;
+
+		SCLOrkWire.bind(8100, { 25 }, { | state |
+			bindTimedOut = (state == \failureTimeout)
+		}, { }, { | wire |
+			boundWires = boundWires.add(wire)
+		}, factory);
+
+		wire.onConnected = { | state |
+			knockTimedOut = (state == \failureTimeout)
+		};
+		wire.knock("127.0.0.1", 8100);
+
+		// Wait for knock to timeout.
+		while ({retries < 10 and: { knockTimedOut.not }}, {
+			0.2.wait;
+			retries = retries + 1;
+		});
+
+		this.assert(retries < 10);
+		this.assertEquals(wire.connectionState, \failureTimeout);
+		this.assertEquals(boundWires[0].connectionState, \failureTimeout);
+	}
+
 	test_connect_normal_operation {
 		var factory = { | hostname, port |
 			SCLOrkFlakyLocalNetAddr.new(port, { false });
@@ -650,6 +803,33 @@ TestSCLOrkWire : UnitTest {
 	}
 
 	test_disconnect_drop_disconnect_confirm_all {
+		var timedOut = false;
+		var retries = 0;
+
+		var factory = { | hostname, port |
+			SCLOrkFlakyLocalNetAddr.new(port, { | count, args |
+				args[0] == '/wireDisconnectConfirm'
+			});
+		};
+		var wireA = SCLOrkWire.new(receivePort: 7704, netAddrFactory: factory);
+		var wireB = SCLOrkWire.new(receivePort: 7705, netAddrFactory: factory);
+
+		wireA.onConnected = { | state | timedOut = (state == \failureTimeout) };
+
+		wireA.connect("127.0.0.1", 7705);
+		this.prWaitForIdle(wireA, wireB);
+
+		wireA.disconnect;
+		// Busywait for timeout.
+		while ({retries < 10 and: { timedOut.not }}, {
+			0.2.wait;
+			retries = retries + 1;
+		});
+
+		this.assert(retries < 10);
+		this.assert(timedOut);
+		this.assertEquals(wireA.connectionState, \failureTimeout);
+		this.assertEquals(wireB.connectionState, \disconnected);
 	}
 
 	prWaitForIdle { | wireA, wireB, maxRetries = 10 |
@@ -712,7 +892,7 @@ TestSCLOrkWireSendRetry : UnitTest {
 // A localhost-only wrapper around a NetAddr that calls a function before
 // sending any data, allowing testing code to predictably drop packets.
 SCLOrkFlakyLocalNetAddr {
-	classvar <>verbose = true;
+	classvar <>verbose = false;
 
 	var port;
 	var shouldDrop;
