@@ -1,0 +1,179 @@
+TITLE:: SCLOrkWire
+summary:: A reliable, connection-oriented OSC communication class using UDP.
+categories:: Quarks>SCLOrkNet
+related:: Reference/SCLOrkWire-Design-Document
+
+DESCRIPTION::
+
+Attempts to combine the reliability of TCP, specifically full-duplex two-way communication, automatic retransmission of dropped packets, and in-order packet arrival, with the lower-latency benefits of UDP. A SCLOrkWire wraps arbitrary OSC messages in its own protocol, allows for sending of those messages using link::#sendMsg:: similar to a link::Classes/NetAddr::, and also provides a means to respond to incoming OSC messages using the link::#onMessageReceived:: function callback.
+
+CLASSMETHODS::
+
+METHOD:: new
+Makes a new SCLOrkWire using the provided arguments.
+
+ARGUMENT:: receivePort
+The port on this computer that the SCLOrkWire should listen on.
+
+note::
+SCLOrkWires are designed to uniquely own a specific port. While other OSC messages can be received on that port multiple SCLOrkWires listening on the same port may create problems if the remote machines have the same targetId.
+::
+
+ARGUMENT:: targetId
+A unique identifier that will be supplied to the remote machine, that the remote machine will use in all subsequent communications to this client. So, for example, this number will be included in all callbacks to link::#onMessageReceived:: or link::#onConnected::.
+
+ARGUMENT:: timeout
+The amount of time, in seconds, that the SCLOrkWire should wait before attempting retransmission of any data.
+
+ARGUMENT:: maxRetries
+The number of times that the wire should try retransmitting data before giving up with a failure state.
+
+ARGUMENT:: bufferSize
+The size of internal buffers for sending and receiving. The buffers are primarily used for re-ordering of packets that arrive out-of-order, so the size of the buffer conceptually represents the maximum number of packets that the system can tolerate receiving out-of-order before receving retransmission of the in-order data.
+
+ARGUMENT:: netAddrFactory
+Useful for testing, allows the user to provide a function that when called with emphasis::hostname, port:: arguments will return a link::Classes/NetAddr:: or similar mocked object. For production code leave at default value.
+
+returns:: A shiny new SCLOrkWire.
+
+METHOD:: bind
+Will start listening to link::#knock:: requests on the provided port, calling strong::onKnock:: function with every new wire made.
+
+ARGUMENT:: port
+The port to listen to. Will not re-open or re-assign ports for which strong::bind:: has already been called.
+
+ARGUMENT:: wireIssueId
+A function that will be evaulated to issue unique identifiers to the wire clients. This value will become the link::#targetId:: in the created wires and will be supplied in all callbacks, including strong::onKnock::.
+
+ARGUMENT:: wireOnConnected
+A function that bind provides to the constructed SCLOrkWire objects as their link::#onConnected:: function.
+
+ARGUMENT:: wireOnMessageReceived
+A function that bind provides to the constructed SCLOrkWire objects as their link::#onMessageReceived:: function.
+
+ARGUMENT:: onKnock
+A function that the SCLOrkWire will call on the initiation of each client connection. The arguments provided are code::targetId, wire::, where emphasis::targetId:: is the number provided by the call to strong::wireIssueId:: and emphasis::wire:: is the new SCLOrkWire object.
+
+ARGUMENT:: netAddrFactory
+Used for testing, will provide this netAddrFactory function to the SCLOrkWire objects created by bind. Production code should leave at default.
+
+METHOD:: unbind
+Removes any binding function listening at port. Note than any existing SCLOrkWire connections are unaffected by this operation.
+
+ARGUMENT:: port
+The port number to stop listening on.
+
+INSTANCEMETHODS::
+private:: prBindAck, prBindConnectAccept, prBindConnectConfirm, prBindDisconnect, prBindConnectRequest, prBindDisconnectConfirm, prChangeConnectionState, init, prBindSend
+
+METHOD:: disconnect
+Initiate the process to normally terminate the connection, resulting in an eventual connection state change to strong::\disconnected:: or strong::\failureTimeout::.
+
+METHOD:: selfId
+Accessor for the unique identifier number provided by the remote connection.
+
+METHOD:: targetId
+Accessor for the unique identifier provided by the client code on this side at construction time.
+
+METHOD:: connectionState
+Returns the current connection state of the SCLOrkWire, a label enum. The following values are in use:
+
+table::
+## strong::label value:: || strong::discussion::
+## strong::\neverConnected:: || The initial state of a SCLOrkWire, before any connection attempted or requested.
+## strong::\knocking:: || The wire is communicating with the remote to get a port assigned, valid next states are either strong::\connectionRequested:: or strong::\failureTimeout::.
+## strong::\failureTimeout:: || Some communication the server has timed out and exceeded maximum retries. This is a terminal state of the wire.
+## strong::\disconnected:: || Normal disconnection procedure has completed. This is a terminal state of the wire.
+## strong::\connected:: || The wire is connected. Valid next states are strong::\disconnected::, strong::\disconnectRequested::, or strong::\failureTimeout::.
+## strong::\connectionRequested:: || The wire is responding to an incoming connection request. Valid next states are strong::\connected:: or strong::\failureTimeout::.
+## strong::\connectionAccepted:: || The wire is attempting to initiate a connection to the remote host. Valid next states are strong::\connected:: or strong::\failureTimeout::.
+## strong::\disconnectRequested:: || The wire is attempting to disconnect from the remote host. Valid next states are strong::\disconnected:: or strong::\failureTimeout::.
+::
+
+METHOD:: onMessageReceived
+The function this SCLOrkWire will call on receipt of a message from the remote host. The function is called with arguments emphasis::targetId, messageArray::, where strong::targetId:: is the id provided to this wire at construction time, and strong::messageArray:: is the OSC message that was sent, provided in a manner identical to that of link::Classes/OSCFunc:: message argument.
+
+METHOD:: sendMsg
+Send the provided arguments as an OSC message to the remote host. Arguments are provided in a manner identical to that of link::Classes/NetAddr#sendMsg::.
+
+ARGUMENT::  ... args
+The message to send.
+
+METHOD:: free
+If connected, disconnect the wire, then delete the object and unbind all listening for messages.
+
+METHOD:: knock
+Attempt to contact strong::hostname:: at strong::hostPort:: requesting that they assign a port and initiate a connection with us at our strong::receivePort:: provided at constrution time.
+
+ARGUMENT:: hostname
+The name or ip address of the remote host to contact.
+
+ARGUMENT:: knockPort
+The port that the remote host has bound with strong::bind::.
+
+METHOD:: isIdle
+Will be true if the wire is strong::\connected:: or strong::\disconnected:: and is not currently sending data or has buffered out-of-order received data. Useful for testing.
+
+METHOD:: onConnected
+A function called when there's a change in strong::connectionState::, function signature is emphasis::targetId, state::, where strong::targetId:: is the id provided at construction time, and strong::state:: is any of the enum values detailed in the strong::connectionState:: table.
+
+METHOD:: connect
+Initiate a connection to the remote host.
+
+ARGUMENT:: hostname
+The name or ip address of the remote host to connect to.
+
+ARGUMENT:: requestPort
+The port on the remote host to initiate connection with.
+
+EXAMPLES::
+
+code::
+// ==== Client-Server Networking
+
+// Server sets up a knock port at 8000, and will populate
+// connectedWires with all connected wires as they come in.
+// Server will respond with '/pong' to each '/ping' message.
+(
+var idSerial = 1;
+var connectedWires = Dictionary.new;
+SCLOrkWire.bind(
+	port: 8000,
+	wireIssueId: {
+		var id = idSerial;
+		idSerial = idSerial + 1;
+		id;
+	},
+	wireOnConnected: { | id, state |
+		"wire id: %, new state: %".format(id, state).postln;
+	},
+	wireOnMessageRecieved: { | id, message |
+		var wire = connectedWires.at(id);
+		"wire id: % received message %".format(id, message).postln;
+		if (message[0] == '/ping', {
+			wire.sendMsg('/pong');
+		});
+	},
+	onKnock: { | id, wire |
+		connectedWires.put(id, wire);
+	}
+);
+)
+
+// Client connects to server via knocking.
+(
+var wire = SCLOrkWire.new;
+wire.onMessageReceived = { | id, message |
+	if (message[0] == '/pong', {
+		"got pong".postln;
+	});
+};
+// Send message on connection complete.
+wire.onConnected = { | id, state |
+	if (state == \connected, {
+		wire.sendMsg('/ping');
+	});
+};
+wire.knock("sclork-s01.local", 8000);
+)
+::

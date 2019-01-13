@@ -1,9 +1,9 @@
 title:: SCLOrkWire Design Document
 summary:: Design Discussion and Documentation for SCLOrkWire
 categories:: Quarks>SCLOrkNet
-related:: Classes/SCLOrkWire, Classes/SCLOrkSocket
+related:: Classes/SCLOrkWire
 
-A link::Classes/SCLOrkWire:: class creates a reliable, two-way, connection-oriented OSC network connection between two computers using OSC over UDP as the underlying transport mechanism. To facilitate a server-like behavior where multiple connections to individual clients are serviced with the same underlying code, please see link::Classes/SCLOrkSocket::.
+A link::Classes/SCLOrkWire:: class creates a reliable, two-way, connection-oriented OSC network connection between two computers using OSC over UDP as the underlying transport mechanism.
 
 section:: Background
 
@@ -19,9 +19,28 @@ section:: Protocol Design
 
 In this section we discuss the message flow between clients in different scenarios, as well as discuss fail states and recovery scenarios.
 
+subsection:: Port Assignment
+
+SCLOrkWires were designed with the assumption that they each are the only instance of the class listening on a given port. There may be other OSC messages incoming on that port but keeping a wire unique on a port simplified the communication protocol design. This design does present a challenge in determining in advance what port a remote client should connect to on a host machine. To solve this problem SCLOrkWire supports a class method link::Classes/SCLOrkWire#bind:: which can listen for strong::/wireKnock:: messages on a predetermined port. The wire code responds by allocating a unique port for the wire endpoint on the host machine, and then initiating connection back to the knocking address at the port supplied by the knocking machine at knock time.
+
+This facilitates a client-server type environment, where clients will send a strong::/wireKnock:: to the server at a predetermined, constant port, and then expect that the server will initiate a connection request back to the client at the port supplied in the knock.
+
+table::
+## strong::Sender:: || strong::Path:: || strong::Message:: || strong::Discussion::
+## client || strong::/wireKnock:: || receivePort || Server will initiate connection back to client  on receivePort
+## server || strong::/wireConnectRequest:: || returnPort, responderId || See Connection protocol below
+## ...    ||  ... || ... || ....
+::
+
+If the strong::/wireKnock:: request is dropped, the client will retransmit after some timeout of not seeing a connection initiation request come in from the server. See link::#Connection:: for discussion of the failure recovery modes in connection initiation.
+
 subsection:: Connection
 
-While the SCLOrkWire is designed to be bidirectional and either client and send or receive messages from the other, in connection the client takes on one of two roles, either connection emphasis::initiator:: or emphasis::responder::. To facilitate connection multiplexing with link::Classes/SCLOrkSocket::, on connection initiation each client can provide a unique identifier to the other. The clients will then include their respective provided ids in all subsequent communications with each other. The overall connection protocol is inspired by the Three-Way Handshake connection from TCP.
+While the SCLOrkWire is designed to be bidirectional and either client and send or receive messages from the other, in connection the client takes on one of two roles, either connection emphasis::initiator:: or emphasis::responder::. In the case of a knock, which is a request for a port assignment by a client, the server role will take on the role of connection initator, responding to the client knock.
+
+To facilitate higher-level organization of SCLOrkWires, on connection initiation each client can provide a unique identifier to the other. The clients will then include their respective provided ids in all subsequent communications with each other. Incoming messages that do not have the correct peer-supplied id number associated with them will be rejected, but otherwise the SCLOrkWire protocol doesn't use these ids for any particular purpose.
+
+The overall connection protocol is inspired by the Three-Way Handshake connection from TCP.
 
 table::
 ## strong::Sender:: || strong::Path:: || strong::Message:: || strong::Discussion::
