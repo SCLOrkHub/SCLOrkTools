@@ -1,0 +1,20 @@
+title:: SCLOrkNet Release Notes
+summary:: Reference and history for released versions of SCLOrkNet.
+categories:: Quarks>SCLOrkNet
+
+section:: Release Notes
+
+Brief release notes for each version, to keep some record of development
+progress as well as allow folks to choose older versions if that suits them
+better.
+
+subsection:: 0.2.0 - 13 January 2019
+
+Adds SCLOrkWire classes, tests, and documentation. Refactors SCLOrkChat objects to re-use wires.
+
+subsection:: 0.1.1 - 1 January 2019
+
+First production version, contained the UDP-based Chat client and server, as
+well as SCLOrkTime server and client, for time synchronization of SCLOrkClock
+objects.
+

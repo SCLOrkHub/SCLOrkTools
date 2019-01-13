@@ -1,11 +1,11 @@
 title:: SCLOrkChat OSC Command Reference
 summary:: Chat Network Protocol Command Reference
 categories:: Quarks>SCLOrkNet
-related:: Classes/SCLOrkChatServer, Classes/SCLOrkChatClient
+related:: Classes/SCLOrkChatServer, Classes/SCLOrkChatClient, Classes/SCLOrkWire
 
 The following is a list of all link::Classes/SCLOrkChatServer:: and link::Classes/SCLOrkChatClient:: commands and their arguments, including some documentation around typical communication scenarios of client sign-in and sign-out, sending a broadcast message, sending a targeted message, and nickname change.
 
-All commands are UDP-based OSC commands sent to specific ports on the client and server via regular Supercollider OSC messaging code. Communications are restricted to specific UDP ports on both client and server, to allow for multiple clients and servers to run on the same IP address.
+All commands are link::Classes/SCLOrkWire:: OSC commands sent to specific ports on the client and server.
 
 section:: Server Commands
 
@@ -14,26 +14,17 @@ Register a new link::Classes/SCLOrkChatClient:: with the server.
 
 table::
 ## strong::string:: || nickname || Desired nickname of client. Does not have to be unique.
-## strong::int::    || receivePort || UDP port the client will be listening on for return messages from the server.
 ::
 
 Upon receipt, the server will reply to the sender on strong::receivePort:: with a link::#/chatSignInComplete:: command, as well as informing other connected clients of the sign-in via a link::#/chatChangeClient:: message.
 
 subsection:: /chatGetAllClients
-Process a request to enumerate all currently signed in clients.
-
-table::
-## strong::int:: || userId || The id of the requesting client to send the dictionary to.
-::
+Process a request to enumerate all currently signed in clients. No additional arguments besides the path are supplied.
 
 The server will respond to the client on emphasis::receivePort:: with a link::#/chatSetAllClients:: command.
 
 subsection:: /chatPing
-Process a keepalive request from the client. Needs to be called periodically or the server will consider the client to be disconnected via timeout.
-
-table::
-## strong::int:: || userId || UserId of pinging chat client.
-::
+Process a keepalive request from the client. Needs to be called periodically or the server will consider the client to be disconnected via timeout. No additional arguments besides the path are supplied.
 
 Server will respond with a link::#/chatPong:: command.
 
@@ -55,18 +46,13 @@ subsection:: /chatChangeNickName
 Changes the client nickname, broadcast the change to all connected clients.
 
 table::
-## strong::int::    || userId || The userId of the requesting client.
 ## strong::string:: || newNickName || The requested new nickname of the client.
 ::
 
 Server will send all clients notification of the name change via link::#/chatChangeClient::.
 
 subsection:: /chatSignOut
-Signs the client out from the chat server.
-
-table::
-## strong::int:: || userId || The userId of the client signing out.
-::
+Signs the client out from the chat server. No additional arguments supplied besides the path.
 
 Server will remove sending client from internal client lists, and then send all remianing clients notification of the signout via link::#/chatChangeClient::. The server will send no more commands to the client upon receipt of this message.
 
