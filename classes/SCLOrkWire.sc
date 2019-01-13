@@ -68,7 +68,7 @@ SCLOrkWire {
 				wire.onConnected = wireOnConnected;
 				wire.onMessageReceived = wireOnMessageReceived;
 				wire.connect(addr.ip, returnPort);
-				onKnock.value(wireId, wire);
+				onKnock.value(wire);
 			},
 			path: '/wireKnock',
 			recvPort: port
@@ -332,7 +332,7 @@ SCLOrkWire {
 
 						// In-order packet received, notify.
 						receiveSemaphore.signal;
-						this.onMessageReceived.value(senderId, messageArray);
+						this.onMessageReceived.value(this, messageArray);
 						receiveSemaphore.wait;
 
 						// See if there were further ahead-of-order buffered
@@ -343,7 +343,7 @@ SCLOrkWire {
 							receiveBuffer.wrapPut(receiveSerial, nil);
 
 							receiveSemaphore.signal;
-							this.onMessageReceived.value(senderId, messageArray);
+							this.onMessageReceived.value(this, messageArray);
 							receiveSemaphore.wait;
 						});
 					}, {
@@ -411,7 +411,7 @@ SCLOrkWire {
 	prChangeConnectionState { | newState |
 		if (connectionState != newState, {
 			connectionState = newState;
-			this.onConnected.(targetId, connectionState);
+			this.onConnected.(this, connectionState);
 		});
 	}
 }

@@ -20,7 +20,7 @@ SCLOrkWires are designed to uniquely own a specific port. While other OSC messag
 ::
 
 ARGUMENT:: targetId
-A unique identifier that will be supplied to the remote machine, that the remote machine will use in all subsequent communications to this client. So, for example, this number will be included in all callbacks to link::#onMessageReceived:: or link::#onConnected::.
+A unique identifier that will be supplied to the remote machine, that the remote machine will use in all subsequent communications to this client.
 
 ARGUMENT:: timeout
 The amount of time, in seconds, that the SCLOrkWire should wait before attempting retransmission of any data.
@@ -43,7 +43,7 @@ ARGUMENT:: port
 The port to listen to. Will not re-open or re-assign ports for which strong::bind:: has already been called.
 
 ARGUMENT:: wireIssueId
-A function that will be evaulated to issue unique identifiers to the wire clients. This value will become the link::#targetId:: in the created wires and will be supplied in all callbacks, including strong::onKnock::.
+A function that will be evaulated to issue unique identifiers to the wire clients. This value will become the link::#targetId:: in the created wires.
 
 ARGUMENT:: wireOnConnected
 A function that bind provides to the constructed SCLOrkWire objects as their link::#onConnected:: function.
@@ -52,7 +52,7 @@ ARGUMENT:: wireOnMessageReceived
 A function that bind provides to the constructed SCLOrkWire objects as their link::#onMessageReceived:: function.
 
 ARGUMENT:: onKnock
-A function that the SCLOrkWire will call on the initiation of each client connection. The arguments provided are code::targetId, wire::, where emphasis::targetId:: is the number provided by the call to strong::wireIssueId:: and emphasis::wire:: is the new SCLOrkWire object.
+A function that the SCLOrkWire will call on the initiation of each client connection. The function is called with a sole argument which is the newly created wire object.
 
 ARGUMENT:: netAddrFactory
 Used for testing, will provide this netAddrFactory function to the SCLOrkWire objects created by bind. Production code should leave at default.
@@ -91,7 +91,7 @@ table::
 ::
 
 METHOD:: onMessageReceived
-The function this SCLOrkWire will call on receipt of a message from the remote host. The function is called with arguments emphasis::targetId, messageArray::, where strong::targetId:: is the id provided to this wire at construction time, and strong::messageArray:: is the OSC message that was sent, provided in a manner identical to that of link::Classes/OSCFunc:: message argument.
+The function this SCLOrkWire will call on receipt of a message from the remote host. The function is called with arguments emphasis::wire, messageArray::, where strong::wire:: is the wire receiving the message, and strong::messageArray:: is the OSC message that was sent, provided in a manner identical to that of link::Classes/OSCFunc:: message argument.
 
 METHOD:: sendMsg
 Send the provided arguments as an OSC message to the remote host. Arguments are provided in a manner identical to that of link::Classes/NetAddr#sendMsg::.
@@ -115,7 +115,7 @@ METHOD:: isIdle
 Will be true if the wire is strong::\connected:: or strong::\disconnected:: and is not currently sending data or has buffered out-of-order received data. Useful for testing.
 
 METHOD:: onConnected
-A function called when there's a change in strong::connectionState::, function signature is emphasis::targetId, state::, where strong::targetId:: is the id provided at construction time, and strong::state:: is any of the enum values detailed in the strong::connectionState:: table.
+A function called when there's a change in strong::connectionState::. The function is called with arguments emphasis::wire, state::, where strong::wire:: is the wire reporting the state change and strong::state:: is any of the enum values detailed in the strong::connectionState:: table.
 
 METHOD:: connect
 Initiate a connection to the remote host.
@@ -136,7 +136,7 @@ code::
 // Server will respond with '/pong' to each '/ping' message.
 (
 var idSerial = 1;
-var connectedWires = Dictionary.new;
+var connectedWires = Array.new;
 SCLOrkWire.bind(
 	port: 8000,
 	wireIssueId: {
@@ -144,18 +144,19 @@ SCLOrkWire.bind(
 		idSerial = idSerial + 1;
 		id;
 	},
-	wireOnConnected: { | id, state |
-		"wire id: %, new state: %".format(id, state).postln;
+	wireOnConnected: { | wire, state |
+		"wire id: %, new state: %".format(wire.targetId, state).postln;
 	},
-	wireOnMessageRecieved: { | id, message |
+	wireOnMessageRecieved: { | wire, message |
 		var wire = connectedWires.at(id);
-		"wire id: % received message %".format(id, message).postln;
+		"wire id: % received message %".format(
+			wire.targetId, message).postln;
 		if (message[0] == '/ping', {
 			wire.sendMsg('/pong');
 		});
 	},
-	onKnock: { | id, wire |
-		connectedWires.put(id, wire);
+	onKnock: { | wire |
+		connectedWires = connectedWires.add(wire);
 	}
 );
 )
