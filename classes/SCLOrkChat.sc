@@ -3,10 +3,11 @@ SCLOrkChat {
 	const keepLastMessageCount = 100;
 	const <fontSize = 24.0;
 
-	var nickName;
+	var name;
 	var asDirector;
 	var chatClient;
 	var quitTasks;
+	var wedged;
 
 	var window;
 	var chatItemScrollView;
@@ -30,13 +31,13 @@ SCLOrkChat {
 	var clientIdList;
 	var messageViewRingBuffer;
 
-	*new { | nickName, asDirector = false, chatClient = nil |
-		^super.newCopyArgs(nickName, asDirector, chatClient).init;
+	*new { | name, asDirector = false, chatClient = nil |
+		^super.newCopyArgs(name, asDirector, chatClient).init;
 	}
 
 	init {
-		if (nickName.isNil, {
-			nickName = "noname";
+		if (name.isNil, {
+			name = "noname";
 		});
 		if (chatClient.isNil, {
 			chatClient = SCLOrkChatClient.new(
@@ -44,6 +45,7 @@ SCLOrkChat {
 					SCLOrkChatServer.defaultListenPort));
 		});
 		quitTasks = false;
+		wedged = false;
 
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
@@ -54,8 +56,17 @@ SCLOrkChat {
 	}
 
 	connect {
+		if (wedged, {
+			wedged = false;
+			chatClient.prUnwedge;
+			this.enqueueChatMessage(SCLOrkChatMessage.new(
+				chatClient.userId,
+				[ chatClient.userId ],
+				\system,
+				"Client unwedged."));
+		});
 		if (chatClient.isConnected.not, {
-			chatClient.connect(nickName);
+			chatClient.connect(name);
 			AppClock.sched(0, {
 				reconnectButton.visible = false;
 				connectionStatusLabel.string = "connecting..";
@@ -197,18 +208,28 @@ SCLOrkChat {
 						sendType = \code;
 						sendString = sendString[firstSpace + 1..];
 					},
-					"/fail", {
+					"/wedge", {
+						wedged = true;
 						chatClient.prForceTimeout;
 						this.enqueueChatMessage(SCLOrkChatMessage.new(
 							chatClient.userId,
 							[ chatClient.userId ],
 							\system,
-							"Timeout forced."));
+							"Client wedged."));
 					},
-					"/nick", {
+					"/unwedge", {
+						chatClient.prUnwedge;
+						this.enqueueChatMessage(SCLOrkChatMessage.new(
+							chatClient.userId,
+							[ chatClient.userId ],
+							\system,
+							"Client unwedged."));
+
+					},
+					"/name", {
 						var newName = v.string[firstSpace + 1..];
 						if (newName.size > 0, {
-							chatClient.nickName = newName;
+							chatClient.name = newName;
 						});
 					},
 					"/plain", {
@@ -233,14 +254,13 @@ SCLOrkChat {
 							\system,
 							"Supported commands:\n" ++
 							"/code <code string>\n" ++
-							"/nick <new name>\n" ++
+							"/name <new name>\n" ++
 							"/plain <plain string>\n" ++
 							"/quit"));
 					}
 				);
 			});
 
-			// Check for nickName change first with the /nick command.
 			if (isCommand.not, {
 				var recipientIds, chatMessage;
 
@@ -255,7 +275,7 @@ SCLOrkChat {
 					recipientIds,
 					sendType,
 					sendString,
-					chatClient.nickName
+					chatClient.name
 				);
 				chatClient.sendMessage(chatMessage);
 
@@ -357,8 +377,8 @@ SCLOrkChat {
 			selectedUserIds = clientIdList.at(clientListView.selection).as(Set);
 
 			// Build list of clients name, id pairs, then sort by names.
-			pairs = Array.new(chatClient.userDictionary.size);
-			chatClient.userDictionary.keysValuesDo({ | key, value |
+			pairs = Array.new(chatClient.nameMap.size);
+			chatClient.nameMap.keysValuesDo({ | key, value |
 				pairs = pairs.add([ value, key ]);
 			});
 			pairs.sort({ | a, b | a[0] < b[0] });
@@ -414,7 +434,7 @@ SCLOrkChat {
 			});
 		};
 
-		chatClient.onUserChanged = { | changeType, id, nickName, oldName = nil |
+		chatClient.onUserChanged = { | changeType, id, name, oldName = nil |
 			this.prRebuildClientListView(false);
 			switch (changeType,
 				\add, {
@@ -422,28 +442,28 @@ SCLOrkChat {
 						chatClient.userId,
 						[ chatClient.userId ],
 						\system,
-						"% signed in.".format(nickName)));
+						"% signed in.".format(name)));
 				},
 				\remove, {
 					this.enqueueChatMessage(SCLOrkChatMessage.new(
 						chatClient.userId,
 						[ chatClient.userId ],
 						\system,
-						"% signed out.".format(nickName)));
+						"% signed out.".format(name)));
 				},
 				\rename, {
 					this.enqueueChatMessage(SCLOrkChatMessage.new(
 						chatClient.userId,
 						[ chatClient.userId ],
 						\system,
-						"% now known as %".format(oldName, nickName)));
+						"% now known as %".format(oldName, name)));
 				},
 				\timeout, {
 					this.enqueueChatMessage(SCLOrkChatMessage.new(
 						chatClient.userId,
 						[ chatClient.userId ],
 						\system,
-						"% timed out.".format(nickName)));
+						"% timed out.".format(name)));
 				}
 			);
 		};

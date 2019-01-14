@@ -12,23 +12,28 @@ Maecenas accumsan lacus vel facilisis volutpat est. Eu scelerisque felis imperdi
 Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mollis nunc sed id semper risus in hendrerit. Volutpat ac tincidunt vitae semper quis lectus nulla at. Sed cras ornare arcu dui vivamus arcu felis bibendum ut. Quam vulputate dignissim suspendisse in. Viverra tellus in hac habitasse. Risus commodo viverra maecenas accumsan lacus vel facilisis. Proin gravida hendrerit lectus a. Maecenas ultricies mi eget mauris pharetra et ultrices. Varius morbi enim nunc faucibus a pellentesque. Purus sit amet volutpat consequat mauris nunc congue nisi. Quis lectus nulla at volutpat. Faucibus purus in massa tempor nec feugiat nisl pretium. In mollis nunc sed id semper risus in hendrerit gravida. Nam libero justo laoreet sit amet cursus sit. Pulvinar sapien et ligula ullamcorper malesuada. Tortor pretium viverra suspendisse potenti nullam. Arcu cursus euismod quis viverra nibh cras pulvinar. Molestie a iaculis at erat pellentesque adipiscing commodo. Ipsum dolor sit amet consectetur adipiscing elit pellentesque habitant.";
 
 ~chatServer = SCLOrkChatServer.new;
-~chatUi = SCLOrkChat.new("luke", true, SCLOrkChatClient.new(
-	NetAddr.new("127.0.0.1", SCLOrkChatServer.defaultListenPort), 7705));
+~chatUi = SCLOrkChat.new(
+	"luke",
+	true,
+	SCLOrkChatClient.new("127.0.0.1", listenPort: 7705)
+);
 
 5.do({| i |
 	Task.new({
-		var bot = SCLOrkChatClient.new(
-			NetAddr.new("127.0.0.1", SCLOrkChatServer.defaultListenPort),
-			7710 + i);
+		var bot = SCLOrkChatClient.new("127.0.0.1", listenPort: 7710 + i);
+		var forcedTimeout = false;
 		while({ true }, {
+			if (forcedTimeout, {
+				forcedTimeout = false;
+				bot.prUnwedge;
+			});
 			(30.rand).wait;
-			bot.connect("bot-%-%".format(i, Main.elapsedTime.round));
+			bot.connect("bot-%-%".format(i, Main.elapsedTime.round.asInt));
 			1.wait;
 			10.rand.do({
 				var msgType = \plain;
 				var off = (~loremIpsum.size - 256).rand;
 				(5.rand + 1).wait;
-				if (10.rand == 0, { msgType = \shout; });
 				bot.sendMessage(SCLOrkChatMessage.new(
 					bot.userId,
 					[ 0 ],
@@ -37,15 +42,16 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 				);
 				(5.rand + 1).wait;
 				if (10.rand > 7, {
-					bot.nickName = "new-%-%".format(i,
-						Main.elapsedTime.round);
+					bot.name = "new-%-%".format(i,
+						Main.elapsedTime.round.asInt);
 					(10.rand + 1).wait;
 				});
 			});
 			1.wait;
 			if (10.rand == 0, {
+				forcedTimeout = true;
 				bot.prForceTimeout;
-				30.wait;
+				5.wait;
 			}, {
 				bot.disconnect;
 			});
@@ -55,9 +61,7 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 
 3.do({| i |
 	Task.new({
-		var bot = SCLOrkChatClient.new(
-			NetAddr.new("127.0.0.1", SCLOrkChatServer.defaultListenPort),
-			7720 + i);
+		var bot = SCLOrkChatClient.new("127.0.0.1", listenPort: 7720 + i);
 		while({ true }, {
 			var name = case
 				{ i == 0 } { "Alice" }
