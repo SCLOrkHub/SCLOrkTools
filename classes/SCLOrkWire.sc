@@ -4,7 +4,7 @@ SCLOrkWire {
 	classvar portMap = nil;
 
 	var receivePort;
-	var <targetId;
+	var <id;
 	var timeout;
 	var maxRetries;
 	var bufferSize;
@@ -88,14 +88,14 @@ SCLOrkWire {
 
 	*new { |
 		receivePort = 7666,
-		targetId = 0,
+		id = 0,
 		timeout = 0.2,
 		maxRetries = 5,
 		bufferSize = 32,
 		netAddrFactory = nil |
 		^super.newCopyArgs(
 			receivePort,
-			targetId,
+			id,
 			timeout,
 			maxRetries,
 			bufferSize,
@@ -122,6 +122,10 @@ SCLOrkWire {
 		onConnected = {};
 		onMessageReceived = {};
 
+		this.prBindOSC;
+	}
+
+	prBindOSC {
 		this.prBindConnectRequest;
 		this.prBindConnectAccept;
 		this.prBindConnectConfirm;
@@ -132,12 +136,13 @@ SCLOrkWire {
 	}
 
 	knock { | hostname, knockPort = 7666 |
-		if (connectionState == \neverConnected or: {
-			connectionState == \disconnected }, {
+		if (connectionState == \neverConnected
+			or: { connectionState == \disconnected }
+			or: { connectionState == \failureTimeout }, {
 			var message = [
 				'/wireKnock',
 				receivePort,
-				targetId ];
+				id ];
 			var knockAddr = netAddrFactory.value(hostname, knockPort);
 			this.prChangeConnectionState(\knocking);
 			connectionRetry = SCLOrkWireSendRetry.new(
@@ -151,12 +156,13 @@ SCLOrkWire {
 	}
 
 	connect { | hostname, requestPort = 7666 |
-		if (connectionState == \neverConnected or: {
-				connectionState == \disconnected }, {
+		if (connectionState == \neverConnected
+			or: { connectionState == \disconnected }
+			or: { connectionState == \failureTimeout }, {
 			var message = [
 				'/wireConnectRequest',
 				receivePort,
-				targetId ];
+				id ];
 			netAddr = netAddrFactory.value(hostname, requestPort);
 			this.prChangeConnectionState(\connectionRequested);
 			connectionRetry = SCLOrkWireSendRetry.new(
@@ -236,9 +242,8 @@ SCLOrkWire {
 		});
 	}
 
-	free {
-		this.disconnect;
-
+	// Use directly only for testing of a client going unresponsive.
+	prDropLine {
 		connectRequestOSCFunc.free;
 		connectAcceptOSCFunc.free;
 		connectConfirmOSCFunc.free;
@@ -246,6 +251,11 @@ SCLOrkWire {
 		ackOSCFunc.free;
 		disconnectOSCFunc.free;
 		disconnectConfirmOSCFunc.free;
+	}
+
+	free {
+		this.disconnect;
+		this.prDropLine;
 	}
 
 	prBindConnectRequest {
@@ -266,7 +276,7 @@ SCLOrkWire {
 				message = [
 					'/wireConnectAccept',
 					selfId,
-					targetId ];
+					id ];
 				connectionRetry = SCLOrkWireSendRetry.new(
 					netAddr,
 					message,
@@ -287,7 +297,7 @@ SCLOrkWire {
 			var initiatorId = msg[2];
 			// We only process messages intended for us as identified by
 			// the responderId we provided in the connection initiation.
-			if (responderId == targetId, {
+			if (responderId == id, {
 				connectionRetry.stop;
 				// We take on the provided sender Id as our own.
 				selfId = initiatorId;
@@ -303,7 +313,7 @@ SCLOrkWire {
 	prBindConnectConfirm {
 		connectConfirmOSCFunc = OSCFunc.new({ | msg, time, addr |
 			var initiatorId = msg[1];
-			if (initiatorId == targetId, {
+			if (initiatorId == id, {
 				connectionRetry.stop;
 				this.prChangeConnectionState(\connected);
 			});
@@ -316,7 +326,7 @@ SCLOrkWire {
 	prBindSend {
 		sendOSCFunc = OSCFunc.new({ | msg, time, addr |
 			var senderId = msg[1];
-			if (senderId == targetId, {
+			if (senderId == id, {
 				var serial = msg[2];
 
 				receiveSemaphore.wait;
@@ -365,7 +375,7 @@ SCLOrkWire {
 	prBindAck {
 		ackOSCFunc = OSCFunc.new({ | msg, time, addr |
 			var senderId = msg[1];
-			if (senderId == targetId, {
+			if (senderId == id, {
 				var serial = msg[2];
 
 				if (serial == (sendAckSerial + 1), {
@@ -385,7 +395,7 @@ SCLOrkWire {
 	prBindDisconnect {
 		disconnectOSCFunc = OSCFunc.new({ | msg, time, addr |
 			var senderId = msg[1];
-			if (senderId == targetId, {
+			if (senderId == id, {
 				netAddr.sendMsg('/wireDisconnectConfirm', selfId);
 				this.prChangeConnectionState(\disconnected);
 			});
@@ -398,7 +408,7 @@ SCLOrkWire {
 	prBindDisconnectConfirm {
 		disconnectConfirmOSCFunc = OSCFunc.new({ | msg, time, addr |
 			var senderId = msg[1];
-			if (senderId == targetId, {
+			if (senderId == id, {
 				connectionRetry.stop;
 				this.prChangeConnectionState(\disconnected);
 			});
@@ -409,6 +419,20 @@ SCLOrkWire {
 	}
 
 	prChangeConnectionState { | newState |
+		if (newState == \connected, {
+			// Reset the send/receive state.
+			sendSemaphore.wait;
+			sendBuffer = Array.newClear(bufferSize);
+			sendSerial = 0;
+			sendSemaphore.signal;
+
+			sendAckSerial = 0;
+
+			receiveSemaphore.wait;
+			receiveSerial = 0;
+			receiveBuffer = Array.newClear(bufferSize);
+			receiveSemaphore.signal;
+		});
 		if (connectionState != newState, {
 			connectionState = newState;
 			this.onConnected.(this, connectionState);

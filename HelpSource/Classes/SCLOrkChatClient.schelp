@@ -1,21 +1,24 @@
 TITLE:: SCLOrkChatClient
 summary:: Programmatic client interface to SCLOrkChat system.
 categories:: Quarks>SCLOrkNet
-related:: Classes/SCLOrkChatServer, Reference/SCLOrkChat-OSC-Command-Reference
+related:: Classes/SCLOrkChatServer, Reference/SCLOrkChat-OSC-Command-Reference, Classes/SCLOrkWire
 
 DESCRIPTION::
-Provides a programmatic interface to the link::Guides/SCLOrkChat:: system. Used by link::Classes/SCLOrkChat::, the chat graphical user interface, and could also be used by other programs to make bots. The primary usage of the object revolves around providing callback functions to the client on the link::#onConnected::, link::#onMessageReceived::, and link::#onUserChanged:: accessors, and responding to server events from there.
+Provides a programmatic interface to the link::Guides/SCLOrkChat-User-Guide:: system. Used by link::Classes/SCLOrkChat::, the chat graphical user interface, and could also be used by other programs to make bots. The primary usage of the object revolves around providing callback functions to the client on the link::#onConnected::, link::#onMessageReceived::, and link::#onUserChanged:: accessors, and responding to server events from there.
 
 CLASSMETHODS::
 
 METHOD:: new
 Create a new SCLOrkChatClient object, initialize and return it.
 
-ARGUMENT:: serverNetAddr
-A link::Classes/NetAddr:: object for use in communication with the server. Note that the SCLOrkChatClient object will take ownership of this NetAddr object, and so subsequent client code should not attempt to share it.
+ARGUMENT:: serverAddress
+A string with either an IP address or a resolvable hostname providing the location for a running instance of link::Classes/SCLOrkChatServer::.
+
+ARGUMENT:: serverPort
+The port provided to the running link::Classes/SCLOrkChatServer#bindPort::.
 
 ARGUMENT:: listenPort
-The UDP port to listen to responses from the server on. Clients listen on only one port to enable multiple clients to run on the same IP address/machine.
+The link::Classes/SCLOrkWire:: port to listen to responses from the server on. Clients listen on only one port to enable multiple clients to run on the same IP address/machine.
 
 returns:: A new SCLOrkChatClient object.
 
@@ -26,8 +29,8 @@ Running two or more SCLOrkChatClients on the same computer and with the same lis
 INSTANCEMETHODS::
 private:: init, prForceTimeout
 
-METHOD:: userDictionary
-Acessor method for the client's current map of userIds keys to nickName values.
+METHOD:: nameMap
+Acessor method for the client's current map of userId keys to name values.
 
 returns:: A link::Classes/Dictionary:: with integer userIds as keys and string nicknames as values.
 
@@ -36,11 +39,6 @@ Connect to the server at the address specificed in link::#new::. Will call the f
 
 ARGUMENT:: name
 The nickName to associate with this client.
-
-METHOD:: isConnected
-Accessor for a boolean value indicating connection to the server status.
-
-returns:: If true, the client is connected to the server. If false, it is not.
 
 METHOD:: onMessageReceived
 Function the client will call upon receipt of any chat messages from the server. The client will call the function with a single argument, a link::Classes/SCLOrkChatMessage:: object containing the deserialized message.
@@ -51,14 +49,14 @@ Serializes the provided link::Classes/SCLOrkChatMessage:: object and sends it to
 ARGUMENT:: chatMessage
 A link::Classes/SCLOrkChatMessage:: object.
 
-METHOD:: nickName
-Access, or change the current nickname associated with this client to a new string value.
+METHOD:: name
+Access, or change the current name associated with this client to a new string value.
 
-ARGUMENT:: newNick
-The new string to associate with this client.
+ARGUMENT:: newName
+The new string name to associate with this client.
 
 METHOD:: onUserChanged
-Function the client will call after applying any updates to its link::#userDictionary::. The client will call the provided function with four arguments: emphasis::type, userId, nickName, oldName::. The emphasis::type:: argument is an enumeration documented  at link::Reference/SCLOrkChat-OSC-Command-Reference#changeType enumeration::. The emphasis::userId:: and emphasis::nickName:: arguments are the id and name associated with the client that is changing. Lastly the emphasis::oldName:: argument is only valid if the emphasis::type:: values is strong::\rename::, in which case the client will supply the old name the user was going by, and the new name will be in emphasis::nickName::.
+Function the client will call after applying any updates to its link::#userDictionary::. The client will call the provided function with four arguments: emphasis::type, userId, name, oldName::. The emphasis::type:: argument is an enumeration documented  at link::Reference/SCLOrkChat-OSC-Command-Reference#changeType enumeration::. The emphasis::userId:: and emphasis::name:: arguments are the id and name associated with the client that is changing. Lastly the emphasis::oldName:: argument is only valid if the emphasis::type:: values is strong::\rename::, in which case the client will supply the old name the user was going by, and the new name will be in emphasis::name::.
 
 METHOD:: free
 Will automatically call link::#disconnect:: if the client is connected to the server. Then unbinds all listener functions and destroys the object.
@@ -77,17 +75,16 @@ EXAMPLES::
 code::
 // Create a simple chatBot that echoes all messages it receives back to
 // the recipients in the message.
-~chatBot = SCLOrkChatClient.new(
-	NetAddr.new("sclork-s01.local", SCLOrkChatServer.defaultListenPort));
-~echoBot.onUserChanged = { | type, userId, nickName, oldName |
+~chatBot = SCLOrkChatClient.new;
+~echoBot.onUserChanged = { | type, userId, name, oldName |
 	switch (type,
-		\add, { "% signed in".format(nickName).postln; },
-		\remove, { "% signed out".format(nickName).postln; },
+		\add, { "% signed in".format(name).postln; },
+		\remove, { "% signed out".format(name).postln; },
 		\rename, {
-			"% changed names to %".format(nickName, oldName).postln;
+			"% changed names to %".format(name, oldName).postln;
 		},
 		\timeout, {
-			"% timed out.".format(nickName);
+			"% timed out.".format(name);
 	});
 };
 ~echoBot.onConnected = { | isConnected |

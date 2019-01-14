@@ -13,7 +13,7 @@ subsection:: /chatSignIn
 Register a new link::Classes/SCLOrkChatClient:: with the server.
 
 table::
-## strong::string:: || nickname || Desired nickname of client. Does not have to be unique.
+## strong::string:: || name || Desired name of client. Does not have to be unique.
 ::
 
 Upon receipt, the server will reply to the sender on strong::receivePort:: with a link::#/chatSignInComplete:: command, as well as informing other connected clients of the sign-in via a link::#/chatChangeClient:: message.
@@ -23,43 +23,37 @@ Process a request to enumerate all currently signed in clients. No additional ar
 
 The server will respond to the client on emphasis::receivePort:: with a link::#/chatSetAllClients:: command.
 
-subsection:: /chatPing
-Process a keepalive request from the client. Needs to be called periodically or the server will consider the client to be disconnected via timeout. No additional arguments besides the path are supplied.
-
-Server will respond with a link::#/chatPong:: command.
-
 subsection:: /chatSendMessage
 Send a message to some or all connected clients.
 
 table::
-## strong::int::   || senderId || The userId of the sending client.
 ## strong::label:: || messageType || Enumerated type of message. See link::#Message Types:: section for list of types.
 ## strong::string:: || contents || The contents of the message.
-## strong::int::   || recipientId0 || First element in recipientId list. If 0, the server will broadcast message to all connected clients. There should be at least 1 element in the list.
+## strong::int::   || recipientId0 || First element in recipientId list. If 0, the server will broadcast message to all connected clients. Th					wireMap.put(wire.targetId, wire);
+ere should be at least 1 element in the list.					wireMap.put(wire.targetId, wire);
+
 ## strong::...::   ||  ... || ...
 ## strong::int::   || recipientIdN || Last element in the recipientId list.
 ::
 
 Server will send provided message to all clients in recipient list via a link::#/chatReceive:: command, or to all connected clients (save the sender) if the first element in recipient list is 0. The server will also send a link::#/chatEcho:: command to the sending client.
 
-subsection:: /chatChangeNickName
+subsection:: /chatChangeName
 Changes the client nickname, broadcast the change to all connected clients.
 
 table::
-## strong::string:: || newNickName || The requested new nickname of the client.
+## strong::string:: || newName || The requested new nickname of the client.
 ::
 
 Server will send all clients notification of the name change via link::#/chatChangeClient::.
 
 subsection:: /chatSignOut
-Signs the client out from the chat server. No additional arguments supplied besides the path.
-
-Server will remove sending client from internal client lists, and then send all remianing clients notification of the signout via link::#/chatChangeClient::. The server will send no more commands to the client upon receipt of this message.
+Signs the client out from the chat server. No additional arguments supplied besides the path. Server will disconnect the client link::Classes/SCLOrkWire::, and then send all remianing clients notification of the signout via link::#/chatChangeClient::.
 
 section:: Client Commands
 
 subsection:: /chatSignInComplete
-Server acknowledges sign-in via link::#/chatSignIn:: and is providing a unique userId.
+Server acknowledges sign-in via link::#/chatSignIn::. The unique id of the client is provided as the Server-assigned link::Classes/SCLOrkWire:: id.
 
 table::
 ## strong::int:: || userId || The server-assigned unique user Id for this client.
@@ -76,20 +70,6 @@ table::
 ## ...              ||  ...  ||  ...
 ## strong::int::    || idN   || The id of the final client in the list.
 ## strong::string:: || nameN || The name of the final client in the list.
-::
-
-subsection:: /chatPong
-Server responding to a link::#/chatPing:: command with the timeout value.
-
-table::
-## strong::float:: || timeout || The timeout value in seconds.
-::
-
-The server will respond to every link::#/chatPing:: command sent to it with a call to link::#/chatPong::. Clients that do not send a link::#/chatPing:: to the server at least every emphasis::timeout:: seconds may be timed out, in which case the server will respond to every command sent to it with that userId with a link::#/chatTimedOut:: command.
-
-note::
-The current client design assumes that the value of emphasis::timeout:: is
-constant for the lifetime of the client.
 ::
 
 subsection:: /chatChangeClient
@@ -144,9 +124,6 @@ table::
 ::
 
 Note that message format is identical to that of link::#/chatReceive::. Server will respond to every call to link::#/chatSendMessage:: with a link::#/chatEcho::.
-
-subsection:: /chatTimedOut
-Sent with no arugments from the server as a response to every command sent by a client that has timed out. The client that receives this command has been signed out and the userId associated with the client is blacklisted by the server. The client should sign in again with a link::#/chatSignIn:: command and receive a new userId.
 
 section:: Message Types
 

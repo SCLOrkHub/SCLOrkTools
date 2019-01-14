@@ -16,10 +16,10 @@ ARGUMENT:: receivePort
 The port on this computer that the SCLOrkWire should listen on.
 
 note::
-SCLOrkWires are designed to uniquely own a specific port. While other OSC messages can be received on that port multiple SCLOrkWires listening on the same port may create problems if the remote machines have the same targetId.
+SCLOrkWires are designed to uniquely own a specific port. While other OSC messages can be received on that port multiple SCLOrkWires listening on the same port may create problems if the remote machines have the same id.
 ::
 
-ARGUMENT:: targetId
+ARGUMENT:: id
 A unique identifier that will be supplied to the remote machine, that the remote machine will use in all subsequent communications to this client.
 
 ARGUMENT:: timeout
@@ -43,7 +43,7 @@ ARGUMENT:: port
 The port to listen to. Will not re-open or re-assign ports for which strong::bind:: has already been called.
 
 ARGUMENT:: wireIssueId
-A function that will be evaulated to issue unique identifiers to the wire clients. This value will become the link::#targetId:: in the created wires.
+A function that will be evaulated to issue unique identifiers to the wire clients. This value will become the link::#id:: in the created wires.
 
 ARGUMENT:: wireOnConnected
 A function that bind provides to the constructed SCLOrkWire objects as their link::#onConnected:: function.
@@ -64,7 +64,7 @@ ARGUMENT:: port
 The port number to stop listening on.
 
 INSTANCEMETHODS::
-private:: prBindAck, prBindConnectAccept, prBindConnectConfirm, prBindDisconnect, prBindConnectRequest, prBindDisconnectConfirm, prChangeConnectionState, init, prBindSend
+private:: prBindAck, prBindConnectAccept, prBindConnectConfirm, prBindDisconnect, prBindConnectRequest, prBindDisconnectConfirm, prChangeConnectionState, init, prBindSend, prDropLine, prBindOSC
 
 METHOD:: disconnect
 Initiate the process to normally terminate the connection, resulting in an eventual connection state change to strong::\disconnected:: or strong::\failureTimeout::.
@@ -72,7 +72,7 @@ Initiate the process to normally terminate the connection, resulting in an event
 METHOD:: selfId
 Accessor for the unique identifier number provided by the remote connection.
 
-METHOD:: targetId
+METHOD:: id
 Accessor for the unique identifier provided by the client code on this side at construction time.
 
 METHOD:: connectionState
@@ -145,12 +145,12 @@ SCLOrkWire.bind(
 		id;
 	},
 	wireOnConnected: { | wire, state |
-		"wire id: %, new state: %".format(wire.targetId, state).postln;
+		"wire id: %, new state: %".format(wire.id, state).postln;
 	},
 	wireOnMessageRecieved: { | wire, message |
 		var wire = connectedWires.at(id);
 		"wire id: % received message %".format(
-			wire.targetId, message).postln;
+			wire.id, message).postln;
 		if (message[0] == '/ping', {
 			wire.sendMsg('/pong');
 		});

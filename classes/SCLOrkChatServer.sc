@@ -1,186 +1,119 @@
 SCLOrkChatServer {
-	const <defaultListenPort = 7707;
-	const clientPingTimeout = 10.0;
+	const <defaultBindPort = 8000;
+	var bindPort;
 
-	var listenPort;
-
-	// Map of individual wire objects to userIds.
-	var <userIdMap;
 	// Map of userIds to nicknames.
-	var <nickNameMap;
+	var <nameMap;
+
 	// Map of userIds to wire objects.
 	var <wireMap;
 
-	var userSerial;
-	var timeoutsQueue;
-	// Map of userIds to NetAddr objects, for clients
-	// that have timed out.
-	var timedOutAddrMap;
+	var wireSerial;
 
-	var quitTasks;
-	var timeoutClientsTask;
-
-	*new { | listenPort = 7707 |
-		^super.newCopyArgs(listenPort).init;
+	*new { | bindPort = 8000 |
+		^super.newCopyArgs(bindPort).init;
 	}
 
 	init {
-		userIdMap = Dictionary.new;
-		nickNameMap = Dictionary.new;
-		netAddrMap = Dictionary.new;
-		userSerial = 0;
-		timeoutsQueue = PriorityQueue.new;
-		timedOutAddrMap = Dictionary.new;
+		nameMap = Dictionary.new;
+		wireMap = Dictionary.new;
+		wireSerial = 1;
 
 		SCLOrkWire.bind(
-			port: listenPort,
+			port: bindPort,
 			wireIssueId: {
-				userIdMap.atFail(clientAddr, {
-					userSerial = userSerial + 1;
-					userSerial;
-				});
+				var serial = wireSerial;
+				wireSerial = wireSerial + 1;
+				serial;
 			},
 			wireOnConnected: { | wire, status |
+				switch (status,
+					\connected, {
+						wireMap.put(wire.id, wire);
+					},
+					\failureTimeout, {
+						// Remove client from our maps, inform other clients of
+						// the change.
+						var name = nameMap.at(wire.id);
+						wireMap.removeAt(wire.id);
+						nameMap.removeAt(wire.id);
+						this.prSendAll(
+							this.prChangeClient(\timeout, wire.id, name));
+					},
+					\disconnect, {
+						wireMap.removeAt(wire.id);
+					}
+				);
 			},
 			wireOnMessageReceived: { | wire, msg |
 				switch (msg[0],
 					'/chatSignIn', {
-						var nickName = msg[1];
-						// Update user maps.
-						userIdMap.put(wire, wire.targetId);
-						nickNameMap.put(wire.targetId, nickName);
-						wireMap.put(wire.targetId, clientAddr);
-						timeoutsQueue.put(Main.elapsedTime + clientPingTimeout,
-							wire.targetId);
-
-						clientAddr.sendMsg('/chatSignInComplete', wire.targetId);
+						var name = msg[1];
+						nameMap.put(wire.id, name);
+						wire.sendMsg('/chatSignInComplete');
 
 						// Send new client announcement to all connected clients.
 						this.prSendAll(
-							this.prChangeClient(\add, wire.targetId, nickName));
+							this.prChangeClient(\add, wire.id, name));
 					},
 					'/chatGetAllClients', {
-						if (this.prScreenTimeout(wire.targetId), {
-							var clientArray = [ '/chatSetAllClients' ] ++
-							nickNameMap.getPairs;
-							wire.sendMsg(*clientArray);
-						});
-					},
-					'/chatPing', {
-						if (this.prScreenTimeout(wire.targetId), {
-							// Remove current timeout value from the priority queue.
-							timeoutsQueue.removeValue(wire.targetId);
-							// Re-add with new timeout.
-							timeoutsQueue.put(Main.elapsedTime + clientPingTimeout,
-								wire.targetId);
-							// Respond with a pong and the timeout interval.
-							clientAddr.sendMsg('/chatPong', clientPingTimeout);
-						});
+						var clientArray = [ '/chatSetAllClients' ] ++ nameMap.getPairs;
+						wire.sendMsg(*clientArray);
 					},
 					'/chatSendMessage', {
-						var senderId, recipients, sendMessage, echoMessage;
-						senderId = msg[1];
-						if (this.prScreenTimeout(senderId), {
-							recipients = msg[4..];
-							sendMessage = ([ '/chatReceive' ] ++ msg[1..]);
+						var recipients, sendMessage, echoMessage;
+						recipients = msg[3..];
+						sendMessage = ([ '/chatReceive', wire.id ] ++ msg[1..]);
 
-							// If first recipient is 0 we send to all clients but sender.
-							if (recipients[0] == 0, {
-								wireMap.keysValuesDo({ | userId, clientWire |
-									if (userId != senderId, {
-										clientWire.sendMsg(*sendMessage);
-									});
-								});
-							}, {
-								recipients.do({ | userId, index |
-									var clientWire = wireMap.at(userId);
-									clientWire.sendMsg(*sendMessage);
-								});
+						// If first recipient is 0 we send to all clients but sender.
+						if (recipients[0] == 0, {
+							this.prSendAll(sendMessage, wire);
+						}, {
+							recipients.do({ | id, index |
+								var clientWire = wireMap.at(id);
+								clientWire.sendMsg(*sendMessage);
 							});
+						});
 
-							// Send echo message back to sender.
-							echoMessage = ([ '/chatEcho' ] ++ msg[1..]);
-							wire.sendMsg(*echoMessage);
-						});
+						// Send echo message back to sender.
+						echoMessage = ([ '/chatEcho', wire.id ] ++ msg[1..]);
+						wire.sendMsg(*echoMessage);
 					},
-					'/chatChangeNickname', {
-						var nickName;
-						if (this.prScreenTimeout(wire.targetId), {
-							nickName = msg[1];
-							nickNameMap.put(wire.targetId, nickName);
-							this.prSendAll(
-								this.prChangeClient(\rename, wire.targetId, nickName));
-						});
+					'/chatChangeName', {
+						var newName = msg[1];
+						nameMap.put(wire.id, newName);
+						this.prSendAll(
+							this.prChangeClient(\rename, wire.id, newName));
 					},
 					'/chatSignOut', {
-						var nickName;
-						// We don't send a timedout response to timed out
-						// clients trying to sign out.
-						if (timedOutAddrMap.at(wire.targetId).isNil, {
-							nickName = nickNameMap.at(wire.targetId);
-							wireMap.removeAt(wire.targetId);
-							userIdMap.removeAt(wire);
-							nickNameMap.removeAt(wire.targetId);
-							timeoutsQueue.removeValue(wire.targetId);
-							this.prSendAll(
-								this.prChangeClient(\remove, wire.targetId, nickName));
-						});
+						var name = nameMap.at(wire.id);
+						nameMap.removeAt(wire.id);
+						// Start normal connection termination process.
+						wire.disconnect;
+						// Inform all other clients of disconnect.
+						this.prSendAll(
+							this.prChangeClient(\remove, wire.id, name), wire);
 					}
 				);
 			},
 			onKnock: { | wire |
+				// We wait for clients to sign in with \connected,
+				// so no need to add additional tracking here.
 			}
 		);
 
-		quitTasks = false;
-
-		timeoutClientsTask = SkipJack.new({
-			while ({ timeoutsQueue.notEmpty and: {
-				Main.elapsedTime > timeoutsQueue.topPriority }}, {
-				var userId = timeoutsQueue.pop;
-				var nickName = nickNameMap.at(userId);
-				var clientAddr = netAddrMap.at(userId);
-				// Add this client to the timed out map.
-				timedOutAddrMap.put(userId, clientAddr);
-
-				// Remove from other maps.
-				netAddrMap.removeAt(userId);
-				userIdMap.removeAt(clientAddr);
-				nickNameMap.removeAt(userId);
-
-				clientAddr.sendMsg('/chatTimedOut');
-				this.prSendAll(this.prChangeClient(\timeout, userId, nickName));
-			});
-		},
-		dt: 1.0,
-		stopTest: { quitTasks },
-		name: "ChatServerTimeoutClientsCheck",
-		clock: SystemClock,
-		autostart: true
-		);
-
-		^this;
+		this;
 	}
 
 	free {
-		quitTasks = true;
-		timeoutClientsTask.stop;
+		SCLOrkWire.unbind(bindPort);
 	}
 
-	// Returns true if the user HASN'T timed out.
-	prScreenTimeout { | userId |
-		if (timedOutAddrMap.at(userId).notNil, {
-			var clientAddr = timedOutAddrMap.at(userId);
-			clientAddr.sendMsg('/chatTimedOut');
-			^false;
-		}, {
-			^true;
-		});
-	}
-
-	prSendAll { | msgArray |
-		userIdMap.keys.do({ | wire, index |
-			wire.sendMsg(*msgArray);
+	prSendAll { | msgArray, skipWire = nil |
+		wireMap.values.do({ | wire, index |
+			if (skipWire.isNil or: { skipWire.id != wire.id }, {
+				wire.sendMsg(*msgArray);
+			});
 		});
 	}
 

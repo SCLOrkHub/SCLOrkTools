@@ -2,8 +2,7 @@
 ~chatServer = SCLOrkChatServer.new;
 ~timeServer = SCLOrkTimeServer.new;
 
-~chatBot = SCLOrkChatClient.new(NetAddr.new(
-	"127.0.0.1", SCLOrkChatServer.defaultListenPort));
+~chatBot = SCLOrkChatClient.new("127.0.0.1");
 ~chatBot.onMessageReceived = { | chatMessage |
 	// We only respond to messages directed solely at us.
 	if (chatMessage.recipientIds == [ ~chatBot.userId ], {

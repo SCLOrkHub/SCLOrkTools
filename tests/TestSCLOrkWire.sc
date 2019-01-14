@@ -53,6 +53,102 @@ TestSCLOrkWire : UnitTest {
 		SCLOrkWire.unbind(8000);
 	}
 
+	test_knock_connect_disconnect_cycle {
+		var knockWire;
+		var retries = 0;
+		var issueSerial = 10;
+		var boundWires = Array.new;
+		var boundConnectCalls = 0;
+		var boundMessageCalls = 0;
+		var knockCalls = 0;
+		var knockConnectCalls = 0;
+		var knockMessageCalls = 0;
+		var factory = { | hostname, port |
+			SCLOrkFlakyLocalNetAddr.new(port, { false });
+		};
+
+		SCLOrkWire.bind(7000,
+			{
+				var serial = issueSerial;
+				issueSerial = issueSerial + 1;
+				serial;
+			},
+			{ | wire, state |
+				if (state == \connected, {
+					wire.sendMsg('yo');
+					boundConnectCalls = boundConnectCalls + 1;
+				}, {
+					this.assert(state != \failureTimeout);
+				});
+			},
+			{ | wire, message |
+				boundMessageCalls = boundMessageCalls + 1;
+			},
+			{ | wire |
+				boundWires = boundWires.add(wire);
+				knockCalls = knockCalls + 1;
+			},
+			factory);
+
+		knockWire = SCLOrkWire.new(7050, 100, netAddrFactory: factory);
+		knockWire.onConnected = { | wire, state |
+			if (state == \connected, {
+				wire.sendMsg('yo');
+				knockConnectCalls = knockConnectCalls + 1;
+			}, {
+				this.assert(state != \failureTimeout);
+			});
+		};
+		knockWire.onMessageReceived = { | wire, message |
+			this.assertEquals(knockWire.id, wire.id);
+			knockMessageCalls = knockMessageCalls + 1;
+		};
+
+		6.do({ | i |
+			knockWire.knock("127.0.0.1", 7000);
+
+			// Wait for bound wire to be created.
+			retries = 0;
+			while ({ retries < 10
+				and: ((boundWires.size < (i + 1))
+					or: { boundWires[i].connectionState != \connected })}, {
+				0.2.wait;
+				retries = retries + 1;
+			});
+
+			this.assert(retries < 10);
+			this.assertEquals(boundWires.size, i + 1);
+			this.assertEquals(knockWire.selfId, i + 10);
+			this.assertEquals(boundConnectCalls, i + 1);
+			this.assertEquals(boundMessageCalls, i + 1);
+			this.assertEquals(knockConnectCalls, i + 1);
+			this.assertEquals(knockMessageCalls, i + 1);
+
+			if ((i % 2) == 0, {
+				// Disconnect from bind wire side.
+				boundWires[i].disconnect;
+			}, {
+				// Disconnect from knock wire side.
+				knockWire.disconnect;
+			});
+
+			// Wait for both parties to be disconnected.
+			retries = 0;
+			while ({ retries < 10
+				and: { knockWire.connectionState != \disconnected }
+				and: { boundWires[i].connectionState != \disconnected }}, {
+				0.2.wait;
+				retries = retries + 1;
+			});
+
+			this.assert(retries < 10);
+			this.assertEquals(knockWire.connectionState, \disconnected);
+			this.assertEquals(boundWires[i].connectionState, \disconnected);
+		});
+
+		SCLOrkWire.unbind(7000);
+	}
+
 	test_knock_drop_first_knock {
 		var knockWire;
 		var retries = 0;
@@ -76,7 +172,7 @@ TestSCLOrkWire : UnitTest {
 
 		knockWire = SCLOrkWire.new(7550, 100, netAddrFactory: factory);
 		knockWire.knock("127.0.0.1", 8050);
-		// Wait for bound wires to be created.
+		// Wait for bound wire to be created.
 		while ({retries < 10 and: { boundWires.size < 1 }}, {
 			0.2.wait;
 			retries = retries + 1;
@@ -105,7 +201,7 @@ TestSCLOrkWire : UnitTest {
 		var retries = 0;
 
 		wire.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 3);
+			this.assertEquals(w.id, 3);
 			timedOut = (state == \failureTimeout);
 		};
 		wire.knock("127.0.0.1", 8050);
@@ -134,7 +230,7 @@ TestSCLOrkWire : UnitTest {
 		var retries = 0;
 
 		SCLOrkWire.bind(8100, { 25 }, { | w, state |
-			this.assertEquals(w.targetId, 25);
+			this.assertEquals(w.id, 25);
 			bindTimedOut = (state == \failureTimeout)
 		}, { }, { | w |
 			boundWires = boundWires.add(w)
@@ -160,19 +256,19 @@ TestSCLOrkWire : UnitTest {
 		var factory = { | hostname, port |
 			SCLOrkFlakyLocalNetAddr.new(port, { false });
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7666, targetId: 27,
+		var wireA = SCLOrkWire.new(receivePort: 7666, id: 27,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7667, targetId: 26,
+		var wireB = SCLOrkWire.new(receivePort: 7667, id: 26,
 			netAddrFactory: factory);
 		var wireAStates = Array.new(2);
 		var wireBStates = Array.new(2);
 
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 27);
+			this.assertEquals(w.id, 27);
 			wireAStates = wireAStates.add(state);
 		};
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 26);
+			this.assertEquals(w.id, 26);
 			wireBStates = wireBStates.add(state);
 		};
 
@@ -198,19 +294,19 @@ TestSCLOrkWire : UnitTest {
 				});
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7668, targetId: 7669,
+		var wireA = SCLOrkWire.new(receivePort: 7668, id: 7669,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7669, targetId: 7668,
+		var wireB = SCLOrkWire.new(receivePort: 7669, id: 7668,
 			netAddrFactory: factory);
 		var wireAStates = Array.new(2);
 		var wireBStates = Array.new(2);
 
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 7669);
+			this.assertEquals(w.id, 7669);
 			wireAStates = wireAStates.add(state);
 		};
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 7668);
+			this.assertEquals(w.id, 7668);
 			wireBStates = wireBStates.add(state);
 		};
 
@@ -237,19 +333,19 @@ TestSCLOrkWire : UnitTest {
 				});
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7670, targetId: 0,
+		var wireA = SCLOrkWire.new(receivePort: 7670, id: 0,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7671, targetId: 0,
+		var wireB = SCLOrkWire.new(receivePort: 7671, id: 0,
 			netAddrFactory: factory);
 		var wireAStates = Array.new(2);
 		var wireBStates = Array.new(2);
 
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 0);
+			this.assertEquals(w.id, 0);
 			wireAStates = wireAStates.add(state);
 		};
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 0);
+			this.assertEquals(w.id, 0);
 			wireBStates = wireBStates.add(state);
 		};
 
@@ -276,19 +372,19 @@ TestSCLOrkWire : UnitTest {
 				});
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7672, targetId: 102,
+		var wireA = SCLOrkWire.new(receivePort: 7672, id: 102,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7673, targetId: 107,
+		var wireB = SCLOrkWire.new(receivePort: 7673, id: 107,
 			netAddrFactory: factory);
 		var wireAStates = Array.new(2);
 		var wireBStates = Array.new(2);
 
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 102);
+			this.assertEquals(w.id, 102);
 			wireAStates = wireAStates.add(state);
 		};
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 107);
+			this.assertEquals(w.id, 107);
 			wireBStates = wireBStates.add(state);
 		};
 
@@ -311,13 +407,13 @@ TestSCLOrkWire : UnitTest {
 				args[0] == '/wireConnectRequest'
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7674, targetId: 7,
+		var wireA = SCLOrkWire.new(receivePort: 7674, id: 7,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7675, targetId: 8,
+		var wireB = SCLOrkWire.new(receivePort: 7675, id: 8,
 			netAddrFactory: factory);
 
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 7);
+			this.assertEquals(w.id, 7);
 			timedOut = (state == \failureTimeout);
 		};
 
@@ -344,17 +440,17 @@ TestSCLOrkWire : UnitTest {
 				args[0] == '/wireConnectAccept'
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7676, targetId: 45,
+		var wireA = SCLOrkWire.new(receivePort: 7676, id: 45,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7677, targetId: 44,
+		var wireB = SCLOrkWire.new(receivePort: 7677, id: 44,
 			netAddrFactory: factory);
 
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 45);
+			this.assertEquals(w.id, 45);
 			aTimedOut = (state == \failureTimeout)
 		};
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 44);
+			this.assertEquals(w.id, 44);
 			bTimedOut = (state == \failureTimeout)
 		};
 
@@ -384,13 +480,13 @@ TestSCLOrkWire : UnitTest {
 				args[0] == '/wireConnectConfirm'
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7678, targetId: 45,
+		var wireA = SCLOrkWire.new(receivePort: 7678, id: 45,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7679, targetId: 62,
+		var wireB = SCLOrkWire.new(receivePort: 7679, id: 62,
 			netAddrFactory: factory);
 
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 62);
+			this.assertEquals(w.id, 62);
 			timedOut = (state == \failureTimeout)
 		};
 
@@ -414,13 +510,13 @@ TestSCLOrkWire : UnitTest {
 		var factory = { | hostname, port |
 			SCLOrkFlakyLocalNetAddr.new(port, { false });
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7680, targetId: 2,
+		var wireA = SCLOrkWire.new(receivePort: 7680, id: 2,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7681, targetId: 1,
+		var wireB = SCLOrkWire.new(receivePort: 7681, id: 1,
 			netAddrFactory: factory);
 
 		wireA.onMessageReceived = { | w, msg |
-			if (w.targetId == 2
+			if (w.id == 2
 				and: { msg.size == 1 }
 				and: { msg[0] == 'testA' }, {
 				aReceivedCount = aReceivedCount + 1;
@@ -429,7 +525,7 @@ TestSCLOrkWire : UnitTest {
 			});
 		};
 		wireB.onMessageReceived = { | w, msg |
-			if (w.targetId == 1
+			if (w.id == 1
 				and: { msg.size == 1 }
 				and: { msg[0] == 'testB' }, {
 				bReceivedCount = bReceivedCount + 1;
@@ -466,13 +562,13 @@ TestSCLOrkWire : UnitTest {
 				});
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7682, targetId: 3,
+		var wireA = SCLOrkWire.new(receivePort: 7682, id: 3,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7683, targetId: 2,
+		var wireB = SCLOrkWire.new(receivePort: 7683, id: 2,
 			netAddrFactory: factory);
 
 		wireB.onMessageReceived = { | w, msg |
-			if (w.targetId == 2
+			if (w.id == 2
 				and: { msg.size == 1 }
 				and: { msg[0] == 'testB' }, {
 				bReceivedCount = bReceivedCount + 1;
@@ -508,13 +604,13 @@ TestSCLOrkWire : UnitTest {
 				});
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7684, targetId: 0,
+		var wireA = SCLOrkWire.new(receivePort: 7684, id: 0,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7685, targetId: 5,
+		var wireB = SCLOrkWire.new(receivePort: 7685, id: 5,
 			netAddrFactory: factory);
 
 		wireB.onMessageReceived = { | w, msg |
-			if (w.targetId == 5
+			if (w.id == 5
 				and: { msg.size == 1 }
 				and: { msg[0] == 'testB' }, {
 				bReceivedCount = bReceivedCount + 1;
@@ -544,16 +640,16 @@ TestSCLOrkWire : UnitTest {
 				args[0] == '/wireSend'
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7686, targetId: 66,
+		var wireA = SCLOrkWire.new(receivePort: 7686, id: 66,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7687, targetId: 23,
+		var wireB = SCLOrkWire.new(receivePort: 7687, id: 23,
 			netAddrFactory: factory);
 
 		wireB.onMessageReceived = { | w, msg |
 			this.assert(false, "dropping all sends, so wireB should not receive data");
 		};
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 66);
+			this.assertEquals(w.id, 66);
 			timedOut = (state == \failureTimeout)
 		};
 
@@ -583,13 +679,13 @@ TestSCLOrkWire : UnitTest {
 				args[0] == '/wireAck'
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7688, targetId: 45,
+		var wireA = SCLOrkWire.new(receivePort: 7688, id: 45,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7689, targetId: 7689,
+		var wireB = SCLOrkWire.new(receivePort: 7689, id: 7689,
 			netAddrFactory: factory);
 
 		wireB.onMessageReceived = { | w, msg |
-			if (w.targetId == 7689
+			if (w.id == 7689
 				and: { msg.size == 1 }
 				and: { msg[0] == 'testB' }, {
 				bReceivedCount = bReceivedCount + 1;
@@ -599,7 +695,7 @@ TestSCLOrkWire : UnitTest {
 			});
 		};
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 45);
+			this.assertEquals(w.id, 45);
 			timedOut = (state == \failureTimeout);
 		};
 
@@ -639,15 +735,15 @@ TestSCLOrkWire : UnitTest {
 				shouldDrop;
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7690, targetId: 7,
+		var wireA = SCLOrkWire.new(receivePort: 7690, id: 7,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7691, targetId: 16,
+		var wireB = SCLOrkWire.new(receivePort: 7691, id: 16,
 			netAddrFactory: factory);
 
 		var bMessages = Array.new(2);
 
 		wireB.onMessageReceived = { | w, msg |
-			if (w.targetId == 16, {
+			if (w.id == 16, {
 				bMessages = bMessages.add(msg[0]);
 			}, {
 				this.assert(false);
@@ -686,22 +782,22 @@ TestSCLOrkWire : UnitTest {
 				shouldDrop;
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7692, targetId: 17,
+		var wireA = SCLOrkWire.new(receivePort: 7692, id: 17,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7693, targetId: 41,
+		var wireB = SCLOrkWire.new(receivePort: 7693, id: 41,
 			netAddrFactory: factory);
 
 		var aMessages = Array.new(10);
 		var bMessages = Array.new(10);
 		wireA.onMessageReceived = { | w, msg |
-			if (w.targetId == 17, {
+			if (w.id == 17, {
 				aMessages = aMessages.add(msg[0]);
 			}, {
 				this.assert(false);
 			});
 		};
 		wireB.onMessageReceived = { | w, msg |
-			if (w.targetId == 41, {
+			if (w.id == 41, {
 				bMessages = bMessages.add(msg[0]);
 			}, {
 				this.assert(false);
@@ -743,21 +839,21 @@ TestSCLOrkWire : UnitTest {
 					and: { args[3] == 'aSecond' })
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7694, targetId: 117,
+		var wireA = SCLOrkWire.new(receivePort: 7694, id: 117,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7695, targetId: 576,
+		var wireB = SCLOrkWire.new(receivePort: 7695, id: 576,
 			netAddrFactory: factory);
 
 		var bMessages = [];
 		wireB.onMessageReceived = { | w, msg |
-			if (w.targetId == 576, {
+			if (w.id == 576, {
 				bMessages = bMessages.add(msg[0]);
 			}, {
 				this.assert(false);
 			});
 		};
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 117);
+			this.assertEquals(w.id, 117);
 			timedOut = (state == \failureTimeout);
 		};
 
@@ -788,18 +884,18 @@ TestSCLOrkWire : UnitTest {
 		var factory = { | hostname, port |
 			SCLOrkFlakyLocalNetAddr.new(port, { false });
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7696, targetId: 23,
+		var wireA = SCLOrkWire.new(receivePort: 7696, id: 23,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7697, targetId: 0,
+		var wireB = SCLOrkWire.new(receivePort: 7697, id: 0,
 			netAddrFactory: factory);
 		var aWasConnected = false;
 		var bWasConnected = false;
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 23);
+			this.assertEquals(w.id, 23);
 			if (state == \connected, { aWasConnected = true });
 		};
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 0);
+			this.assertEquals(w.id, 0);
 			if (state == \connected, { bWasConnected = true });
 		};
 
@@ -828,18 +924,18 @@ TestSCLOrkWire : UnitTest {
 				});
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7698, targetId: 123,
+		var wireA = SCLOrkWire.new(receivePort: 7698, id: 123,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7699, targetId: 124,
+		var wireB = SCLOrkWire.new(receivePort: 7699, id: 124,
 			netAddrFactory: factory);
 		var aWasConnected = false;
 		var bWasConnected = false;
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 123);
+			this.assertEquals(w.id, 123);
 			if (state == \connected, { aWasConnected = true });
 		};
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 124);
+			this.assertEquals(w.id, 124);
 			if (state == \connected, { bWasConnected = true });
 		};
 
@@ -868,18 +964,18 @@ TestSCLOrkWire : UnitTest {
 				});
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7700, targetId: 27,
+		var wireA = SCLOrkWire.new(receivePort: 7700, id: 27,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7701, targetId: 23,
+		var wireB = SCLOrkWire.new(receivePort: 7701, id: 23,
 			netAddrFactory: factory);
 		var aWasConnected = false;
 		var bWasConnected = false;
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 27);
+			this.assertEquals(w.id, 27);
 			if (state == \connected, { aWasConnected = true });
 		};
 		wireB.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 23);
+			this.assertEquals(w.id, 23);
 			if (state == \connected, { bWasConnected = true });
 		};
 
@@ -904,13 +1000,13 @@ TestSCLOrkWire : UnitTest {
 				args[0] == '/wireDisconnect'
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7702, targetId: 16,
+		var wireA = SCLOrkWire.new(receivePort: 7702, id: 16,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7703, targetId: 17,
+		var wireB = SCLOrkWire.new(receivePort: 7703, id: 17,
 			netAddrFactory: factory);
 
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 16);
+			this.assertEquals(w.id, 16);
 			timedOut = (state == \failureTimeout);
 		};
 
@@ -939,13 +1035,13 @@ TestSCLOrkWire : UnitTest {
 				args[0] == '/wireDisconnectConfirm'
 			});
 		};
-		var wireA = SCLOrkWire.new(receivePort: 7704, targetId: 14,
+		var wireA = SCLOrkWire.new(receivePort: 7704, id: 14,
 			netAddrFactory: factory);
-		var wireB = SCLOrkWire.new(receivePort: 7705, targetId: 12,
+		var wireB = SCLOrkWire.new(receivePort: 7705, id: 12,
 			netAddrFactory: factory);
 
 		wireA.onConnected = { | w, state |
-			this.assertEquals(w.targetId, 14);
+			this.assertEquals(w.id, 14);
 			timedOut = (state == \failureTimeout);
 		};
 
