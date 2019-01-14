@@ -10,11 +10,9 @@ better.
 
 subsection:: 0.2.0 - 13 January 2019
 
-Adds SCLOrkWire classes, tests, and documentation. Refactors SCLOrkChat objects to re-use wires.
+Adds SCLOrkWire classes, tests, and documentation. Refactors SCLOrkChat objects to re-use wires. Some API changes to link::SCLOrkChatClient:: requiring changes to the SCLOrkChat Quark as well.
 
 subsection:: 0.1.1 - 1 January 2019
 
-First production version, contained the UDP-based Chat client and server, as
-well as SCLOrkTime server and client, for time synchronization of SCLOrkClock
-objects.
+First production version, contained the UDP-based Chat client and server, as well as SCLOrkTime server and client, for time synchronization of SCLOrkClock objects.
 
