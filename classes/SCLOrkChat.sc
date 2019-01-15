@@ -40,9 +40,8 @@ SCLOrkChat {
 			name = "noname";
 		});
 		if (chatClient.isNil, {
-			chatClient = SCLOrkChatClient.new(
-				NetAddr.new("sclork-s01.local",
-					SCLOrkChatServer.defaultListenPort));
+			chatClient = SCLOrkChatClient.new("sclork-s01.local",
+				SCLOrkChatServer.defaultBindPort);
 		});
 		quitTasks = false;
 		wedged = false;
