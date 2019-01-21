@@ -88,7 +88,7 @@ SCLOrkPDVoice {
 							});
 						}, \parameterSpace, {  // start a name/value pair, or close.
 							if (token.at(\type) === \symbol, {
-								parameterName = token.at(\string);
+								parameterName = token.at(\string).asSymbol;
 								\parameterNameComma;
 							}, {
 								if (token.at(\type) === \closeParen
@@ -138,12 +138,15 @@ SCLOrkPDVoice {
 								if (parenDepth > 0, {
 									\parameterValueStatement
 								}, {
-									params.put(parameterName, parameterValueString);
+									params.put(parameterName,
+										parameterValueString[
+											0..parameterValueString.size - 2]);
 									\closePdef  // Closed entire Pbindef without comma.
 								});
 							}
 							{ token.at(\type) === \comma } {
-								params.put(parameterName, parameterValueString);
+								params.put(parameterName, parameterValueString[
+									0..parameterValueString.size - 2]);
 								if (parenDepth == 1, {
 									\parameterSpace
 								}, {
