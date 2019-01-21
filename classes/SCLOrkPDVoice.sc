@@ -19,7 +19,7 @@ SCLOrkPDVoice {
 	}
 
 	// Returns false if failed to parse, true if successful.
-	setFromTokens { | tokens, verbose = false |
+	setFromTokens { | tokens, verbose = true |
 		var state = \start;
 		var parameterName;
 		var parameterValueString = "";
@@ -38,7 +38,8 @@ SCLOrkPDVoice {
 			});
 
 			if (verbose, {
-				"state: %, token: %".format(state, token).postln;
+				"state: %, parenDepth: %, token: %".format(
+					state, parenDepth, token).postln;
 			});
 
 			// We studiously ignore whitespace and comments.
@@ -68,17 +69,14 @@ SCLOrkPDVoice {
 						\getName, {
 							if (token.at(\type) === \symbol, {
 								name = token.at(\string);
-								\parameterSpace;
+								\nameComma;
 							}, {
 								\error;
 							});
 						},
-						\parameterSpace, {
-							// In the parameter space of Pbindef but haven't yet started a
-							// name for a parameter. Can either provide a comma, indicating
-							// the start of another name, value pair, or a closing paren.
+						\nameComma, {  // comma following pBindef name, or close.
 							if (token.at(\type) === \comma, {
-								\parameterName;
+								\parameterSpace;
 							}, {
 								if (token.at(\type) === \closeParen
 									and: { parenDepth == 1 }, {
@@ -88,8 +86,7 @@ SCLOrkPDVoice {
 										\error;
 								});
 							});
-						},
-						\parameterName, {
+						}, \parameterSpace, {  // start a name/value pair
 							if (token.at(\type) === \symbol, {
 								parameterName = token.at(\string);
 								\parameterNameComma;
@@ -104,25 +101,20 @@ SCLOrkPDVoice {
 								\error;
 							});
 						},
-						\parameterValue, {
+						\parameterValue, {  // state means first token within value.
 							parameterValueString = token.at(\string);
-
 							case
-							{
-								// Some parameters have simple types, handle those directly.
-								token.at(\type) === \number
-								or: { token.at(\type) === \string }
-							} {
-								params.put(parameterName, parameterValueString);
-								\parameterSpace;
+							{ token.at(\type) === \openParen } {
+								parenDepth = parenDepth + 1;
+								\parameterValueStatement;
 							}
 							{
-								token.at(\type) === \global
+								token.at(\type) === \number
+								or: { token.at(\type) === \string }
+								or: { token.at(\type) === \global }
 								or: { token.at(\type) === \className }
-							} { \parameterValueStatement }
-							{ token.at(\type) == \openParen } {
-								parenDepth = parenDepth + 1;
-								\parameterValueStatement
+							} {
+								\parameterValueStatement;
 							}
 							{ \error }
 						},
@@ -131,30 +123,25 @@ SCLOrkPDVoice {
 							// looking for a closing paren. We check commas to make sure
 							// they are inside of nested parens or brackets.
 							case
-							{
-								token.at(\type) === \openParen
-							} {
+							{ token.at(\type) === \openParen } {
 								parenDepth = parenDepth + 1;
 								\parameterValueStatement;
 							}
-							{
-								token.at(\type) === \closeParen
-							} {
+							{ token.at(\type) === \closeParen } {
 								parenDepth = parenDepth - 1;
-								if (parenDepth == 1, {
-									params.put(parameterName, parameterValueString);
-									\parameterSpace;
-								}, {
+								if (parenDepth > 0, {
 									\parameterValueStatement
+								}, {
+									params.put(parameterName, parameterValueString);
+									\closePdef  // Closed entire Pbindef without comma.
 								});
 							}
-							{
-								token.at(\type) === \comma
-							} {
-								if (parenDepth > 1, {
-									\parameterValueStatement
+							{ token.at(\type) === \comma } {
+								params.put(parameterName, parameterValueString);
+								if (parenDepth == 1, {
+									\parameterSpace
 								}, {
-									\error;
+									\parameterValueStatement;
 								});
 							}
 							{ \parameterValueStatement }  // default is to keep going.

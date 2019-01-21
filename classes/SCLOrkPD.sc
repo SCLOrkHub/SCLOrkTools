@@ -17,6 +17,7 @@ SCLOrkPD {
 	}
 
 	prParsePresets {
+		var parseFailCount = 0;
 		var rootPath = PathName.new(presetSearchDir);
 		rootPath.filesDo({ | pathName |
 			if (pathName.isFile
@@ -31,9 +32,13 @@ SCLOrkPD {
 						"successfully parsed: %!".format(pathName.asAbsolutePath).postln;
 					}, {
 						"*** error parsing %".format(pathName.asAbsolutePath).postln;
+						parseFailCount = parseFailCount + 1;
 					});
 			});
 		});
+
+		"SCLOrkPD parsed % out of % files".format(
+			presets.size, presets.size + parseFailCount).postln;
 	}
 
 	prConstructUIElements {
