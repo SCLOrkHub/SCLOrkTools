@@ -19,7 +19,7 @@ SCLOrkPDVoice {
 	}
 
 	// Returns false if failed to parse, true if successful.
-	setFromTokens { | tokens, verbose = true |
+	setFromTokens { | tokens, verbose = false |
 		var state = \start;
 		var parameterName;
 		var parameterValueString = "";
@@ -86,12 +86,18 @@ SCLOrkPDVoice {
 										\error;
 								});
 							});
-						}, \parameterSpace, {  // start a name/value pair
+						}, \parameterSpace, {  // start a name/value pair, or close.
 							if (token.at(\type) === \symbol, {
 								parameterName = token.at(\string);
 								\parameterNameComma;
 							}, {
-								\error;
+								if (token.at(\type) === \closeParen
+									and: { parenDepth == 1}, {
+										parenDepth = 0;
+										\closePdef;
+									}, {
+										\error;
+								});
 							});
 						},
 						\parameterNameComma, {

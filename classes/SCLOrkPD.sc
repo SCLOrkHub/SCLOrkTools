@@ -29,7 +29,7 @@ SCLOrkPD {
 						pathName.fileNameWithoutExtension["PD_Preset_".size..]);
 					if (preset.notNil, {
 						presets.put(preset.name, preset);
-						"successfully parsed: %!".format(pathName.asAbsolutePath).postln;
+						"parsed: %".format(pathName.asAbsolutePath).postln;
 					}, {
 						"*** error parsing %".format(pathName.asAbsolutePath).postln;
 						parseFailCount = parseFailCount + 1;
