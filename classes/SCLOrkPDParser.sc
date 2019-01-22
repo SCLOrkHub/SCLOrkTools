@@ -66,7 +66,7 @@ SCLOrkPDParser {
 				match.notNil;
 			} { \lineComment }
 			{
-				match = string.findRegexpAt("/[*].[*]/", offset);
+				match = string.findRegexpAt("/[*].*[*]/", offset);
 				match.notNil;
 			} { \blockComment }
 			{
