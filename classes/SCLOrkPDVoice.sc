@@ -7,6 +7,8 @@ SCLOrkPDVoice {
 	var <clockQuant;
 	var <quant;
 
+	var voiceTokens;
+
 	*newFromTokens { | tokens |
 		var voice = super.new.init;
 		if (voice.setFromTokens(tokens).not, { ^nil });
@@ -21,21 +23,21 @@ SCLOrkPDVoice {
 	// Returns false if failed to parse, true if successful.
 	setFromTokens { | tokens, verbose = false |
 		var state = \start;
+
 		var parameterName;
 		var parameterValueString = "";
+		var parameterValueTokens;
+		var parameterOrder = 0;
+
 		var parenDepth = 0;
 
 		params.clear;
+		voiceTokens = tokens;
 
 		tokens.do({ | token, index |
 			// Concatenate all the tokens together to get original
 			// string as parsed.
 			string = string ++ token.at(\string);
-
-			// Also append parameter value strings here, so we pick up the whitespace.
-			if (state === \parameterValueStatement, {
-				parameterValueString = parameterValueString ++ token.at(\string);
-			});
 
 			if (verbose, {
 				"state: %, parenDepth: %, token: %".format(
@@ -108,7 +110,8 @@ SCLOrkPDVoice {
 							});
 						},
 						\parameterValue, {  // state means first token within value.
-							parameterValueString = token.at(\string);
+							parameterValueString = "";
+							parameterValueTokens = Array.new;
 							case
 							{ token.at(\type) === \openParen } {
 								parenDepth = parenDepth + 1;
@@ -138,16 +141,23 @@ SCLOrkPDVoice {
 								if (parenDepth > 0, {
 									\parameterValueStatement
 								}, {
-									params.put(parameterName,
-										parameterValueString[
-											0..parameterValueString.size - 2]);
+									var value = ();
+									value.put(\tokens, parameterValueTokens);
+									value.put(\string, parameterValueString);
+									value.put(\order, parameterOrder);
+									params.put(parameterName, value);
+									parameterOrder = parameterOrder + 1;
 									\closePdef  // Closed entire Pbindef without comma.
 								});
 							}
 							{ token.at(\type) === \comma } {
-								params.put(parameterName, parameterValueString[
-									0..parameterValueString.size - 2]);
 								if (parenDepth == 1, {
+									var value = ();
+									value.put(\tokens, parameterValueTokens);
+									value.put(\string, parameterValueString);
+									value.put(\order, parameterOrder);
+									params.put(parameterName, value);
+									parameterOrder = parameterOrder + 1;
 									\parameterSpace
 								}, {
 									\parameterValueStatement;
@@ -252,6 +262,13 @@ SCLOrkPDVoice {
 						{ \error }
 					);
 			});
+
+			// Append parameter value strings here, so we pick up the whitespace.
+			if (state === \parameterValueStatement, {
+				parameterValueString = parameterValueString ++ token.at(\string);
+				parameterValueTokens = parameterValueTokens.add(token);
+			});
+
 		});
 
 		^(state === \done or: { state === \closePdef });

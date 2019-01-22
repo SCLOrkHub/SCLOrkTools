@@ -12,12 +12,15 @@ SCLOrkPD {
 	var voiceNameText;
 	var bufnumLabel;
 	var bufnumText;
+	var parameterScrollView;
+	var parameterViews;
+	var voiceCodeTextView;
+	var evalPbindefButton;
 
 	var selectedPresetName;
 	var selectedPreset;
-	var selectedVoice;
-	var voiceCodeTextView;
-	var evalPbindefButton;
+	var currentVoice;
+
 
 	*new { |
 		playerNumber,
@@ -26,7 +29,8 @@ SCLOrkPD {
 	}
 
 	init {
-		presets = Dictionary.new;
+		presets = IdentityDictionary.new;
+		parameterViews = Array.new;
 
 		this.prParsePresets;
 		this.prConstructUIElements;
@@ -61,13 +65,19 @@ SCLOrkPD {
 	}
 
 	prConstructUIElements {
-		window = Window.new("PublicDomain: p" ++ playerNumber.asString,
+		var scrollCanvas;
+
+		window = Window.new("PublicDomain - player " ++ playerNumber.asString,
 			Rect.new(
 				0,
 				0,
-				800,
-				600));
+				1080,
+				1080));
 		window.alwaysOnTop = true;
+		window.view.keyDownAction_({ | view, char, modifiers, unicode, keycode |
+			this.prKeyDown(char, modifiers);
+		});
+
 
 		window.layout = VLayout.new(
 			HLayout.new(
@@ -86,6 +96,7 @@ SCLOrkPD {
 				bufnumText = StaticText.new(),
 				nil
 			),
+			parameterScrollView = ScrollView.new(),
 			voiceCodeTextView = TextView.new(),
 			[ evalPbindefButton = Button.new(), align: \center ]
 		);
@@ -96,10 +107,19 @@ SCLOrkPD {
 		resetPresetButton.action = { this.prPresetChanged };
 		voiceNameLabel.string = "Voice Name:";
 		bufnumLabel.string = "bufnum:";
+		scrollCanvas = View();
+		scrollCanvas.layout = VLayout();
+		parameterScrollView.canvas = scrollCanvas;
+		parameterScrollView.background = Color.new(0.7, 0.7, 0.7);
 		voiceCodeTextView.font = Font(Font.defaultMonoFace);
-		evalPbindefButton.string = "Evaluate";
+		voiceCodeTextView.editable = true;
+		voiceCodeTextView.enterInterpretsSelection = false;
+
+		evalPbindefButton.string = "Play";
 		evalPbindefButton.action = {
-			voiceCodeTextView.string.interpret;
+			if (this.prAttemptRebuildFromEditedString, {
+				this.prAttemptInterpretEditedString;
+			});
 		};
 	}
 
@@ -110,9 +130,85 @@ SCLOrkPD {
 	prPresetChanged {
 		selectedPresetName = presetPopUp.items[presetPopUp.value];
 		selectedPreset = presets.at(selectedPresetName);
-		selectedVoice = selectedPreset.voiceAt(playerNumber);
-		voiceNameText.string = selectedVoice.name;
-		bufnumText.string = selectedVoice.params.at('\\bufnum');
-		voiceCodeTextView.string = selectedVoice.string;
+		currentVoice = selectedPreset.voiceAt(playerNumber).deepCopy;
+		this.prRebuildVoiceUI;
+	}
+
+	prRebuildVoiceUI {
+		var orderedParamNames = Array.newClear(currentVoice.params.size);
+		var paramViewCount = 0;
+		voiceNameText.string = currentVoice.name;
+		bufnumText.string = currentVoice.params.at('\\bufnum').at(\string);
+		voiceCodeTextView.string = currentVoice.string;
+		parameterViews.do({ | view | view.remove; });
+		parameterScrollView.layout.clear;
+		// We build the views out-of-order, but populate them in the correct
+		// order in the array, so they can be added in same order as in code.
+		parameterViews = Array.new(currentVoice.params.size);
+		currentVoice.params.keysValuesDo({ | paramName, paramValue |
+			if (paramName === '\\bufnum'
+				or: { paramName === '\\instrument' }, {
+					// Can do a sample PopUp picker later, but for now the
+					// buffer can only be changed in code and shows up as
+					// a label above, so we skip.
+
+					// Instrument is hard-coded for now, no picker.
+			}, {
+					orderedParamNames[paramValue.at(\order)] = paramName;
+			});
+		});
+
+		orderedParamNames.do({ | paramName |
+			if (paramName.notNil, {
+				var paramView = SCLOrkPDParameterView.new(
+					parameterScrollView.canvas,
+					paramName,
+					currentVoice.params.at(paramName));
+				parameterScrollView.layout.add(paramView);
+				parameterViews = parameterViews.add(paramView);
+			});
+		});
+
+		parameterScrollView.layout.add(nil);
+	}
+
+	prAttemptRebuildFromEditedString {
+		var tokens = SCLOrkPDParser.tokenize(voiceCodeTextView.string);
+		var newVoice = nil;
+
+		if (tokens.notNil, {
+			newVoice = SCLOrkPDVoice.newFromTokens(tokens);
+		});
+
+		if (newVoice.notNil, {
+			currentVoice = newVoice;
+			voiceCodeTextView.stringColor = Color.black;
+			this.prRebuildVoiceUI;
+			^true;
+		}, {
+			voiceCodeTextView.stringColor = Color.red;
+			^false;
+		});
+	}
+
+	prAttemptInterpretEditedString {
+		// Note: no error checking, and no feedback, either it worked
+		// or it didn't. So good luck with that :).
+		voiceCodeTextView.string.interpret;
+	}
+
+	prKeyDown { | char, modifiers |
+		if (char == $\r or: { char == $\n }, {
+			if (modifiers.isAlt, {
+				// ALT+ENTER forces rebuild of UI part of code but does not
+				// evaluate code.
+				this.prAttemptRebuildFromEditedString;
+			});
+			if (modifiers.isCtrl, {
+				if (this.prAttemptRebuildFromEditedString, {
+					this.prAttemptInterpretEditedString;
+				});
+			});
+		});
 	}
 }
