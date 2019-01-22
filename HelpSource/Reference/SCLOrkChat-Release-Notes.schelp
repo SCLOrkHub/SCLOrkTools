@@ -5,6 +5,17 @@ related:: Reference/SCLOrkNet-Release-Notes
 
 section:: Release Notes
 
+subsection:: 0.2.2 - 21 January 2019
+
+UI tweaks and polish, based on feedback from SCLOrk chamber members:
+
+list::
+## Tweaked initial window height to account for the size not including the UI chrome provided by the OS, and so was making the window taller than the screen and fiddly to resize.
+## Made the font a bit smaller, setting font size still a future work.
+## The message type popup now also picks up the font.
+## Made the peer list a little narrower (by shortening the name on the clear button), to make more room for the chat messages.
+::
+
 subsection:: 0.2.1 - 14 January 2019
 
 Field fixes, forgot to check the default SCLOrkChatClient object creation, deploying at a SCLOrk rehearsal.

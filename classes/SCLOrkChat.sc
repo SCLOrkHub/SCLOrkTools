@@ -1,7 +1,7 @@
 SCLOrkChat {
 	const chatUiUpdatePeriodSeconds = 0.2;
 	const keepLastMessageCount = 100;
-	const <fontSize = 24.0;
+	const <fontSize = 18.0;
 
 	var name;
 	var asDirector;
@@ -98,10 +98,10 @@ SCLOrkChat {
 		// By default we occupy the right quarter of the screen.
 		window = Window.new("SCLOrkChat",
 			Rect.new(
-				Window.screenBounds.right - windowWidth,
+				Window.screenBounds.right - (windowWidth * 1.5),
 				0,
 				windowWidth,
-				Window.screenBounds.height)
+				Window.screenBounds.height * 0.75)
 		);
 		window.alwaysOnTop = true;
 		window.userCanClose = false;
@@ -137,7 +137,7 @@ SCLOrkChat {
 		clientListView.selectionMode = \multi;
 		clientListView.font = font;
 
-		clearSelectionButton.string = "Clear Selection";
+		clearSelectionButton.string = "Send All";
 		clearSelectionButton.font = font;
 		clearSelectionButton.action = {
 			clientListView.selection = [ ];
@@ -186,6 +186,7 @@ SCLOrkChat {
 				\code
 			];
 		});
+		messageTypePopUpMenu.font = font;
 
 		sendTextField.font = font;
 		sendTextField.action = { | v |
