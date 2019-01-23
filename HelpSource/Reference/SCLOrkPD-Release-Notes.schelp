@@ -1,0 +1,22 @@
+title:: SCLOrkPD Release Notes
+summary:: Reference and history for released versions of SCLOrkPD.
+categories:: Quarks>SCLOrkPD
+
+section:: Release Notes
+
+subsection:: 0.0.3 - 22 January 2019
+
+Subsequent iteration of experimental version based on feedback from ensemble. Features added include
+
+list::
+## Fix parsing of block comments in the regex, so new voices parse correctly.
+## Lots of polish to UI, including flash feedback on statement eval, and reset button now automatically evaluates statement, and hints on hotkeys.
+## Round-trip editing now works, so editing the UI elements will now update the voice when the user presses enter.
+## Forwards cmd+. to GUI, and also automaticallys stops old voices when they change name.
+::
+
+Future work is to use link::Classes/JitLib:: to get a real awareness of voice state, instead of the rough approximation using string tracking we do now, as well as further UI elements for editing of parameters.
+
+subsection:: 0.0.2 - 21 January 2019
+
+First experimental version. Supported basic editing of code in the UI, but the reverse path was not working. Used mainly to garner feedback from a SCLOrk recital.
