@@ -18,6 +18,7 @@ SCLOrkPD {
 	var selectedPreset;
 	var currentVoice;
 
+	var voiceError;
 
 	*new { |
 		playerNumber,
@@ -28,6 +29,7 @@ SCLOrkPD {
 	init {
 		presets = IdentityDictionary.new;
 		parameterViews = Array.new;
+		voiceError = false;
 
 		this.prParsePresets;
 		this.prConstructUIElements;
@@ -142,7 +144,11 @@ SCLOrkPD {
 		voiceNameText.string = currentVoice.name;
 		bufnumText.string = currentVoice.params.at('\\bufnum').at(\string);
 		voiceCodeTextView.string = currentVoice.string;
-		voiceCodeTextView.stringColor = Color.black;
+		if (voiceError.not, {
+			voiceCodeTextView.stringColor = Color.black;
+		}, {
+			voiceCodeTextView.stringColor = Color.red;
+		});
 		parameterViews.do({ | view | view.remove; });
 		parameterScrollView.layout.clear;
 		// We build the views out-of-order, but populate them in the correct
@@ -166,13 +172,25 @@ SCLOrkPD {
 				var paramView = SCLOrkPDParameterView.new(
 					parameterScrollView.canvas,
 					paramName,
-					currentVoice.params.at(paramName));
+					currentVoice.params.at(paramName)
+				);
+				paramView.action = { | view |
+					this.prUIChangedParameter(view);
+				};
 				parameterScrollView.layout.add(paramView);
 				parameterViews = parameterViews.add(paramView);
 			});
 		});
 
 		parameterScrollView.layout.add(nil);
+	}
+
+	prUIChangedParameter { | view |
+		currentVoice.params.put(view.name, view.value);
+		currentVoice.rebuildString;
+		voiceError = false;
+		voiceCodeTextView.stringColor = Color.black;
+		voiceCodeTextView.string = currentVoice.string;
 	}
 
 	prAttemptRebuildFromEditedString {
@@ -186,9 +204,11 @@ SCLOrkPD {
 		if (newVoice.notNil, {
 			currentVoice = newVoice;
 			voiceCodeTextView.stringColor = Color.black;
+			voiceError = false;
 			this.prRebuildVoiceUI;
 			^true;
 		}, {
+			voiceError = true;
 			voiceCodeTextView.stringColor = Color.red;
 			^false;
 		});
@@ -197,21 +217,25 @@ SCLOrkPD {
 	prAttemptInterpretEditedString {
 		voiceCodeTextView.background = Color.black;
 		voiceCodeTextView.stringColor = Color.white;
-		AppClock.sched(0.2, {
+		AppClock.sched(0.1, {
 			voiceCodeTextView.background = Color.white;
-			voiceCodeTextView.stringColor = Color.black;
+			if (voiceError.not, {
+				voiceCodeTextView.stringColor = Color.black;
+			}, {
+				voiceCodeTextView.stringColor = Color.red;
+			});
 		});
 
 		// Note: no error checking, and no feedback, either it worked
 		// or it didn't. So good luck with that :).
 		{ voiceCodeTextView.string.interpret; }.try({ | error |
-			error.postln;
+			error.errorString.postln;
 		});
 	}
 
 	prKeyDown { | char, modifiers |
-		"char: %, ascii: %, ctrl: %, alt: %".format(
-			char, char.ascii, modifiers.isCtrl, modifiers.isAlt).postln;
+		// "char: %, ascii: %, ctrl: %, alt: %".format(
+		//	char, char.ascii, modifiers.isCtrl, modifiers.isAlt).postln;
 
 		if (char == $\r or: { char == $\n }, {
 			if (modifiers.isAlt, {

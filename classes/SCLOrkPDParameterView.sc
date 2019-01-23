@@ -1,4 +1,5 @@
 SCLOrkPDParameterView : View {
+	const editCharacterWidth = 16;
 	var <name;
 	var <value;
 
@@ -7,7 +8,7 @@ SCLOrkPDParameterView : View {
 	}
 
 	init { | parameterName, parameterValue |
-		var subView, currentLayout;
+		var subView, currentLayout, labelString;
 
 		name = parameterName;
 		value = parameterValue;
@@ -19,6 +20,7 @@ SCLOrkPDParameterView : View {
 		subView.string = parameterName.asString ++ ":";
 		subView.font = Font(Font.defaultSansFace, bold: true);
 		currentLayout.add(subView);
+		labelString = "";
 
 		// NumberBox
 		// RangeSlider
@@ -27,38 +29,52 @@ SCLOrkPDParameterView : View {
 		// SoundFileView
 
 		parameterValue.at(\tokens).do({ | token, index |
-			var lineBreak = false;
+			// At this point only \number fields are editable, so we
+			// treat all other fields as non-editable. If a field is
+			// not editable its string is concatenated on to labelString
+			// until there is a line break. A line break or an editable
+			// field causes the concatenated label to be added as a
+			// new StaticText object.
 			if (token.at(\type) === \number, {
+				// Add concatendated label.
+				if (labelString.size > 0, {
+					currentLayout.add(StaticText.new(this).string_(
+						labelString));
+					labelString = "";
+				});
 				subView = TextField.new(this);
 				subView.string = token.at(\string);
+				subView.maxWidth = editCharacterWidth * max(token.at(\string).size, 3);
+				subView.action = { | view |
+					parameterValue.at(\tokens)[index].put(\string, view.string);
+					action.value(this);
+				};
+				currentLayout.add(subView);
 			}, {
-				// Scan comments and whitespace for newlines
-				var labelString = token.at(\string);
-				if (token.at(\type) === \lineComment
-					or: { token.at(\type) === \whitespace
-						and: { labelString.contains("\n") }}, {
-						var filterString = "";
-						labelString.do({ | c |
-							if (c != $\n, {
-								filterString = filterString ++ c;
-							});
+				// Scan all readonly tokens for line breaks, otherwise append
+				// to current labelString.
+				token.at(\string).do({ | c |
+					if (c == $\n or: { c == $\r }, {
+						if (labelString.size > 0, {
+							currentLayout.add(StaticText.new(this).string_(
+								labelString));
+							currentLayout.add(nil);
+							labelString = "";
+							this.layout.add(currentLayout);
+							currentLayout = HLayout();
 						});
-						labelString = filterString;
-						lineBreak = true;
+					}, {
+						labelString = labelString ++ c;
+					});
 				});
+			});
+		});
 
-				subView = StaticText.new(this);
-				subView.string = labelString;
-			});
-			currentLayout.add(subView);
-			if (lineBreak, {
-				this.layout.add(currentLayout);
-				currentLayout = HLayout();
-			});
+		if (labelString.size > 0, {
+			currentLayout.add(StaticText.new(this).string_(labelString));
+			labelString = "";
 		});
 		currentLayout.add(nil);
 		this.layout.add(currentLayout);
 	}
-
-
 }

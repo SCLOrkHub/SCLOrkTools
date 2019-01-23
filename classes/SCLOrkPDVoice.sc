@@ -6,12 +6,11 @@ SCLOrkPDVoice {
 	var <clockName;
 	var <clockQuant;
 	var <quant;
+	var <tokens;
 
-	var voiceTokens;
-
-	*newFromTokens { | tokens |
+	*newFromTokens { | tokenList |
 		var voice = super.new.init;
-		if (voice.setFromTokens(tokens).not, { ^nil });
+		if (voice.setFromTokens(tokenList).not, { ^nil });
 		^voice;
 	}
 
@@ -20,8 +19,15 @@ SCLOrkPDVoice {
 		string = "";
 	}
 
+	rebuildString {
+		string = "";
+		tokens.do({ | token |
+			string = string ++ token.at(\string);
+		});
+	}
+
 	// Returns false if failed to parse, true if successful.
-	setFromTokens { | tokens, verbose = false |
+	setFromTokens { | tokenList, verbose = false |
 		var state = \start;
 
 		var parameterName;
@@ -32,7 +38,7 @@ SCLOrkPDVoice {
 		var parenDepth = 0;
 
 		params.clear;
-		voiceTokens = tokens;
+		tokens = tokenList;
 
 		tokens.do({ | token, index |
 			// Concatenate all the tokens together to get original
