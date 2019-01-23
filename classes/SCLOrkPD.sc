@@ -9,6 +9,7 @@ SCLOrkPD {
 	var resetPresetButton;
 	var voiceNameText;
 	var bufnumText;
+	var namePlayingText;
 	var parameterScrollView;
 	var parameterViews;
 	var voiceCodeTextView;
@@ -19,6 +20,7 @@ SCLOrkPD {
 	var currentVoice;
 
 	var voiceError;
+	var namePlaying;
 
 	*new { |
 		playerNumber,
@@ -88,7 +90,9 @@ SCLOrkPD {
 			HLayout.new(
 				StaticText.new().string_("Voice Name:"),
 				voiceNameText = StaticText.new(),
-				nil
+				nil,
+				StaticText.new().string_("Now Playing:"),
+				namePlayingText = StaticText.new().string_("none")
 			),
 			HLayout.new(
 				StaticText.new().string_("\\bufum:"),
@@ -226,10 +230,22 @@ SCLOrkPD {
 			});
 		});
 
-		// Note: no error checking, and no feedback, either it worked
-		// or it didn't. So good luck with that :).
 		{ voiceCodeTextView.string.interpret; }.try({ | error |
 			error.errorString.postln;
+			voiceError = true;
+		});
+
+		if (voiceError.not, {
+			// Stop any old playing voice, if there was one. This
+			// can happen when there are more players than voices,
+			// so voice number will change from preset to preset.
+			if (namePlaying.notNil
+				and: { namePlaying != currentVoice.name }, {
+					var realName = namePlaying[1..namePlaying.size-1];
+				Pbindef(realName.asSymbol).stop;
+			});
+			namePlaying = currentVoice.name;
+			namePlayingText.string = currentVoice.name;
 		});
 	}
 
@@ -254,6 +270,13 @@ SCLOrkPD {
 		if (char.ascii == 18 and: { modifiers.isCtrl }, {
 			this.prPresetChanged;
 			this.prAttemptInterpretEditedString;
+		});
+
+		// We forward CTRL+. to the GUI.
+		if (char == $. and: { modifiers.isCtrl }, {
+			ScIDE.cmdPeriod;
+			namePlaying = nil;
+			namePlayingText.string = "none";
 		});
 	}
 }
