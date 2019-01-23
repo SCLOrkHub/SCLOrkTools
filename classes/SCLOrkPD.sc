@@ -5,12 +5,9 @@ SCLOrkPD {
 	var presets;
 
 	var window;
-	var presetLabel;
 	var presetPopUp;
 	var resetPresetButton;
-	var voiceNameLabel;
 	var voiceNameText;
-	var bufnumLabel;
 	var bufnumText;
 	var parameterScrollView;
 	var parameterViews;
@@ -78,35 +75,40 @@ SCLOrkPD {
 			this.prKeyDown(char, modifiers);
 		});
 
-
 		window.layout = VLayout.new(
 			HLayout.new(
-				presetLabel = StaticText.new(),
+				StaticText.new().string_("Preset:"),
 				presetPopUp = PopUpMenu.new(),
 				nil,
+				StaticText.new().string_("(ctrl+r)"),
                 resetPresetButton = Button.new()
 			),
 			HLayout.new(
-				voiceNameLabel = StaticText.new(),
+				StaticText.new().string_("Voice Name:"),
 				voiceNameText = StaticText.new(),
 				nil
 			),
 			HLayout.new(
-				bufnumLabel = StaticText.new(),
+				StaticText.new().string_("\\bufum:"),
 				bufnumText = StaticText.new(),
 				nil
 			),
 			parameterScrollView = ScrollView.new(),
 			voiceCodeTextView = TextView.new(),
-			[ evalPbindefButton = Button.new(), align: \center ]
+			HLayout.new(
+				nil,
+				[ StaticText.new().string_("(ctrl+enter)"), align: \center ],
+				[ evalPbindefButton = Button.new(), align: \center ],
+				nil
+			)
 		);
 
-		presetLabel.string = "Preset:";
 		presetPopUp.action = { this.prPresetChanged };
 		resetPresetButton.string = "Reset";
-		resetPresetButton.action = { this.prPresetChanged };
-		voiceNameLabel.string = "Voice Name:";
-		bufnumLabel.string = "bufnum:";
+		resetPresetButton.action = {
+			this.prPresetChanged;
+			this.prAttemptInterpretEditedString;
+		};
 		scrollCanvas = View();
 		scrollCanvas.layout = VLayout();
 		parameterScrollView.canvas = scrollCanvas;
@@ -140,6 +142,7 @@ SCLOrkPD {
 		voiceNameText.string = currentVoice.name;
 		bufnumText.string = currentVoice.params.at('\\bufnum').at(\string);
 		voiceCodeTextView.string = currentVoice.string;
+		voiceCodeTextView.stringColor = Color.black;
 		parameterViews.do({ | view | view.remove; });
 		parameterScrollView.layout.clear;
 		// We build the views out-of-order, but populate them in the correct
@@ -192,12 +195,24 @@ SCLOrkPD {
 	}
 
 	prAttemptInterpretEditedString {
+		voiceCodeTextView.background = Color.black;
+		voiceCodeTextView.stringColor = Color.white;
+		AppClock.sched(0.2, {
+			voiceCodeTextView.background = Color.white;
+			voiceCodeTextView.stringColor = Color.black;
+		});
+
 		// Note: no error checking, and no feedback, either it worked
 		// or it didn't. So good luck with that :).
-		voiceCodeTextView.string.interpret;
+		{ voiceCodeTextView.string.interpret; }.try({ | error |
+			error.postln;
+		});
 	}
 
 	prKeyDown { | char, modifiers |
+		"char: %, ascii: %, ctrl: %, alt: %".format(
+			char, char.ascii, modifiers.isCtrl, modifiers.isAlt).postln;
+
 		if (char == $\r or: { char == $\n }, {
 			if (modifiers.isAlt, {
 				// ALT+ENTER forces rebuild of UI part of code but does not
@@ -209,6 +224,12 @@ SCLOrkPD {
 					this.prAttemptInterpretEditedString;
 				});
 			});
+		});
+
+		// CTRL+R forces reset and eval of voice.
+		if (char.ascii == 18 and: { modifiers.isCtrl }, {
+			this.prPresetChanged;
+			this.prAttemptInterpretEditedString;
 		});
 	}
 }
