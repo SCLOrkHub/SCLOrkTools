@@ -15,6 +15,7 @@ SCLOrkPD {
 	var parameterScrollView;
 	var parameterViews;
 	var voiceCodeTextView;
+	var codeStateText;
 	var evalPbindefButton;
 
 	var selectedPresetName;
@@ -23,6 +24,7 @@ SCLOrkPD {
 
 	var voiceError;
 	var namePlaying;
+	var stringPlaying;
 
 	*new { |
 		playerNumber,
@@ -35,6 +37,7 @@ SCLOrkPD {
 		presets = IdentityDictionary.new;
 		parameterViews = Array.new;
 		voiceError = false;
+		stringPlaying = "";
 		yearBuckets = Array.new(8);
 		yearBuckets = yearBuckets.add(currentYear);
 		yearBuckets = yearBuckets.add(currentYear - 14);
@@ -91,7 +94,7 @@ SCLOrkPD {
 	}
 
 	prConstructUIElements {
-		var scrollCanvas;
+		var scrollCanvas, oldKeyDownAction;
 
 		window = Window.new("PublicDomain - player " ++
 			(playerNumber + 1).asString,
@@ -130,6 +133,7 @@ SCLOrkPD {
 			parameterScrollView = ScrollView.new(),
 			voiceCodeTextView = TextView.new(),
 			HLayout.new(
+				[ codeStateText = StaticText.new(), align: \left ],
 				nil,
 				[ StaticText.new().string_("(ctrl+enter)"), align: \center ],
 				[ evalPbindefButton = Button.new(), align: \center ],
@@ -150,6 +154,11 @@ SCLOrkPD {
 		voiceCodeTextView.font = Font(Font.defaultMonoFace);
 		voiceCodeTextView.editable = true;
 		voiceCodeTextView.enterInterpretsSelection = false;
+		oldKeyDownAction = voiceCodeTextView.keyDownAction;
+		voiceCodeTextView.keyDownAction = { | view, char, modifiers, unicode, keycode |
+			this.prRecolorString;
+			oldKeyDownAction.value(view, char, modifiers, unicode, keycode);
+		};
 
 		evalPbindefButton.string = "Play";
 		evalPbindefButton.action = {
@@ -177,11 +186,8 @@ SCLOrkPD {
 		voiceCountText.string = selectedPreset.voices.size.asString;
 		bufnumText.string = currentVoice.params.at('\\bufnum').at(\string);
 		voiceCodeTextView.string = currentVoice.string;
-		if (voiceError.not, {
-			voiceCodeTextView.stringColor = Color.black;
-		}, {
-			voiceCodeTextView.stringColor = Color.red;
-		});
+		voiceError = false;
+		this.prRecolorString;
 		parameterViews.do({ | view | view.remove; });
 		parameterScrollView.layout.clear;
 		// We build the views out-of-order, but populate them in the correct
@@ -222,8 +228,41 @@ SCLOrkPD {
 		currentVoice.params.put(view.name, view.value);
 		currentVoice.rebuildString;
 		voiceError = false;
-		voiceCodeTextView.stringColor = Color.black;
 		voiceCodeTextView.string = currentVoice.string;
+		this.prRecolorString;
+	}
+
+	prRecolorString {
+		if (voiceError, {
+			voiceCodeTextView.stringColor = Color.red;
+			codeStateText.string = "error";
+		}, {
+			voiceCodeTextView.stringColor = Color.new(0.5, 0.5, 0.5);
+			if (voiceCodeTextView.string != stringPlaying, {
+				var firstDiff, lastDiff;
+				firstDiff = voiceCodeTextView.string.size;
+				lastDiff = 0;
+				voiceCodeTextView.string.size.do({ | i |
+					var back = voiceCodeTextView.string.size - i - 1;
+					var playingBack = max(0, stringPlaying.size - i - 1);
+					if (i >= stringPlaying.size
+						or: { voiceCodeTextView.string[i] != stringPlaying[i] }, {
+							firstDiff = min(firstDiff, i);
+					});
+
+					if (voiceCodeTextView.string[back] !=
+						stringPlaying[playingBack], {
+							lastDiff = max(lastDiff, back);
+					});
+				});
+				voiceCodeTextView.setStringColor(
+					Color.black, firstDiff - 1, lastDiff - firstDiff + 2);
+
+				codeStateText.string = "modified";
+			}, {
+				codeStateText.string = "";
+			});
+		});
 	}
 
 	prAttemptRebuildFromEditedString {
@@ -236,13 +275,13 @@ SCLOrkPD {
 
 		if (newVoice.notNil, {
 			currentVoice = newVoice;
-			voiceCodeTextView.stringColor = Color.black;
 			voiceError = false;
 			this.prRebuildVoiceUI;
+			this.prRecolorString;
 			^true;
 		}, {
 			voiceError = true;
-			voiceCodeTextView.stringColor = Color.red;
+			this.prRecolorString;
 			^false;
 		});
 	}
@@ -252,12 +291,10 @@ SCLOrkPD {
 		voiceCodeTextView.stringColor = Color.white;
 		AppClock.sched(0.1, {
 			voiceCodeTextView.background = Color.white;
-			if (voiceError.not, {
-				voiceCodeTextView.stringColor = Color.black;
-			}, {
-				voiceCodeTextView.stringColor = Color.red;
-			});
+			this.prRecolorString;
 		});
+
+		voiceError = false;
 
 		{ voiceCodeTextView.string.interpret; }.try({ | error |
 			error.errorString.postln;
@@ -275,6 +312,7 @@ SCLOrkPD {
 			});
 			namePlaying = currentVoice.name;
 			namePlayingText.string = currentVoice.name;
+			stringPlaying = voiceCodeTextView.string.copy;
 		});
 	}
 
@@ -311,6 +349,7 @@ SCLOrkPD {
 			ScIDE.cmdPeriod;
 			namePlaying = nil;
 			namePlayingText.string = "none";
+			stringPlaying = "";
 		});
 	}
 }

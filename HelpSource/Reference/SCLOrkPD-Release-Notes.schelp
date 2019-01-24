@@ -4,6 +4,17 @@ categories:: Quarks>SCLOrkPD
 
 section:: Release Notes
 
+subsection:: 0.0.4 - 24 January 2019
+
+list::
+## Fixed a bug where ctrl+enter and other shortcuts were not being processed when editing a Pbindef UI element.
+## Added reference year labels to the Pbindef names in the PopUp picker.
+## Added voice count indicator in the UI.
+## Made player numbers start from 1, instead of 0, to match the names of the player numbers.
+## Diff detection between what string is playing as a Pbindef and what is in the editor window, including some UI feedback about if it's different or broken.
+## Removed almost all padding from UI elements, to make the UI editor much more compact.
+::
+
 subsection:: 0.0.3 - 22 January 2019
 
 Subsequent iteration of experimental version based on feedback from ensemble. Features added include
