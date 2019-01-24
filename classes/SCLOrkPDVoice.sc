@@ -8,9 +8,9 @@ SCLOrkPDVoice {
 	var <quant;
 	var <tokens;
 
-	*newFromTokens { | tokenList |
+	*newFromTokens { | tokenList, verbose = false |
 		var voice = super.new.init;
-		if (voice.setFromTokens(tokenList).not, { ^nil });
+		if (voice.setFromTokens(tokenList, verbose).not, { ^nil });
 		^voice;
 	}
 
@@ -46,8 +46,8 @@ SCLOrkPDVoice {
 			string = string ++ token.at(\string);
 
 			if (verbose, {
-				"state: %, parenDepth: %, token: %".format(
-					state, parenDepth, token).postln;
+				"state: %, parenDepth: %, type: %, token: %".format(
+					state, parenDepth, token.at(\type), token).postln;
 			});
 
 			// We studiously ignore whitespace and comments.
@@ -119,7 +119,10 @@ SCLOrkPDVoice {
 							parameterValueString = "";
 							parameterValueTokens = Array.new;
 							case
-							{ token.at(\type) === \openParen } {
+							{
+								token.at(\type) === \openParen
+								or: { token.at(\type) === \openBracket }
+							} {
 								parenDepth = parenDepth + 1;
 								\parameterValueStatement;
 							}
@@ -138,11 +141,17 @@ SCLOrkPDVoice {
 							// looking for a closing paren. We check commas to make sure
 							// they are inside of nested parens or brackets.
 							case
-							{ token.at(\type) === \openParen } {
+							{
+								token.at(\type) === \openParen
+								or: { token.at(\type) === \openBracket }
+							} {
 								parenDepth = parenDepth + 1;
 								\parameterValueStatement;
 							}
-							{ token.at(\type) === \closeParen } {
+							{
+								token.at(\type) === \closeParen
+								or: { token.at(\type) === \closeBracket }
+							} {
 								parenDepth = parenDepth - 1;
 								if (parenDepth > 0, {
 									\parameterValueStatement

@@ -1,51 +1,4 @@
 SCLOrkPDParser {
-	*parseFile { | filePath |
-		var fileString = String.readNew(File.new(filePath, "r"));
-		^SCLOrkPDParser.parse(fileString);
-	}
-
-	*parse { | string |
-		var tokens, tokenIndex, parseError, voices, openVoice;
-
-		// Tokenize string.
-		tokens = SCLOrkPDParser.tokenize(string);
-		if (tokens.isNil, { ^nil; });
-
-		// We now advance through the tokens, extracting Pbindef objects
-		// and ignoring most other things.
-		tokenIndex = 0;
-		voices = Array.new;
-		openVoice = nil;
-
-		tokens.do({ | token, index |
-			// If we're inside an open Pbindef we're looking for a semicolon to
-			// terminate, so append everything to the current token list until then.
-			if (openVoice.notNil, {
-				openVoice = openVoice.add(token);
-				if (token.at(\type) === \semiColon, {
-					var newVoice = SCLOrkPDVoice.newFromTokens(openVoice);
-					if (newVoice.isNil, { ^nil; });
-					voices = voices.add(newVoice);
-					openVoice = nil;
-				});
-			}, {
-				// Otherwise we'll ignore all other SuperCollider code in the file
-				// until we encounter another Pbindef.
-				if (token.at(\type) === \className
-					and: { token.at(\string) == "Pbindef" }, {
-						openVoice = [ token ];
-				});
-			});
-		});
-
-		// Unterminated Pbindef is an error.
-		if (openVoice.notNil, {
-			"*** error, unterminated Pbindef %".format(openVoice).postln;
-			^nil;
-		}, {
-			^voices;
-		});
-	}
 
 	*tokenize { | string |
 		var parseError = false;
@@ -66,7 +19,7 @@ SCLOrkPDParser {
 				match.notNil;
 			} { \lineComment }
 			{
-				match = string.findRegexpAt("/[*].*[*]/", offset);
+				match = string.findRegexpAt("/[*]([^*]|([*][^/]))*[*]/", offset);
 				match.notNil;
 			} { \blockComment }
 			{
