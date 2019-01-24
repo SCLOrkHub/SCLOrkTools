@@ -1,6 +1,7 @@
 SCLOrkPD {
 	var playerNumber;
 	var presetSearchDir;
+	var yearBuckets;
 
 	var presets;
 
@@ -8,6 +9,7 @@ SCLOrkPD {
 	var presetPopUp;
 	var resetPresetButton;
 	var voiceNameText;
+	var voiceCountText;
 	var bufnumText;
 	var namePlayingText;
 	var parameterScrollView;
@@ -25,13 +27,23 @@ SCLOrkPD {
 	*new { |
 		playerNumber,
 		presetSearchDir = "/home/sclork/Music/SCLOrk/Demos/PublicDomainTest" |
-		^super.newCopyArgs(playerNumber, presetSearchDir).init;
+		^super.newCopyArgs(max(playerNumber - 1, 0), presetSearchDir).init;
 	}
 
 	init {
+		var currentYear = Date.getDate.year;
 		presets = IdentityDictionary.new;
 		parameterViews = Array.new;
 		voiceError = false;
+		yearBuckets = Array.new(8);
+		yearBuckets = yearBuckets.add(currentYear);
+		yearBuckets = yearBuckets.add(currentYear - 14);
+		yearBuckets = yearBuckets.add(currentYear - 28);
+		yearBuckets = yearBuckets.add(currentYear - 42);
+		yearBuckets = yearBuckets.add(currentYear - 56);
+		yearBuckets = yearBuckets.add(currentYear - 75);
+		yearBuckets = yearBuckets.add(currentYear - 95);
+		yearBuckets = yearBuckets.add(-inf);
 
 		this.prParsePresets;
 		this.prConstructUIElements;
@@ -49,11 +61,24 @@ SCLOrkPD {
 				and: { pathName.fileName.beginsWith("PD_Preset_") }, {
 					var preset;
 					preset = SCLOrkPDPreset.newFromFile(
-						pathName.asAbsolutePath,
-						pathName.fileNameWithoutExtension["PD_Preset_".size..]);
+						pathName.asAbsolutePath);
 					if (preset.notNil, {
-						presets.put(preset.name, preset);
-						"parsed: %".format(pathName.asAbsolutePath).postln;
+						var name;
+						if (preset.year.notNil, {
+							var bucket = 0;
+							yearBuckets.do({ | year, index |
+								if (preset.year < year, {
+									bucket = year;
+								});
+							});
+							name = bucket.asString + "-";
+						}, {
+							name = "?? -"
+						});
+						name = name + pathName.fileNameWithoutExtension[
+							"PD_Preset_".size..];
+						preset.name = name;
+						presets.put(name, preset);
 					}, {
 						"*** error parsing %".format(pathName.asAbsolutePath).postln;
 						parseFailCount = parseFailCount + 1;
@@ -68,8 +93,9 @@ SCLOrkPD {
 	prConstructUIElements {
 		var scrollCanvas;
 
-		window = Window.new("PublicDomain - player " ++ playerNumber.asString,
-			Rect.new(
+		window = Window.new("PublicDomain - player " ++
+			(playerNumber + 1).asString,
+		Rect.new(
 				0,
 				0,
 				1080,
@@ -88,8 +114,10 @@ SCLOrkPD {
                 resetPresetButton = Button.new()
 			),
 			HLayout.new(
-				StaticText.new().string_("Voice Name:"),
+				StaticText.new().string_("Voice:"),
 				voiceNameText = StaticText.new(),
+				StaticText.new().string_("of:"),
+				voiceCountText = StaticText.new(),
 				nil,
 				StaticText.new().string_("Now Playing:"),
 				namePlayingText = StaticText.new().string_("none")
@@ -146,6 +174,7 @@ SCLOrkPD {
 		var orderedParamNames = Array.newClear(currentVoice.params.size);
 		var paramViewCount = 0;
 		voiceNameText.string = currentVoice.name;
+		voiceCountText.string = selectedPreset.voices.size.asString;
 		bufnumText.string = currentVoice.params.at('\\bufnum').at(\string);
 		voiceCodeTextView.string = currentVoice.string;
 		if (voiceError.not, {

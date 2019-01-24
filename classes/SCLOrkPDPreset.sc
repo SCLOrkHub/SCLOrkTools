@@ -1,9 +1,9 @@
 SCLOrkPDPreset {
-	var <name;
+	var <>name;
 	var <year;
 	var <voices;
 
-	*newFromFile { | filePath, name, verbose = false |
+	*newFromFile { | filePath verbose = false |
 		var tokens, tokenIndex, parseError, voices, year, openVoice;
 		var fileString = String.readNew(File.new(filePath, "r"));
 		tokens = SCLOrkPDParser.tokenize(fileString);
