@@ -36,7 +36,8 @@ SCLOrkPDParameterView : View {
 			// field causes the concatenated label to be added as a
 			// new StaticText object.
 			if (token.at(\type) === \number, {
-				// Add concatendated label.
+				var oldKeyDownAction;
+				// Add concatenated label.
 				if (labelString.size > 0, {
 					currentLayout.add(StaticText.new(this).string_(
 						labelString));
@@ -48,6 +49,18 @@ SCLOrkPDParameterView : View {
 				subView.action = { | view |
 					parameterValue.at(\tokens)[index].put(\string, view.string);
 					action.value(this);
+				};
+				// Propagate all key events for when the ctrl key is held down by
+				// returning false to those. They will be handled by parent view.
+				oldKeyDownAction = subView.keyDownAction;
+				subView.keyDownAction = { | view, char, modifiers, unicode, keycode |
+					if (modifiers.isCtrl, {
+						// Fire off any edits on this view to update string.
+						view.doAction;
+						false;
+					}, {
+						oldKeyDownAction.value(view, char, modifiers, unicode, keycode);
+					});
 				};
 				currentLayout.add(subView);
 			}, {

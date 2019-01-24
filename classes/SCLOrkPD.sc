@@ -260,7 +260,12 @@ SCLOrkPD {
 				this.prAttemptRebuildFromEditedString;
 			});
 			if (modifiers.isCtrl, {
-				if (this.prAttemptRebuildFromEditedString, {
+				if (voiceCodeTextView.string.compare(
+					currentVoice.string) != 0, {
+					this.prAttemptRebuildFromEditedString;
+				});
+
+				if (voiceError.not, {
 					this.prAttemptInterpretEditedString;
 				});
 			});
