@@ -1,5 +1,5 @@
 SCLOrkPDParameterView : View {
-	const editCharacterWidth = 16;
+	const editCharacterWidth = 18;
 	var <name;
 	var <value;
 
@@ -8,12 +8,12 @@ SCLOrkPDParameterView : View {
 	}
 
 	init { | parameterName, parameterValue |
-		var subView, currentLayout, labelString;
+		var subView, currentLayout, labelString, lineHeight, totalHeight;
 
 		name = parameterName;
 		value = parameterValue;
-		this.layout = VLayout();
-		currentLayout = HLayout();
+		this.layout = VLayout().spacing_(0).margins_(0);
+		currentLayout = HLayout().spacing_(0).margins_(0);
 
 		// Add label of parameter name.
 		subView = StaticText.new(this);
@@ -21,6 +21,8 @@ SCLOrkPDParameterView : View {
 		subView.font = Font(Font.defaultSansFace, bold: true);
 		currentLayout.add(subView);
 		labelString = "";
+		lineHeight = 0;
+		totalHeight = 0;
 
 		// NumberBox
 		// RangeSlider
@@ -39,8 +41,9 @@ SCLOrkPDParameterView : View {
 				var oldKeyDownAction;
 				// Add concatenated label.
 				if (labelString.size > 0, {
-					currentLayout.add(StaticText.new(this).string_(
-						labelString));
+					subView = StaticText.new(this).string_(labelString);
+					lineHeight = max(lineHeight, subView.sizeHint.height);
+					currentLayout.add(subView);
 					labelString = "";
 				});
 				subView = TextField.new(this);
@@ -62,6 +65,7 @@ SCLOrkPDParameterView : View {
 						oldKeyDownAction.value(view, char, modifiers, unicode, keycode);
 					});
 				};
+				lineHeight = max(lineHeight, subView.sizeHint.height);
 				currentLayout.add(subView);
 			}, {
 				// Scan all readonly tokens for line breaks, otherwise append
@@ -69,12 +73,15 @@ SCLOrkPDParameterView : View {
 				token.at(\string).do({ | c |
 					if (c == $\n or: { c == $\r }, {
 						if (labelString.size > 0, {
-							currentLayout.add(StaticText.new(this).string_(
-								labelString));
+							subView = StaticText.new(this).string_(labelString);
+							lineHeight = max(lineHeight, subView.sizeHint.height);
+							currentLayout.add(subView);
 							currentLayout.add(nil);
 							labelString = "";
 							this.layout.add(currentLayout);
-							currentLayout = HLayout();
+							currentLayout = HLayout().spacing_(0).margins_(0);
+							totalHeight = totalHeight + lineHeight + 2;
+							lineHeight = 0;
 						});
 					}, {
 						labelString = labelString ++ c;
@@ -84,10 +91,16 @@ SCLOrkPDParameterView : View {
 		});
 
 		if (labelString.size > 0, {
-			currentLayout.add(StaticText.new(this).string_(labelString));
+			subView = StaticText.new(this).string_(labelString);
+			lineHeight = max(lineHeight, subView.sizeHint.height);
+			currentLayout.add(subView);
 			labelString = "";
 		});
+
 		currentLayout.add(nil);
+
+		totalHeight = totalHeight + lineHeight + 2;
 		this.layout.add(currentLayout);
+		this.fixedHeight = totalHeight
 	}
 }

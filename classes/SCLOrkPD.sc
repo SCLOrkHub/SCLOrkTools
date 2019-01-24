@@ -144,9 +144,9 @@ SCLOrkPD {
 			this.prAttemptInterpretEditedString;
 		};
 		scrollCanvas = View();
-		scrollCanvas.layout = VLayout();
+		scrollCanvas.layout = VLayout().spacing_(0).margins_(0);
 		parameterScrollView.canvas = scrollCanvas;
-		parameterScrollView.background = Color.new(0.7, 0.7, 0.7);
+		parameterScrollView.background = Color.new(0.85, 0.85, 0.85);
 		voiceCodeTextView.font = Font(Font.defaultMonoFace);
 		voiceCodeTextView.editable = true;
 		voiceCodeTextView.enterInterpretsSelection = false;
