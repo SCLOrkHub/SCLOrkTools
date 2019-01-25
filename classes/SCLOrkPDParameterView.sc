@@ -57,7 +57,8 @@ SCLOrkPDParameterView : View {
 				// returning false to those. They will be handled by parent view.
 				oldKeyDownAction = subView.keyDownAction;
 				subView.keyDownAction = { | view, char, modifiers, unicode, keycode |
-					if (modifiers.isCtrl, {
+					if (modifiers.isCtrl
+						or: { char == $\t }, {
 						// Fire off any edits on this view to update string.
 						view.doAction;
 						false;

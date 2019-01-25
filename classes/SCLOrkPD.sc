@@ -40,12 +40,12 @@ SCLOrkPD {
 		stringPlaying = "";
 		yearBuckets = Array.new(8);
 		yearBuckets = yearBuckets.add(currentYear);
-		yearBuckets = yearBuckets.add(currentYear - 14);
-		yearBuckets = yearBuckets.add(currentYear - 28);
-		yearBuckets = yearBuckets.add(currentYear - 42);
-		yearBuckets = yearBuckets.add(currentYear - 56);
-		yearBuckets = yearBuckets.add(currentYear - 75);
-		yearBuckets = yearBuckets.add(currentYear - 95);
+		yearBuckets = yearBuckets.add(currentYear - 14 - 1);
+		yearBuckets = yearBuckets.add(currentYear - 28 - 1);
+		yearBuckets = yearBuckets.add(currentYear - 42 - 1);
+		yearBuckets = yearBuckets.add(currentYear - 56 - 1);
+		yearBuckets = yearBuckets.add(currentYear - 75 - 1);
+		yearBuckets = yearBuckets.add(currentYear - 95 - 1);
 		yearBuckets = yearBuckets.add(-inf);
 
 		this.prParsePresets;
@@ -237,30 +237,37 @@ SCLOrkPD {
 			voiceCodeTextView.stringColor = Color.red;
 			codeStateText.string = "error";
 		}, {
-			voiceCodeTextView.stringColor = Color.new(0.5, 0.5, 0.5);
-			if (voiceCodeTextView.string != stringPlaying, {
-				var firstDiff, lastDiff;
-				firstDiff = voiceCodeTextView.string.size;
-				lastDiff = 0;
-				voiceCodeTextView.string.size.do({ | i |
-					var back = voiceCodeTextView.string.size - i - 1;
-					var playingBack = max(0, stringPlaying.size - i - 1);
-					if (i >= stringPlaying.size
-						or: { voiceCodeTextView.string[i] != stringPlaying[i] }, {
-							firstDiff = min(firstDiff, i);
-					});
+			if (voiceCodeTextView.string ==
+				selectedPreset.voiceAt(playerNumber).string, {
+					voiceCodeTextView.stringColor = Color.black;
+					codeStateText.string = "";
+				}, {
+					voiceCodeTextView.stringColor = Color.new(0.5, 0.5, 0.5);
+					if (voiceCodeTextView.string != stringPlaying, {
+						var firstDiff, lastDiff;
+						firstDiff = voiceCodeTextView.string.size;
+						lastDiff = 0;
+						voiceCodeTextView.string.size.do({ | i |
+							var back = voiceCodeTextView.string.size - i - 1;
+							var playingBack = max(0, stringPlaying.size - i - 1);
+							if (i >= stringPlaying.size
+								or: { voiceCodeTextView.string[i] !=
+									stringPlaying[i] }, {
+									firstDiff = min(firstDiff, i);
+							});
 
-					if (voiceCodeTextView.string[back] !=
-						stringPlaying[playingBack], {
-							lastDiff = max(lastDiff, back);
-					});
-				});
-				voiceCodeTextView.setStringColor(
-					Color.black, firstDiff - 1, lastDiff - firstDiff + 2);
+							if (voiceCodeTextView.string[back] !=
+								stringPlaying[playingBack], {
+									lastDiff = max(lastDiff, back);
+							});
+						});
+						voiceCodeTextView.setStringColor(
+							Color.black, firstDiff - 1, lastDiff - firstDiff + 2);
 
-				codeStateText.string = "modified";
-			}, {
-				codeStateText.string = "";
+						codeStateText.string = "modified";
+					}, {
+						codeStateText.string = "";
+					});
 			});
 		});
 	}

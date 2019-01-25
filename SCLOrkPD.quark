@@ -2,7 +2,7 @@
 	name: "SCLOrkPD",
 	summary: "UI and supporting code for the Public Domain piece by Santa Clara Laptop Orchestra",
 	author: "Luke Nihlen",
-	version: "0.0.4",
+	version: "0.0.5",
 	license: "GPL",
 	copyright: "Luke Nihlen 2019",
 	organization: "Santa Clara Laptop Orchestra",
