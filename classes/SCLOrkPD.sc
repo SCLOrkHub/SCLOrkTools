@@ -273,7 +273,7 @@ SCLOrkPD {
 	}
 
 	prAttemptRebuildFromEditedString {
-		var tokens = SCLOrkPDParser.tokenize(voiceCodeTextView.string);
+		var tokens = SCLOrkPDPreset.tokenize(voiceCodeTextView.string);
 		var newVoice = nil;
 
 		if (tokens.notNil, {

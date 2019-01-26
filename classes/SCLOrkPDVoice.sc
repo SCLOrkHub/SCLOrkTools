@@ -94,7 +94,8 @@ SCLOrkPDVoice {
 										\error;
 								});
 							});
-						}, \parameterSpace, {  // start a name/value pair, or close.
+						},
+						\parameterSpace, {  // start a name/value pair, or close.
 							if (token.at(\type) === \symbol, {
 								parameterName = token.at(\string).asSymbol;
 								\parameterNameComma;
@@ -131,6 +132,7 @@ SCLOrkPDVoice {
 								or: { token.at(\type) === \string }
 								or: { token.at(\type) === \global }
 								or: { token.at(\type) === \className }
+								or: { token.at(\type) === \ratio }
 							} {
 								\parameterValueStatement;
 							}

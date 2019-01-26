@@ -37,7 +37,8 @@ SCLOrkPDParameterView : View {
 			// until there is a line break. A line break or an editable
 			// field causes the concatenated label to be added as a
 			// new StaticText object.
-			if (token.at(\type) === \number, {
+			if (token.at(\type) === \number
+				or: { token.at(\type) === \ratio }, {
 				var oldKeyDownAction;
 				// Add concatenated label.
 				if (labelString.size > 0, {
