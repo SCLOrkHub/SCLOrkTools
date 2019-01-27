@@ -1,6 +1,7 @@
 SCLOrkPD {
 	var playerNumber;
 	var presetSearchDir;
+	var orderByYear;
 	var yearBuckets;
 
 	var presets;
@@ -28,8 +29,12 @@ SCLOrkPD {
 
 	*new { |
 		playerNumber,
-		presetSearchDir = "/home/sclork/Music/SCLOrk/Demos/PublicDomainTest" |
-		^super.newCopyArgs(max(playerNumber - 1, 0), presetSearchDir).init;
+		presetSearchDir = "/home/sclork/Music/SCLOrk/Demos/PublicDomainTest",
+		orderByYear = false |
+		^super.newCopyArgs(
+			max(playerNumber - 1, 0),
+			presetSearchDir,
+			orderByYear).init;
 	}
 
 	init {
@@ -66,17 +71,19 @@ SCLOrkPD {
 					preset = SCLOrkPDPreset.newFromFile(
 						pathName.asAbsolutePath);
 					if (preset.notNil, {
-						var name;
-						if (preset.year.notNil, {
-							var bucket = 0;
-							yearBuckets.do({ | year, index |
-								if (preset.year < year, {
-									bucket = year;
+						var name = "";
+						if (orderByYear, {
+							if (preset.year.notNil, {
+								var bucket = 0;
+								yearBuckets.do({ | year, index |
+									if (preset.year < year, {
+										bucket = year;
+									});
 								});
+								name = bucket.asString + "-";
+							}, {
+								name = "?? -"
 							});
-							name = bucket.asString + "-";
-						}, {
-							name = "?? -"
 						});
 						name = name + pathName.fileNameWithoutExtension[
 							"PD_Preset_".size..];
