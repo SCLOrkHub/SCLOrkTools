@@ -76,7 +76,7 @@ SCLOrkPD {
 							if (preset.year.notNil, {
 								var bucket = 0;
 								yearBuckets.do({ | year, index |
-									if (preset.year < year, {
+									if (preset.year <= year, {
 										bucket = year;
 									});
 								});
