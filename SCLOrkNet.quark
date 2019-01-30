@@ -2,7 +2,7 @@
 	name: "SCLOrkNet",
 	summary: "Network communication classes for the Santa Clara Laptop Orchestra",
 	author: "Luke Nihlen",
-	version: "0.2.0",
+	version: "1.0.0",
 	schelp: "Guides/SCLOrkNet-User-Guide",
 	dependencies: [ ],
 	license: "GPL",
