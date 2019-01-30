@@ -2,7 +2,7 @@
 	name: "SCLOrkClock",
 	summary: "Collection of network clock classes used by Santa Clara Laptop Orchestra",
 	author: "Luke Nihlen",
-	version: "0.1.5",
+	version: "1.0.0",
 	schelp: "SCLOrkClock-User-Guide",
 	license: "GPL",
 	copyright: "Luke Nihlen 2018",
