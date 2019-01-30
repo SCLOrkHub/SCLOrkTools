@@ -4,6 +4,10 @@ categories:: Quarks>SCLOrkPD
 
 section:: Release Notes
 
+subsection:: 1.0.0 - 30 January 2019
+
+First public performance of the Public Domain piece, so incrementing the version to indicate first production release.
+
 subsection:: 0.0.7 - 26 January 2019
 
 Fixes off-by-one error in year buckets.
