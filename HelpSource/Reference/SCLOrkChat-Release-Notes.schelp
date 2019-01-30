@@ -5,6 +5,10 @@ related:: Reference/SCLOrkNet-Release-Notes
 
 section:: Release Notes
 
+subsection:: 1.0.0 - 30 January 2019
+
+First public performance by SCLOrk using SCLOrkChat, so bumping version number to 1.0.0, to reflect production status.
+
 subsection:: 0.2.2 - 21 January 2019
 
 UI tweaks and polish, based on feedback from SCLOrk chamber members:
