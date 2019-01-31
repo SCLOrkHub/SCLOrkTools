@@ -10,7 +10,9 @@ subsection:: 1.0.1 - ??
 Multiple refinements to the UI basd on observation of the SCLOrkChat program used during live performance.
 
 list::
-## Always keep chat window enabled, even if not connected.
+## Always keep chat text entry window enabled, even if not connected, allowing users to still execute emphasis::/quit::.
+## Re-layout chat message view to put sender name on top, leaving more room for the message to wrap around the whole width of the view.
+## Move the code append button to the bottom of the message view, and limit code message height.
 ::
 
 subsection:: 1.0.0 - 30 January 2019
