@@ -6,6 +6,7 @@ SCLOrkChat {
 	var name;
 	var asDirector;
 	var chatClient;
+	var chatClientConnected;
 	var quitTasks;
 	var wedged;
 
@@ -45,6 +46,7 @@ SCLOrkChat {
 		});
 		quitTasks = false;
 		wedged = false;
+		chatClientConnected = false;
 
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
@@ -145,8 +147,6 @@ SCLOrkChat {
 
 		clientListView.fixedWidth = clearSelectionButton.sizeHint.width;
 		clearSelectionButton.fixedWidth = clearSelectionButton.sizeHint.width;
-
-		sendTextField.enabled = false;
 
 		autoScrollCheckBox.value = true;
 		autoScrollCheckBox.string = "Auto-Scroll";
@@ -262,26 +262,36 @@ SCLOrkChat {
 			});
 
 			if (isCommand.not, {
-				var recipientIds, chatMessage;
+				if (chatClientConnected, {
+					var recipientIds, chatMessage;
 
-				if (clientListView.selection.size == 0, {
-					recipientIds = [ 0 ];
+					if (clientListView.selection.size == 0, {
+						recipientIds = [ 0 ];
+					}, {
+						recipientIds = clientIdList.at(clientListView.selection);
+					});
+
+					chatMessage = SCLOrkChatMessage(
+						chatClient.userId,
+						recipientIds,
+						sendType,
+						sendString,
+						chatClient.name
+					);
+					chatClient.sendMessage(chatMessage);
+
+					// Reset contents of text UI, and reset message type selector
+					// to plain.
+					messageTypePopUpMenu.value = 0;
 				}, {
-					recipientIds = clientIdList.at(clientListView.selection);
+					this.enqueueChatMessage(SCLOrkChatMessage(
+						chatClient.userId,
+						[ 0 ],
+						\system,
+						"not connected.",
+						""
+					));
 				});
-
-				chatMessage = SCLOrkChatMessage(
-					chatClient.userId,
-					recipientIds,
-					sendType,
-					sendString,
-					chatClient.name
-				);
-				chatClient.sendMessage(chatMessage);
-
-				// Reset contents of text UI, and reset message type selector
-				// to plain.
-				messageTypePopUpMenu.value = 0;
 			});
 
 			v.string = "";
@@ -409,6 +419,8 @@ SCLOrkChat {
 		clientIdList = Array.new;
 
 		chatClient.onConnected = { | isConnected |
+			chatClientConnected = isConnected;
+
 			if (isConnected, {
 				this.enqueueChatMessage(SCLOrkChatMessage.new(
 					chatClient.userId,
@@ -417,7 +429,6 @@ SCLOrkChat {
 					"Connected to server."));
 				AppClock.sched(0, {
 					connectionStatusLabel.string = "connected";
-					sendTextField.enabled = true;
 				});
 				this.prRebuildClientListView(true);
 			}, {
@@ -429,7 +440,6 @@ SCLOrkChat {
 				AppClock.sched(0, {
 					connectionStatusLabel.visible = false;
 					reconnectButton.visible = true;
-					sendTextField.enabled = false;
 				});
 			});
 		};

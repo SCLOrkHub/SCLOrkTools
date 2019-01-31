@@ -5,6 +5,14 @@ related:: Reference/SCLOrkNet-Release-Notes
 
 section:: Release Notes
 
+subsection:: 1.0.1 - ??
+
+Multiple refinements to the UI basd on observation of the SCLOrkChat program used during live performance.
+
+list::
+## Always keep chat window enabled, even if not connected.
+::
+
 subsection:: 1.0.0 - 30 January 2019
 
 First public performance by SCLOrk using SCLOrkChat, so bumping version number to 1.0.0, to reflect production status.
