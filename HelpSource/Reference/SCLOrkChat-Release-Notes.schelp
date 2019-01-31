@@ -15,6 +15,16 @@ list::
 ## Move the code append button to the bottom of the message view, and limit code message height.
 ::
 
+TODO
+list::
+## Make chatUI a singleton.
+## Shouts should pull chat window to front.
+## Bring back recipient list on private messages.
+## Think of better name for button clearing selection of recipients.
+## Add @ command to send a whisper to the specified username.
+## Add signed-in name to window title.
+::
+
 subsection:: 1.0.0 - 30 January 2019
 
 First public performance by SCLOrk using SCLOrkChat, so bumping version number to 1.0.0, to reflect production status.
