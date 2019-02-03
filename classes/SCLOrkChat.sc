@@ -139,7 +139,7 @@ SCLOrkChat {
 		clientListView.selectionMode = \multi;
 		clientListView.font = font;
 
-		clearSelectionButton.string = "Send All";
+		clearSelectionButton.string = "Clear";
 		clearSelectionButton.font = font;
 		clearSelectionButton.action = {
 			clientListView.selection = [ ];

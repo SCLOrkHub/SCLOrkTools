@@ -16,12 +16,12 @@ list::
 ## Shouts now automatically pull the chat window to the front.
 ## Adds signed-in name to window title.
 ## Private messages now include recipient lists in the sender name label.
+## Tweaked wording on clear recipient selection button.
 ::
 
 TODO
 list::
 ## Make chatUI a singleton.
-## Think of better name for button clearing selection of recipients.
 ## Add @ command to send a whisper to the specified username.
 ::
 
