@@ -98,7 +98,7 @@ SCLOrkChat {
 		var windowWidth = Window.screenBounds.width / 4.0;
 
 		// By default we occupy the right quarter of the screen.
-		window = Window.new("SCLOrkChat",
+		window = Window.new("SCLOrkChat -" + name,
 			Rect.new(
 				Window.screenBounds.right - (windowWidth * 1.5),
 				0,
@@ -230,6 +230,8 @@ SCLOrkChat {
 						var newName = v.string[firstSpace + 1..];
 						if (newName.size > 0, {
 							chatClient.name = newName;
+							name = newName;
+							window.name = "SCLOrkChat -" + name;
 						});
 					},
 					"/plain", {

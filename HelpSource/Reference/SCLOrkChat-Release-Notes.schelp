@@ -14,6 +14,7 @@ list::
 ## Re-layout chat message view to put sender name on top, leaving more room for the message to wrap around the whole width of the view.
 ## Move the code append button to the bottom of the message view, and limit code message height.
 ## Shouts now automatically pull the chat window to the front.
+## Adds signed-in name to window title.
 ::
 
 TODO
@@ -22,7 +23,6 @@ list::
 ## Bring back recipient list on private messages.
 ## Think of better name for button clearing selection of recipients.
 ## Add @ command to send a whisper to the specified username.
-## Add signed-in name to window title.
 ::
 
 subsection:: 1.0.0 - 30 January 2019
