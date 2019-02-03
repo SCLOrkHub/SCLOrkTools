@@ -15,12 +15,12 @@ list::
 ## Move the code append button to the bottom of the message view, and limit code message height.
 ## Shouts now automatically pull the chat window to the front.
 ## Adds signed-in name to window title.
+## Private messages now include recipient lists in the sender name label.
 ::
 
 TODO
 list::
 ## Make chatUI a singleton.
-## Bring back recipient list on private messages.
 ## Think of better name for button clearing selection of recipients.
 ## Add @ command to send a whisper to the specified username.
 ::
