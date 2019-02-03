@@ -111,7 +111,7 @@ SCLOrkChatClient {
 						msg[2],
 						msg[3],
 						nameMap.at(msg[1]),
-						false);
+						true);
 					// Populate list of recipient names if it is not a broadcast.
 					if (chatMessage.recipientIds[0] != 0, {
 						chatMessage.recipientNames = nameMap.atAll(
