@@ -13,12 +13,12 @@ list::
 ## Always keep chat text entry window enabled, even if not connected, allowing users to still execute emphasis::/quit::.
 ## Re-layout chat message view to put sender name on top, leaving more room for the message to wrap around the whole width of the view.
 ## Move the code append button to the bottom of the message view, and limit code message height.
+## Shouts now automatically pull the chat window to the front.
 ::
 
 TODO
 list::
 ## Make chatUI a singleton.
-## Shouts should pull chat window to front.
 ## Bring back recipient list on private messages.
 ## Think of better name for button clearing selection of recipients.
 ## Add @ command to send a whisper to the specified username.

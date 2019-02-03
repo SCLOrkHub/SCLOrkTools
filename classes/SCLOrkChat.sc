@@ -350,6 +350,8 @@ SCLOrkChat {
 				addedElements = true;
 				if (chatMessage.type == '\shout', {
 					shouldScroll = true;
+					// Pull window to front on a shout.
+					window.front;
 				});
 
 				chatMessageQueueSemaphore.wait;
