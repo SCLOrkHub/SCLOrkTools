@@ -5,9 +5,9 @@ related:: Reference/SCLOrkNet-Release-Notes
 
 section:: Release Notes
 
-subsection:: 1.0.1 - ??
+subsection:: 1.0.1 - 3 February 2019
 
-Multiple refinements to the UI basd on observation of the SCLOrkChat program used during live performance.
+Multiple refinements to the UI basd on observation of the SCLOrkChat program used during its first live performance.
 
 list::
 ## Always keep chat text entry window enabled, even if not connected, allowing users to still execute emphasis::/quit::.
@@ -18,11 +18,7 @@ list::
 ## Private messages now include recipient lists in the sender name label.
 ## Tweaked wording on clear recipient selection button.
 ## Adds the @ command to send a whisper to all users matching the specified username.
-::
-
-TODO
-list::
-## Make chatUI a singleton.
+## Makes SCLOrkChat a singleton.
 ::
 
 subsection:: 1.0.0 - 30 January 2019
