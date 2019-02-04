@@ -17,12 +17,12 @@ list::
 ## Adds signed-in name to window title.
 ## Private messages now include recipient lists in the sender name label.
 ## Tweaked wording on clear recipient selection button.
+## Adds the @ command to send a whisper to all users matching the specified username.
 ::
 
 TODO
 list::
 ## Make chatUI a singleton.
-## Add @ command to send a whisper to the specified username.
 ::
 
 subsection:: 1.0.0 - 30 January 2019

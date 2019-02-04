@@ -51,6 +51,7 @@ SCLOrkChat {
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
 		this.prConnectClientListViewUpdateLogic();
+		this.prUpdateName(name);
 
 		window.front;
 		this.connect;
@@ -98,7 +99,7 @@ SCLOrkChat {
 		var windowWidth = Window.screenBounds.width / 4.0;
 
 		// By default we occupy the right quarter of the screen.
-		window = Window.new("SCLOrkChat -" + name,
+		window = Window.new("SCLOrkChat",
 			Rect.new(
 				Window.screenBounds.right - (windowWidth * 1.5),
 				0,
@@ -193,6 +194,34 @@ SCLOrkChat {
 			var isCommand = false;
 			var sendString = v.string;
 			var sendType = messageTypePopUpMenu.item;
+			var recipientIds = nil;
+
+			if (v.string[0] == $@, {
+				var atName, atIds;
+				var firstSpace = v.string.find(" ");
+				if (firstSpace.isNil, {
+					firstSpace = v.string.size;
+				});
+				atName = v.string[1..firstSpace - 1].asSymbol;
+				atIds = Array.new;
+				chatClient.nameMap.keysValuesDo({ | key, value |
+					if (value === atName, {
+						atIds = atIds.add(key);
+					});
+				});
+				if (atIds.size > 0, {
+					isCommand = false;
+					sendString = sendString[firstSpace + 1..];
+					recipientIds = atIds;
+				}, {
+					isCommand = true;
+					this.enqueueChatMessage(SCLOrkChatMessage.new(
+						chatClient.userId,
+						[ chatClient.userId ],
+						\system,
+						"User named '" ++ atName ++ "' not found."));
+				});
+			});
 
 			if (v.string[0] == $/, {
 				var commandString;
@@ -229,9 +258,7 @@ SCLOrkChat {
 					"/name", {
 						var newName = v.string[firstSpace + 1..];
 						if (newName.size > 0, {
-							chatClient.name = newName;
-							name = newName;
-							window.name = "SCLOrkChat -" + name;
+							this.prUpdateName(newName);
 						});
 					},
 					"/plain", {
@@ -255,6 +282,7 @@ SCLOrkChat {
 							[ chatClient.userId ],
 							\system,
 							"Supported commands:\n" ++
+							"@<name> send a private message to <name>\n" ++
 							"/code <code string>\n" ++
 							"/name <new name>\n" ++
 							"/plain <plain string>\n" ++
@@ -265,12 +293,14 @@ SCLOrkChat {
 
 			if (isCommand.not, {
 				if (chatClientConnected, {
-					var recipientIds, chatMessage;
+					var chatMessage;
 
-					if (clientListView.selection.size == 0, {
-						recipientIds = [ 0 ];
-					}, {
-						recipientIds = clientIdList.at(clientListView.selection);
+					if (recipientIds.isNil, {
+						if (clientListView.selection.size == 0, {
+							recipientIds = [ 0 ];
+						}, {
+							recipientIds = clientIdList.at(clientListView.selection);
+						});
 					});
 
 					chatMessage = SCLOrkChatMessage(
@@ -481,5 +511,14 @@ SCLOrkChat {
 				}
 			);
 		};
+	}
+
+	prUpdateName { | newName |
+		// Strip spaces and commas from names.
+		name = newName.replace(" ", "").replace(",", "");
+		if (chatClient.isConnected, {
+			chatClient.name = name;
+		});
+		window.name = "SCLOrkChat -" + name;
 	}
 }
