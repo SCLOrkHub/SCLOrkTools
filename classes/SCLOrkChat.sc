@@ -2,6 +2,7 @@ SCLOrkChat {
 	const chatUiUpdatePeriodSeconds = 0.2;
 	const keepLastMessageCount = 100;
 	const <fontSize = 18.0;
+	classvar <instance = nil;
 
 	var name;
 	var asDirector;
@@ -33,7 +34,12 @@ SCLOrkChat {
 	var messageViewRingBuffer;
 
 	*new { | name, asDirector = false, chatClient = nil |
-		^super.newCopyArgs(name, asDirector, chatClient).init;
+		if (instance.notNil, {
+			^instance;
+		}, {
+			instance = super.newCopyArgs(name, asDirector, chatClient).init;
+			^instance;
+		});
 	}
 
 	init {
@@ -92,6 +98,7 @@ SCLOrkChat {
 		window.close;
 		window.free;
 		chatClient.free;
+		instance = nil;
 	}
 
 	prConstructUiElements {

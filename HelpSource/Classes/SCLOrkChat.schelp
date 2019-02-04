@@ -4,14 +4,14 @@ categories:: Quarks>SCLOrkChat
 related:: Guides/SCLOrkChat-User-Guide, Classes/SCLOrkChatClient
 
 DESCRIPTION::
-Provides a graphical user interface for a provided link::Classes/SCLOrkChatClient::, or can construct one from defaults. Serves as the primary user interface to the SCLOrkChat system.
+Provides a graphical user interface for a provided link::Classes/SCLOrkChatClient::, or can construct one from defaults. Serves as the primary user interface to the SCLOrkChat system. SCLOrkChat is a singleton, meaning that there can be one at most created in any interpreter instance.
 
 CLASSMETHODS::
 
 METHOD:: new
-Construct, initialize, and return a new SCLOrkChat object. Will show the window.
+Construct, initialize, and return a new SCLOrkChat object. Will show the window. If there is already a SCLOrkChat in operation the arguments to new will be ignored and the running instance is returned.
 
-ARGUMENT:: nickName
+ARGUMENT:: name
 The name to use in the chat. Will be shown to other users as your name.
 
 ARGUMENT:: asDirector
@@ -27,8 +27,11 @@ If a link::Classes/SCLOrkChatClient:: object is provided, the SCLOrkChat UI will
 METHOD:: fontSize
 Returns the font size, a constant. This should be passed as the size for all Font object construction in dependant views.
 
+METHOD:: instance
+Returns the singleton instance of SCLOrkChat if there is one, or nil if not.
+
 INSTANCEMETHODS::
-private:: prConnectChatUiUpdateLogic, prConstructUiElements, prEnqueueChatMessage, init, prConnectClientListViewUpdateLogic, prRebuildClientListView
+private:: prConnectChatUiUpdateLogic, prConstructUiElements, prEnqueueChatMessage, init, prConnectClientListViewUpdateLogic, prRebuildClientListView, prUpdateName
 
 METHOD:: connect
 Attempt to connect to the server via the link::Classes/SCLOrkChatClient::.
