@@ -40,7 +40,15 @@ SCLOrkChatServer {
 						this.prSendAll(
 							this.prChangeClient(\timeout, wire.id, name));
 					},
-					\disconnect, {
+					\disconnected, {
+						// Should have already been removed from nameMap but
+						// just in case remove here.
+						if (nameMap.at(wire.id).notNil, {
+							var name = nameMap.at(wire.id);
+							nameMap.removeAt(wire.id);
+							this.prSendAll(
+								this.prChangeClient(\remove, wire.id, name), wire);
+						});
 						wireMap.removeAt(wire.id);
 					}
 				);
