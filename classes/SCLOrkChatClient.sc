@@ -28,8 +28,7 @@ SCLOrkChatClient {
 				\failureTimeout, {
 					onConnected.(false);
 				},
-				\disconnect, {
-					"got wire disconnect".postln;
+				\disconnected, {
 					onConnected.(false);
 				}
 			);
@@ -138,7 +137,7 @@ SCLOrkChatClient {
 	}
 
 	free {
-		if (wire.connectionState == \connected, {
+		if (wire.connectionState === \connected, {
 			this.disconnect;
 		});
 	}
@@ -149,7 +148,7 @@ SCLOrkChatClient {
 	}
 
 	isConnected {
-		^(wire.connectionState == \connected);
+		^(wire.connectionState === \connected);
 	}
 
 	sendMessage { | chatMessage |
