@@ -65,7 +65,20 @@ SCLOrkChatServer {
 							this.prChangeClient(\add, wire.id, name));
 					},
 					'/chatGetAllClients', {
-						var clientArray = [ '/chatSetAllClients' ] ++ nameMap.getPairs;
+						var clientArray;
+
+						// Reconcile everyone in the nameMap with the wireMap.
+						if (nameMap.size != wireMap.size, {
+							var ghosts = nameMap.keys.difference(wireMap.keys);
+							ghosts.do({ | item, index |
+								var name = nameMap.at(item) ++ " (ghost)";
+								nameMap.removeAt(item);
+								this.prSendAll(
+									this.prChangeClient(\timeout, item, name), wire);
+							});
+						});
+
+						clientArray = [ '/chatSetAllClients' ] ++ nameMap.getPairs;
 						wire.sendMsg(*clientArray);
 					},
 					'/chatSendMessage', {
