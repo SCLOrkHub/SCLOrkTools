@@ -24,7 +24,6 @@ SCLOrkWire {
 	var receiveSerial;
 	var receiveBuffer;
 
-	// \neverConnected, \connected, \failureTimeout
 	var <connectionState;
 	var <>onConnected;
 	var <>onMessageReceived;
