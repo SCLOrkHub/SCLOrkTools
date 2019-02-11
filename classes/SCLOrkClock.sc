@@ -12,14 +12,14 @@ SCLOrkClock : TempoClock {
 
 	prInit { | tC |
 		timeClient = tC;
-		this.beats_((Main.elapsedTime + timeClient.timeDiff) / this.tempo);
+		this.beats_((Main.elapsedTime + timeClient.timeDiff) * this.tempo);
 
 		this.permanent_(true);
 		shouldQuit = false;
 		CmdPeriod.add(this);
 
 		beatsSyncTask = SkipJack.new({
-			this.beats_((Main.elapsedTime + timeClient.timeDiff) / this.tempo);
+			this.beats_((Main.elapsedTime + timeClient.timeDiff) * this.tempo);
 		},
 		dt: beatsUpdateInterval,
 		stopTest: { shouldQuit }
@@ -43,5 +43,9 @@ SCLOrkClock : TempoClock {
 	permanent_ { | value |
 		isPermanent = value;
 		super.permanent_(value);
+	}
+
+	tempo_ { | newTempo |
+		"*** setting tempo after startup not supported on this version of SCLOrkClock.".postln;
 	}
 }
