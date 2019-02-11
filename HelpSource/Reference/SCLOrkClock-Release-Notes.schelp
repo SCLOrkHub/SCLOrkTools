@@ -4,6 +4,10 @@ categories:: Quarks>SCLOrkClock
 
 section:: Release Notes
 
+subsection:: 1.0.1 - 10 February 2019
+
+Stopgap patch while SCLOrkClock 2.0 refactor is underway. Adds support for setting a different tempo on the clock on construction, and disables changes to that tempo, as post-construction tempo changes are not supported.
+
 subsection:: 1.0.0 - 30 January 2019
 
 First public performance by SCLOrk using SCLOrkClock, so bumping version number to 1.0.0, to reflect production status.
