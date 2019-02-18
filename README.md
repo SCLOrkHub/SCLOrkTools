@@ -1,2 +1,2 @@
-# SCLOrkCore
-Core objects for use by the Santa Clara Laptop Orchestra
+# SCLOrkUI
+GUI objects for use in the Santa Clara University Laptop Orchestra
