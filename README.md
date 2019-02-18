@@ -1,2 +1,2 @@
-# SCLOrkTools
-SuperCollider tools used by the Santa Clara University Laptop Orchestra
+# SCLOrkCore
+Core objects for use by the Santa Clara Laptop Orchestra
