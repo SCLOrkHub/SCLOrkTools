@@ -1,0 +1,182 @@
+title:: SCLOrkClock Design Document
+summary:: SCLOrkClock Design Discussion
+categories:: Quarks>SCLOrkClock
+related:: Classes/SCLOrkClock, Classes/SCLOrkWire
+
+This is a design document for a centralized clock server system for the Santa Clara Laptop Orchestra. It describes a client-server protocol that allows for the centralized creation, control, and management of distributed network link::Classes/Clock:: objects for use in performance.
+
+section:: Requirements
+
+There should be an easy way to create an object similar to a link::Classes/TempoClock:: but that has synchronized strong::beat::, strong::beatsPerBar::, and strong::bar:: values across all instances of that clock across the network, which we call emphasis::clock cohorts::. Keeping the beat counters in sync allows for distributed compositions with a high degree of structure, in that all clocks in the cohort will have the same concept of where they are in a piece, because of the synchronized strong::beat:: count.
+
+All members of a clock cohort are equal in that they can each set the tempo or modify other clock parameters, with the expectation that the changes will propagate to all other clocks in cohort automatically.
+
+list::
+## We need a way to enumerate all existing clock cohorts by name, as well as get a snapshot of their current state.
+## The controller needs to be able to create new cohorts, set tempo and meter on existing cohorts, and clear and stop them.
+## Clients should be able to register with the server to receive tempo and meter change commands, as well as notification about the creation and destruction of cohorts.
+## Clocks should be within tens of milliseconds in synchrony from one another, and should have the same beat and bar number value, but need not have the same logical time.
+## In addition to the traditional real-time clock functions to set tempo or meter, we will want to expand the capabilities for synchronized clock change coordination, including a strong::cue:: concept which waits for a remote start command, and the ability to schedule changes for a future beat number with methods like strong::setTempoAtBeat::.
+## All clocks must be emphasis::permanent:: by default, meaning that they will survive cmd-period, to allow for their remote administration.
+## Clocks may run for a long time, so should account for drift periodically, and be self-correcting.
+::
+
+section:: Clock Client Design
+
+The link::Classes/SCLOrkClock:: singleton maintains a per-machine link::Classes/SCLOrkWire:: connection back to the link::Classes/SCLOrkClockServer::, to provide and receive clock updates. Because the server is the authoritative time keeper for all changes in clock state, all times communicated back to the server are converted back into server time using the most recent synchronization approximations. In this section we detail the protocol for communication between client and server, followed by some typical scenarios.
+
+subsection:: Clock Creation
+
+code::
+// Creates a new SCLOrkClock member of a clock cohort named 'a'.
+~clock = SCLOrkClock.new(\a);
+::
+
+The singleton SCLOrkClock code should check to ensure that the time synchronization service has already been started, or start it if it hasn't been, then checks for the viability of the link::Classes/SCLOrkWire:: connection back to the server. The singleton code maintains a map of cohort names as key and a list of clock instances as values, so any updates to state from the server can be propagated back to the individual clock instances. So this clock will be added to the map of cohort names, then the client code calls strong::/clockRegister:: on the server, expecting a strong::/clockUpdate:: callback on this cohort name as a response to registration.
+
+subsection:: Computation of Clock Current State
+
+Using the following as reported by the server:
+
+table::
+## tempo || Current tempo of the clock in beats per second.
+## beatsPerBar || Number of beats in a bar.
+## baseBarBeat || Beat count where beatsPerBar value was last changed, or 0 if never changed.
+## beatAtLastTempoChange || Beat count where tempo was last changed, or 0 if never changed.
+## serverTimeAtLastTempoChange || Server elapsed time count when tempo was last changed, or the start time of the clock if tempo never changed.
+## baseBar || Bar count at last meter change.
+::
+
+Assuming we have a means of computing local times relative to the provided server time, we can then compute the current clock state as follows:
+
+code::
+beat = beatAtLastTempoChange + (tempo * (elapsedTime - timeAtLastTempoChange));
+
+beatInBar = (beat - baseBarBeat) % beatsPerBar;
+
+bar = barAtLastMeterChange + ((beat - baseBarBeat) / beatsPerBar);
+::
+
+To convert an strong::inputBeat:: back to a local time elapsed seconds, or strong::beats2secs::, the formula is:
+
+code::
+beats2secs = timeAtLastTempoChange + ((inputBeat - beatAtLastTempoChange) / tempo);
+::
+
+Note that this formula only works for code::inputBeat >= beatAtLastTempoChange::.
+
+subsection:: Propagating Clock Changes
+
+code::
+// An example of an *immediate* change.
+~clock.tempo = 160/60;
+
+// An example of a *scheduled* change for some time in the future.
+~clock.setMeterAtBeat(4, ~clock.beat + 100.0);
+::
+
+All immediate changes, like the first line in the example code above, take some time to propagate out and so will arrive at the other clocks in the clock cohort as a retroactive change, meaning that the strong::applyAtTime:: field is likely to be in the past. Therefore all changes are time-based in a distributed clock, so are reported back to the server using the same mechanism, which is a call to the strong::/clockChange:: command. Immediate changes don't actually change clock state, rather they will rely on server responding with a strong::/clockUpdate:: change for some time in the recent past (essentially minus the round-trip-time between client and server).
+
+note::
+Changes to the clock, even immediate ones, are always scheduled emphasis::on grid::, meaning that even if a change to the clock tempo, for example, is executed midway between beats, the change won't take effect until the next beat.
+::
+
+section:: Server Design
+
+The server has a central role in clock synchronization, but maintains no clocks of its own. Rather it maintains sufficient information that the clients can reconstruct the clock state from all reported information.
+
+Clients should be able to request the names of all registered clock cohorts, requested detailed state information about any of the individual clock cohorts, and register to be informed of any further changes to the clocks. Given that the client and server time synchronization requires only one instance per computer, all clock cohorts can be managed by a per-machine singleton instance of client or server.
+
+subsection:: Time Synchronization
+
+The server reports its current time when asked at strong::/clockSyncGet:: by calling strong::/clockSyncSet:: on the calling client on the supplied return port. The client keeps a rolling mean of the last several data points measuring difference between the client elapsed time and the reported server time, as well as the round-trip-time from request to responce. If the time diff is calculated on receipt at the client as:
+
+code::
+diff = localClientTime - reportedServerTime
+::
+
+Then the difference between local client time and server time is approximated by:
+
+code::
+timeDiff = meanDiff - (meanRoundTripTime / 2.0)
+::
+
+In this synthetic example the client is running consistently 5 minutes ahead of the server, and the round trip time between client and server is 1 minute:
+
+table::
+## strong::localTime:: || strong::serverTime:: || strong::Event::
+## 05:00 || 00:00 || Client send request for time to server, records local sending time.
+## 05:30 || 00:30 || Server receives request, notes server time, sends back to client.
+## 06:00 || 01:00 || Client receives server time, computes diff of 05:30, roundTripTime of 01:00, timeDiff of 05:00.
+::
+
+
+section:: Server Wire Command Reference
+
+subsection:: /clockRegister - needs to be different to prevent accidental clobbering
+
+table::
+## strong::label:: || cohortName || Name of clock cohort. If a cohort with this name already exists all following parameters are ignored.
+## strong::float64:: || startTime || The client-estimated server start time of this clock.
+## strong::float64:: || tempo || The initial tempo value of the clock.
+## strong::float64:: || beatsPerBar || The beats per bar value of the clock, count of beats in an individual measure.
+::
+
+note::
+The strong::float64:: type is serialized as two separate ints, always in the order of most significant to least significant words.
+::
+
+Informs the server about the creation of a new individual clock within a cohort of the provided name. If the cohort is already registered the provided parameters are ignored, to prevent clocks joining an existing cohort with default parameters from clobbering the existing cohort parameters. If the cohort is new, the sever treats the provided data as authoritative. In either event, the server will respond to the registering client emphasis::only:: with canonical clock state information by calling strong::/clockUpdate:: on the client.
+
+subsection:: /clockGetAll
+
+Called with no arguments, this is a request by an individual client to return the state of all registered cohorts with individual strong::/clockUpdate:: return calls on the client.
+
+section:: Client Wire Command Reference
+
+subsection:: /clockUpdate
+
+table::
+## strong::label::   || cohortName || The name of clock cohort that this update applies to.
+## strong::float64:: || applyAtTime || Server time that this change should be applied to the clock.
+## strong::float64:: || tempo || Tempo value in beats per second.
+## strong::float64:: || beatsPerBar || Number of beats in a bar.
+## strong::float64:: || baseBarBeat || Beat that beatsPerBar was last changed, or 0 if never changed.
+## strong::float64:: || beatAtLastTempoChange || Beat count at time of last tempo change, or 0 if never changed.
+## strong::float64:: || timeAtLastTempoChange || Server time at last tempo change, or start time of clock cohort if never changed.
+## strong::float64:: || barAtLastMeterChange || Bar count at last change to beatsPerBar.
+::
+
+note::
+The strong::applyAtTime:: field can be in the future or past relative to the time of the message receipt.
+::
+
+section:: Aspirational Code
+
+code::
+(
+// All defaults, cohort name is "default".
+~clock = SCLOrkClock.new;
+
+// Pulls state from network, tempo is currently 100/60.
+~clock.tempo.println;
+
+~clock.play({ ~clock.beats.postln; 1; });  // starts counting from 0
+
+// Unique name on the network, so new cohort created.
+~c2 = SCLOrkClock.new("new-cohort");
+
+// Just like play, but won't start until some member of the cohort
+// calls start().
+~c2.cue({ ~c2.beats.postln; 1; });
+
+// ...
+
+~c2.start;
+
+// Sets tempo for everyone.
+~c2.tempo = 40/60;
+)
+::
+
+

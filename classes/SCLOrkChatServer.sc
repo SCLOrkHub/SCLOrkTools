@@ -145,4 +145,3 @@ SCLOrkChatServer {
 			nickName];
 	}
 }
-

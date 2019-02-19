@@ -29,7 +29,8 @@ Send a message to some or all connected clients.
 table::
 ## strong::label:: || messageType || Enumerated type of message. See link::#Message Types:: section for list of types.
 ## strong::string:: || contents || The contents of the message.
-## strong::int::   || recipientId0 || First element in recipientId list. If 0, the server will broadcast message to all connected clients. There should be at least 1 element in the list.
+## strong::int::   || recipientId0 || First element in recipientId list. If 0, the server will broadcast message to all connected clients. Th					wireMap.put(wire.targetId, wire);
+ere should be at least 1 element in the list.					wireMap.put(wire.targetId, wire);
 
 ## strong::...::   ||  ... || ...
 ## strong::int::   || recipientIdN || Last element in the recipientId list.
@@ -95,6 +96,7 @@ table::
 ## strong::\timeout:: || Clients should remove the userId from their dictionaries, the client associated with this userId has timed out.
 ::
 
+
 subsection:: /chatReceive
 Used to notify clients of a new chat message sent by another client.
 
@@ -123,16 +125,7 @@ table::
 
 Note that message format is identical to that of link::#/chatReceive::. Server will respond to every call to link::#/chatSendMessage:: with a link::#/chatEcho::.
 
-subsection:: /chatEcho
-
-This table details the currently supported values of the emphasis::messageType:: argument included in link::#/chatSendMessage::, link::#/chatReceive::, and link::#/chatEcho:: commands.
-
-table::
-## strong::\code::   || The message contents are to be considered as supercollider source code.
-## strong::\plain::  || A normal chat message, the default value.
-## strong::\shout::  || A message requiring special emphasis in the UI.
-## strong::\system:: || Not normally sent by the server, but used by link::Classes/SCLOrkChatMessage:: to indicate a state change in the chat system.
-::
+section:: Message Types
 
 This table details the currently supported values of the emphasis::messageType:: argument included in link::#/chatSendMessage::, link::#/chatReceive::, and link::#/chatEcho:: commands.
 
@@ -205,4 +198,3 @@ table::
 ## client || link::#/clientTimeOut:: || Server will send one timeout message to client on detection of timeout, and will respond with a clientTimeOut message to all future requests from the client with that userId.
 ## peer || link::#/chatChangeClient:: userId strong::\timeout:: || Server will send a client change timeout message to all remaining connected peers.
 ::
-

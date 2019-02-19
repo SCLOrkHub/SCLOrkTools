@@ -1,0 +1,11 @@
+(
+	name: "SCLOrkCore",
+	summary: "Core (non-UI) classes for use by the Santa Clara Laptop Orchestra",
+	author: "Luke Nihlen",
+	version: "0.0.1",
+	schelp: "Guides/SCLOrkCore-User-Guide",
+	license: "GPL",
+	copyright: "Luke Nihlen 2019",
+	organization: "Santa Clara Laptop Orchestra",
+	since: 2018
+)
