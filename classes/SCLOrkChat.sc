@@ -2,7 +2,6 @@ SCLOrkChat {
 	const chatUiUpdatePeriodSeconds = 0.2;
 	const keepLastMessageCount = 100;
 	const <fontSize = 18.0;
-	classvar <instance = nil;
 
 	var name;
 	var asDirector;
@@ -34,12 +33,7 @@ SCLOrkChat {
 	var messageViewRingBuffer;
 
 	*new { | name, asDirector = false, chatClient = nil |
-		if (instance.notNil, {
-			^instance;
-		}, {
-			instance = super.newCopyArgs(name, asDirector, chatClient).init;
-			^instance;
-		});
+		^super.newCopyArgs(name, asDirector, chatClient).init;
 	}
 
 	init {
@@ -57,7 +51,6 @@ SCLOrkChat {
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
 		this.prConnectClientListViewUpdateLogic();
-		this.prUpdateName(name);
 
 		window.front;
 		this.connect;
@@ -98,7 +91,6 @@ SCLOrkChat {
 		window.close;
 		window.free;
 		chatClient.free;
-		instance = nil;
 	}
 
 	prConstructUiElements {
@@ -147,7 +139,7 @@ SCLOrkChat {
 		clientListView.selectionMode = \multi;
 		clientListView.font = font;
 
-		clearSelectionButton.string = "Clear";
+		clearSelectionButton.string = "Send All";
 		clearSelectionButton.font = font;
 		clearSelectionButton.action = {
 			clientListView.selection = [ ];
@@ -201,34 +193,6 @@ SCLOrkChat {
 			var isCommand = false;
 			var sendString = v.string;
 			var sendType = messageTypePopUpMenu.item;
-			var recipientIds = nil;
-
-			if (v.string[0] == $@, {
-				var atName, atIds;
-				var firstSpace = v.string.find(" ");
-				if (firstSpace.isNil, {
-					firstSpace = v.string.size;
-				});
-				atName = v.string[1..firstSpace - 1].asSymbol;
-				atIds = Array.new;
-				chatClient.nameMap.keysValuesDo({ | key, value |
-					if (value === atName, {
-						atIds = atIds.add(key);
-					});
-				});
-				if (atIds.size > 0, {
-					isCommand = false;
-					sendString = sendString[firstSpace + 1..];
-					recipientIds = atIds;
-				}, {
-					isCommand = true;
-					this.enqueueChatMessage(SCLOrkChatMessage.new(
-						chatClient.userId,
-						[ chatClient.userId ],
-						\system,
-						"User named '" ++ atName ++ "' not found."));
-				});
-			});
 
 			if (v.string[0] == $/, {
 				var commandString;
@@ -265,7 +229,7 @@ SCLOrkChat {
 					"/name", {
 						var newName = v.string[firstSpace + 1..];
 						if (newName.size > 0, {
-							this.prUpdateName(newName);
+							chatClient.name = newName;
 						});
 					},
 					"/plain", {
@@ -289,7 +253,6 @@ SCLOrkChat {
 							[ chatClient.userId ],
 							\system,
 							"Supported commands:\n" ++
-							"@<name> send a private message to <name>\n" ++
 							"/code <code string>\n" ++
 							"/name <new name>\n" ++
 							"/plain <plain string>\n" ++
@@ -300,14 +263,12 @@ SCLOrkChat {
 
 			if (isCommand.not, {
 				if (chatClientConnected, {
-					var chatMessage;
+					var recipientIds, chatMessage;
 
-					if (recipientIds.isNil, {
-						if (clientListView.selection.size == 0, {
-							recipientIds = [ 0 ];
-						}, {
-							recipientIds = clientIdList.at(clientListView.selection);
-						});
+					if (clientListView.selection.size == 0, {
+						recipientIds = [ 0 ];
+					}, {
+						recipientIds = clientIdList.at(clientListView.selection);
 					});
 
 					chatMessage = SCLOrkChatMessage(
@@ -389,8 +350,6 @@ SCLOrkChat {
 				addedElements = true;
 				if (chatMessage.type == '\shout', {
 					shouldScroll = true;
-					// Pull window to front on a shout.
-					window.front;
 				});
 
 				chatMessageQueueSemaphore.wait;
@@ -518,14 +477,5 @@ SCLOrkChat {
 				}
 			);
 		};
-	}
-
-	prUpdateName { | newName |
-		// Strip spaces and commas from names.
-		name = newName.replace(" ", "").replace(",", "");
-		if (chatClient.isConnected, {
-			chatClient.name = name;
-		});
-		window.name = "SCLOrkChat -" + name;
 	}
 }
