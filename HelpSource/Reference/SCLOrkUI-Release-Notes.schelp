@@ -1,53 +1,10 @@
-title:: SCLOrkChat Release Notes
+title:: SCLOrkUI Release Notes
 summary:: Reference and history for released versions of SCLOrkChat.
-categories:: Quarks>SCLOrkChat
-related:: Reference/SCLOrkNet-Release-Notes
+categories:: Quarks>SCLOrkUI
+related:: Reference/SCLOrkCore-Release-Notes
 
 section:: Release Notes
 
-subsection:: 1.0.1 - ??
+subsection:: 0.0.1 - 18 February 2019
 
-Multiple refinements to the UI basd on observation of the SCLOrkChat program used during live performance.
-
-list::
-## Always keep chat text entry window enabled, even if not connected, allowing users to still execute emphasis::/quit::.
-## Re-layout chat message view to put sender name on top, leaving more room for the message to wrap around the whole width of the view.
-## Move the code append button to the bottom of the message view, and limit code message height.
-::
-
-TODO
-list::
-## Make chatUI a singleton.
-## Shouts should pull chat window to front.
-## Bring back recipient list on private messages.
-## Think of better name for button clearing selection of recipients.
-## Add @ command to send a whisper to the specified username.
-## Add signed-in name to window title.
-::
-
-subsection:: 1.0.0 - 30 January 2019
-
-First public performance by SCLOrk using SCLOrkChat, so bumping version number to 1.0.0, to reflect production status.
-
-subsection:: 0.2.2 - 21 January 2019
-
-UI tweaks and polish, based on feedback from SCLOrk chamber members:
-
-list::
-## Tweaked initial window height to account for the size not including the UI chrome provided by the OS, and so was making the window taller than the screen and fiddly to resize.
-## Made the font a bit smaller, setting font size still a future work.
-## The message type popup now also picks up the font.
-## Made the peer list a little narrower (by shortening the name on the clear button), to make more room for the chat messages.
-::
-
-subsection:: 0.2.1 - 14 January 2019
-
-Field fixes, forgot to check the default SCLOrkChatClient object creation, deploying at a SCLOrk rehearsal.
-
-subsection:: 0.2.0 - 13 January 2019
-
-Refactor to the SCLOrkChat object as well as tests to support the new SCLOrkWire-based Chat client and Server. Requires SCLOrkNet version 0.2.0 to work, as the API in SCLOrkChatClient changes somewhat between previous SCLOrkNet version 0.1.1 to now.
-
-subsection:: 0.1.3 - 1 January 2019
-
-First production version, relied on the UDP-based Chat client and server.
+Initial release of SCLOrkUI with code copied from old deprecated individual Quarks, namely SCLOrkPD and SCLOrkChat. Includes light edits to those files to make things work again. Next release should make things more of a cohesive whole.

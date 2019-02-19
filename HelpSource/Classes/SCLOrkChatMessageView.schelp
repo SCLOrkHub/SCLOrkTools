@@ -1,6 +1,6 @@
 TITLE:: SCLOrkChatMessageView
 summary:: Internal class for SCLOrkChat UI, represents a single SCLOrkChatMessage.
-categories:: Quarks>SCLOrkChat
+categories:: Quarks>SCLOrkUI
 related:: Classes/SCLOrkChat, Classes/SCLOrkChatMessage
 
 DESCRIPTION::
