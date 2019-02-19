@@ -1,6 +1,6 @@
 TITLE:: SCLOrkChatServer
 summary:: Chat server for the SCLOrkChatClient objects.
-categories:: Quarks>SCLOrkNet
+categories:: Quarks>SCLOrkCore
 related:: Classes/SCLOrkChatClient, Reference/SCLOrkChat-OSC-Command-Reference
 
 DESCRIPTION::

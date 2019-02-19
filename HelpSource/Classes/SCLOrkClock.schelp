@@ -1,7 +1,7 @@
 TITLE:: SCLOrkClock
-summary:: A TempoClock that takes its timing from a SCLOrkTimeClient.
-categories:: Quarks>SCLOrkClock
-related:: Classes/SCLOrkTimeClient, Classes/TempoClock, Reference/SCLOrkClock-Time-Synchronization-Design
+summary:: FIXME
+categories:: Quarks>SCLOrkCore
+related:: Classes/TempoClock
 
 DESCRIPTION::
 SCLOrkClock can be used as a link::Classes/TempoClock:: but takes its synchronization information from a link::Classes/SCLOrkTimeClient::, so will be synchronized in time to all other clocks connected to the same link::Classes/SCLOrkTimeServer::. This means that the code::beats:: value of each SCLOrkClock talking to the same time server, and with the same tempo, is synchronized. This allows for patterns and events to be played with the same quantization or scheduling on different computers in synchronicity.

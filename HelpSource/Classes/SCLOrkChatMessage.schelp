@@ -1,6 +1,6 @@
 TITLE:: SCLOrkChatMessage
 summary:: Wrapper class for a chat message in the SCLOrkChat system.
-categories:: Quarks>SCLOrkNet
+categories:: Quarks>SCLOrkCore
 related:: Classes/SCLOrkChatClient, Classes/SCLOrkChatServer, Reference/SCLOrkChat-OSC-Command-Reference
 
 DESCRIPTION::

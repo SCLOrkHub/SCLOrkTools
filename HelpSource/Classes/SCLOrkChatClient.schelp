@@ -1,6 +1,6 @@
 TITLE:: SCLOrkChatClient
 summary:: Programmatic client interface to SCLOrkChat system.
-categories:: Quarks>SCLOrkNet
+categories:: Quarks>SCLOrkCore
 related:: Classes/SCLOrkChatServer, Reference/SCLOrkChat-OSC-Command-Reference, Classes/SCLOrkWire
 
 DESCRIPTION::
