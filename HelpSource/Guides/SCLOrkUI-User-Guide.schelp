@@ -1,0 +1,25 @@
+title:: SCLOrkUI User Guide
+summary:: A table of the classes inside SCLOrkUI with descriptions.
+categories:: Quarks>SCLOrkUI
+
+section::Introduction
+
+SCLOrkUI is a collection of SuperCollider classes useful for performances and rehersals of the Santa Clara Laptop Orchestra. This Quark is one of the two used by the Orchestra, the other being SCLOrkCore. We maintain two separate quarks to allow for running SCLOrkCore code on machines with no GUI support. So, any UI elements live in this Quark.
+
+This Quark lives on GitHub at https://github.com/lnihlen/SCLOrkUI, and is maintained by its primary author Luke Nihlen. Issues can be filed there, or just send me email. PRs are also invited. If you find this Quark useful, particularly if you aren't a part of SCLOrk, I'd be delighted to hear it.
+
+section::Class Overview
+
+subsection:: SCLOrkChat
+
+table::
+## link::Classes/SCLOrkChat:: || The primary chat user interface.
+## link::Classes/SCLOrkChatMessageView:: || A utility class for link::Classes/SCLOrkChat::, handles all of the logic around rendering of a single chat message.
+::
+
+subsection:: SCLOrkPD
+
+table::
+## link::Classes/SCLOrkPD:: || The primary SCLOrk Public Domain user interface.
+## link::Classes/SCLOrkPDParameterView:: || A utility class for link::Classes/SCLOrkPD::, renders a single parameter inside of the voice.
+::
