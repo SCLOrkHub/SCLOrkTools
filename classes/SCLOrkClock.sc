@@ -28,6 +28,7 @@ SCLOrkClock {
 	var <permanent;
 
 	var queue;
+	var stateQueue;
 
 	*startSync { | serverName = "sclork-s01.local" |
 		if (syncStarted.isNil, {
@@ -172,6 +173,7 @@ SCLOrkClock {
 		baseBar = 0.0;
 		isRunning = true;
 		queue = PriorityQueue.new;
+		stateQueue = PriorityQueue.new;
 		permanent = false;
 		CmdPeriod.add(this);
 	}
@@ -346,8 +348,5 @@ SCLOrkClock {
 	}
 
 	setTempoAtBeat { | newTempo, beats |
-	}
-
-	setTempoAtSec { | newTempo, secs |
 	}
 }
