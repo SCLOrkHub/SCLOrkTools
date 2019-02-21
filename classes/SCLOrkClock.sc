@@ -17,18 +17,13 @@ SCLOrkClock {
 	classvar syncTask;
 	classvar wire;
 
-	var <name;
-	var <tempo;
-	var <beatsPerBar;
-	var <baseBar;
-	var <baseBarBeat;
-	var <beatAtLastTempoChange;
-	var <timeAtLastTempoChange;
+	var <currentState;
+	var stateQueue;
+
 	var <isRunning;
 	var <permanent;
 
 	var queue;
-	var stateQueue;
 
 	*startSync { | serverName = "sclork-s01.local" |
 		if (syncStarted.isNil, {
@@ -95,34 +90,20 @@ SCLOrkClock {
 			};
 			wire.onMessageReceived = { | wire, msg |
 				switch (msg[0],
-					'/clockUpdate', {
-						var name = msg[1];
-						var applyAtTime = SCLOrkClock.serverToLocalTime(
-							Float.from64Bits(msg[2], msg[3]));
-						var tempo = Float.from64Bits(msg[4], msg[5]);
-						var beatsPerBar = Float.from64Bits(msg[6], msg[7]);
-						var baseBarBeat = Float.from64Bits(msg[8], msg[9]);
-						var beatAtLastTempoChange = SCLOrkClock.serverToLocalTime(
-							Float.from64Bits(msg[10], msg[11]));
-						var timeAtLastTempoChange = SCLOrkClock.serverToLocalTime(
-							Float.from64Bits(msg[12], msg[13]));
-						SystemClock.schedAbs(applyAtTime, {
-							var clock = clockMap.at(name);
-							if (clock.isNil, {
-								clock = super.newCopyArgs(
-									name,
-									tempo,
-									beatsPerBar,
-									baseBarBeat).init;
-								clockMap.put(name, clock);
-							});
-							clock.prUpdate(
-								tempo,
-								beatsPerBar,
-								baseBarBeat,
-								beatAtLastTempoChange,
-								timeAtLastTempoChange);
+					'/clockRegister', {
+						var currentState = SCLOrkClockState.newFromMessage(msg);
+						var clock = clockMap.at(currentState.cohortName);
+						if (clock.isNil, {
+							clock = super.newCopyArgs(currentState).init;
+							clockMap.put(currentState.cohortName, clock);
+						}, {
+							clock.prUpdate(currentState);
 						});
+					},
+					'/clockUpdate', {
+						var newState = SCLOrkClockState.newFromMessage(msg);
+						var clock = clockMap.at(newState.cohortName);
+						clock.prUpdate(newState);
 					}
 				);
 			};
@@ -138,8 +119,11 @@ SCLOrkClock {
 		^(localTime - timeDiff);
 	}
 
-	*new { | name = \default, tempo = 1.0,
-		beatsPerBar = 4.0, serverName = "sclork-s01.local" |
+	*new { |  // TODO: trivial to support adding initial values for beats and seconds.
+		name = \default,
+		tempo = 1.0,
+		beatsPerBar = 4.0,
+		serverName = "sclork-s01.local" |
 		var clock;
 
 		if (syncStarted.not, {
@@ -148,15 +132,19 @@ SCLOrkClock {
 
 		clock = clockMap.at(name);
 		if (clock.isNil, {
-			var serverTime;
-			clock = super.newCopyArgs(name, tempo, beatsPerBar).init;
-			serverTime = SCLOrkClock.localToServerTime(clock.timeAtLastTempoChange);
+			var currentState = SCLOrkClockState.new(name,
+				tempo: tempo, beatsPerBar: beatsPerBar);
+			var serverTime, stateMessage;
+
+			clock = super.newCopyArgs(currentState).init;
+			serverTime = SCLOrkClock.localToServerTime(
+				clock.currentState.applyAtTime);
 			clockMap.put(name, clock);
-			wire.sendMsg(
-				'/clockRegister', name,
-				serverTime.high32Bits, serverTime.low32Bits,
-				tempo.high32Bits, tempo.low32Bits,
-				beatsPerBar.high32Bits, beatsPerBar.low32Bits);
+
+			// Inform server of clock creation.
+			stateMessage = currentState.toMessage(serverTime);
+			stateMessage[0] = '/clockCreate';
+			wire.sendMsg(*stateMessage);
 		});
 		^clock;
 	}
@@ -167,10 +155,7 @@ SCLOrkClock {
 	}
 
 	init {
-		baseBarBeat = 0.0;
-		beatAtLastTempoChange = 0.0;
-		timeAtLastTempoChange = Main.elapsedTime;
-		baseBar = 0.0;
+		currentState.applyAtTime = thisThread.seconds;
 		isRunning = true;
 		queue = PriorityQueue.new;
 		stateQueue = PriorityQueue.new;
@@ -183,21 +168,25 @@ SCLOrkClock {
 		CmdPeriod.remove(this);
 	}
 
-	prUpdate { |
-		newTempo,
-		newBeatsPerBar,
-		newBaseBarBeat,
-		newBeatAtLastTempoChange,
-		newTimeAtLastTempoChange |
-		tempo = newTempo;
-		beatsPerBar = newBeatsPerBar;
-		baseBarBeat = newBaseBarBeat;
-		beatAtLastTempoChange = newBeatAtLastTempoChange;
-		timeAtLastTempoChange = newTimeAtLastTempoChange;
+	prUpdate { | newState |
+		// newState could be for a beat count that is earlier than our
+		// current beat count. In that case we clobber the current state
+		// with this one, which may require recomputation of scheduling, etc.
+		// If newState is for a later beat count, it goes into the stateQueue,
+		// and we schedule a task for later to promote it to the current state.
+		if (newState.applyAtBeat <= this.beats, {
+			currentState = newState;
+			// Change in state can mean change in timing of items in the
+			// queue, re-schedule the next task.
+			this.prScheduleTop;
+		}, {
+			stateQueue.put(newState.applyAtBeat, newState);
+		});
 
-		// Change in tempo can mean change in timing of items in the
-		// queue, re-schedule the next task.
-		this.prScheduleTop;
+		// If we have a new state that may impact timing of state change schedules,
+		// so we reschedule. And if we added a new state it may be the top state
+		// change in the queue, so also schedule that.
+		this.prScheduleStateChange;
 	}
 
 	prStopLocal {
@@ -209,6 +198,14 @@ SCLOrkClock {
 		if (nextBeat.notNil, {
 			var nextTime = this.beats2secs(nextBeat);
 			SystemClock.schedAbs(nextTime, { this.prAdvance });
+		});
+	}
+
+	prScheduleStateChange {
+		var nextBeat = stateQueue.topPriority;
+		if (nextBeat.notNil, {
+			var nextTime = this.beats2secs(nextBeat);
+			SystemClock.schedAbs(nextTime, { this.prAdvanceState });
 		});
 	}
 
@@ -234,17 +231,30 @@ SCLOrkClock {
 		});
 	}
 
-	prChangeClock { | applyAtTime |
-		var serverApplyAtTime = SCLOrkClock.localToServerTime(applyAtTime);
-		var serverTempoChangeTime = SCLOrkClock.localToServerTime(
-			timeAtLastTempoChange);
-		wire.sendMsg('/clockChange', name,
-			serverApplyAtTime.high32Bits, serverApplyAtTime.low32Bits,
-			tempo.high32Bits, tempo.low32Bits,
-			beatsPerBar.high32Bits, beatsPerBar.low32Bits,
-			baseBarBeat.high32Bits, baseBarBeat.low32Bits,
-			beatAtLastTempoChange.high32Bits, beatAtLastTempoChange.low32Bits,
-			serverTempoChangeTime.high32Bits, serverTempoChangeTime.low32Bits);
+	// Coupla key differences - using the stateQueue, always
+	// recomputing beats (because state has changed), no task
+	// requeuing.
+	prAdvanceState {
+		var secs = thisThread.seconds;
+		var topBeat;
+		while ({
+			topBeat = stateQueue.topPriority;
+			topBeat.notNil and: { topBeat <= this.beats }}, {
+			currentState = queue.pop;
+		});
+
+		if (topBeat.notNil, {
+			var next = max(this.beats2secs(topBeat) - secs, 0.05);
+			^next;
+		}, {
+			^nil;
+		});
+	}
+
+	prChangeClock { | state |
+		var stateMsg = state.toMessage;
+		stateMsg[0] = '/clockChange';
+		wire.sendMsg(*stateMsg);
 	}
 
 	clear {
@@ -257,15 +267,30 @@ SCLOrkClock {
 		}, {
 			this.prScheduleTop;
 		});
+
+		// State changes must always happen regardless of if we clear the clock
+		// task list or no.
+		this.prScheduleStateChange;
+	}
+
+	tempo {
+		^currentState.tempo;
 	}
 
 	tempo_ { | newTempo |
-		if (tempo != newTempo, {
+		if (currentState.tempo != newTempo, {
 			var nextBeat = this.beats.roundUp;
-			timeAtLastTempoChange = this.beats2secs(nextBeat);
-			beatAtLastTempoChange = nextBeat;
-			tempo = newTempo;
-			this.prChangeClock(timeAtLastTempoChange);
+			var nextState = SCLOrkClockState.new(
+				currentState.cohortName,
+				nextBeat,
+				SCLOrkClock.localTimeToServerTime(
+					currentState.beats2secs(nextBeat)
+				),
+				newTempo,
+				currentState.beatsPerBar,
+				currentState.baseBar,
+				currentState.baseBarBeat);
+			this.prChangeClock(nextState);
 		});
 	}
 
@@ -291,20 +316,32 @@ SCLOrkClock {
 	}
 
 	beatDur {
-		^(1.0 / tempo);
+		^currentState.beatDur;
+	}
+
+	beatsPerBar {
+		^currentState.beatsPerBar;
 	}
 
 	beatsPerBar_ { | newBeatsPerBar |
-		if (beatsPerBar != newBeatsPerBar, {
-			baseBarBeat = this.beats;
-			baseBar = this.bar;
-			beatsPerBar = newBeatsPerBar;
-			this.prChangeClock(timeAtLastTempoChange);
+		if (currentState.beatsPerBar != newBeatsPerBar, {
+			var nextBeat = this.beats.roundUp;
+			var nextState = SCLOrkClockState.new(
+				currentState.cohortName,
+				nextBeat,
+				SCLOrkClock.localTimeToServerTime(
+					currentState.beats2secs(nextBeat)
+				),
+				currentState.tempo,
+				newBeatsPerBar,
+				currentState.beats2bars(nextBeat),
+				nextBeat);
+			this.prChangeClock(nextState);
 		});
 	}
 
 	bar {
-		^(baseBar + ((this.beats - baseBarBeat) / beatsPerBar)).trunc;
+		^currentState.bars2beats(this.beats);
 	}
 
 	nextBar { | beat |
@@ -324,9 +361,10 @@ SCLOrkClock {
 
 	nextTimeOnGrid { | quant = 1.0, phase = 0 |
 		if (quant == 0.0, { ^(this.beats + phase); });
-		if (quant < 0.0, { quant = beatsPerBar * quant.neq });
+		if (quant < 0.0, { quant = currentState.beatsPerBar * quant.neq });
 		if (phase < 0.0, { phase = phase % quant });
-		^roundUp(this.beats - baseBarBeat - (phase % quant), quant) + baseBarBeat + phase;
+		^roundUp(this.beats - currentState.baseBarBeat - (
+			phase % quant), quant) + currentState.baseBarBeat + phase;
 	}
 
 	elapsedBeats {
@@ -337,11 +375,11 @@ SCLOrkClock {
 	}
 
 	beats2secs { | beats |
-		^(timeAtLastTempoChange + ((beats - beatAtLastTempoChange) / tempo));
+		^currentState.beats2secs(beats);
 	}
 
 	secs2beats { | secs |
-		^(beatAtLastTempoChange + (tempo * (secs - timeAtLastTempoChange)));
+		^currentState.secs2beats(secs);
 	}
 
 	setMeterAtBeat { | newBeatsPerBar, beats |

@@ -57,7 +57,24 @@ SCLOrkClockServer {
 						// groom and then send every item in every queue for every cohort.
 
 					},
-					'/clockRegister', {
+					'/clockCreate', {
+						var cohortName = msg[1];
+						var cohortState = cohortStateMap.at(cohortName);
+						if (cohortState.isNil, {
+							var initialState = SCLOrkClockState.newFromMessage(msg);
+							cohortState = ();
+							cohortState.put(\current, initialState);
+							cohortState.put(\stateQueue, PriorityQueue.new);
+							cohortStateMap.put(cohortName, cohortState);
+							// Re-use message to notify all clients about this new clock.
+							msg[0] = '/clockRegister';
+							this.prSendAll(msg);
+						}, {
+							// Cohort already created, send update queue back to this
+							// client.
+
+						});
+
 						// client should report server time, initial tempo, etc.
 						// server will either create new priorityqueue with states or look up existing *** applyAtTime needs to be set here
 						// either way queue will be groomed and sent to client.
@@ -75,7 +92,7 @@ SCLOrkClockServer {
 							// future states.
 							stateQueue.put(newState.applyAtBeat, newState);
 						}, {
-							"*** clock change requested for unknown cohort named %".format(
+							"*** clock change requested for unknown cohort %".format(
 								newState.name).postln;
 						});
 					}
