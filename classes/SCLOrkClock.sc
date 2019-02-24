@@ -10,7 +10,7 @@ SCLOrkClock {
 	classvar roundTripTimes;
 	classvar roundTripTimeSum;
 	classvar sumIndex;
-	classvar timeDiff;
+	classvar <timeDiff;
 	classvar changeQueue;
 	classvar requestLastSent;
 	classvar clockSyncOSCFunc;
@@ -21,7 +21,7 @@ SCLOrkClock {
 	var stateQueue;
 
 	var <isRunning;
-	var <permanent;
+	var <>permanent;
 
 	var queue;
 
@@ -40,8 +40,9 @@ SCLOrkClock {
 
 			clockSyncOSCFunc = OSCFunc.new({ | msg, time, addr |
 				var serverTime = Float.from64Bits(msg[1], msg[2]);
-				var diff = time - serverTime;
-				var roundTripTime = time - requestLastSent;
+				var currentTime = Main.elapsedTime;
+				var diff = currentTime - serverTime;
+				var roundTripTime = currentTime - requestLastSent;
 				var n;
 
 				if (timeDiffs[sumIndex].notNil, {
@@ -210,21 +211,25 @@ SCLOrkClock {
 	}
 
 	prAdvance {
-		var secs = thisThread.seconds;
-		var beats = this.beats;
+		var sec = thisThread.seconds;
+		var beat = this.beats;
 		var topBeat;
 		while ({
 			topBeat = queue.topPriority;
-			topBeat.notNil and: { topBeat <= beats }}, {
+			topBeat.notNil and: { topBeat <= beat }}, {
 			var task = queue.pop;
-			var repeat = task.awake(beats, secs, this);
+			// Little bit of fudging going on here where we are sending
+			// the scheduled beat count instead of the actual current
+			// beat timing. Some beats can be a bit off due to clock drift
+			// updates from the server.
+			var repeat = task.awake(topBeat, sec, this);
 			if (repeat.isNumber, {
-				queue.put(beats + repeat, task);
+				queue.put(topBeat + repeat, task);
 			});
 		});
 
 		if (topBeat.notNil, {
-			var next = max(this.beats2secs(topBeat) - secs, 0.05);
+			var next = max(this.beats2secs(topBeat) - sec, 0.05);
 			^next;
 		}, {
 			^nil;
@@ -235,16 +240,16 @@ SCLOrkClock {
 	// recomputing beats (because state has changed), no task
 	// requeuing.
 	prAdvanceState {
-		var secs = thisThread.seconds;
+		var sec = thisThread.seconds;
 		var topBeat;
 		while ({
 			topBeat = stateQueue.topPriority;
 			topBeat.notNil and: { topBeat <= this.beats }}, {
-			currentState = queue.pop;
+			currentState = stateQueue.pop;
 		});
 
 		if (topBeat.notNil, {
-			var next = max(this.beats2secs(topBeat) - secs, 0.05);
+			var next = max(this.beats2secs(topBeat) - sec, 0.05);
 			^next;
 		}, {
 			^nil;
@@ -273,6 +278,10 @@ SCLOrkClock {
 		this.prScheduleStateChange;
 	}
 
+	name {
+		^currentState.cohortName;
+	}
+
 	tempo {
 		^currentState.tempo;
 	}
@@ -283,7 +292,7 @@ SCLOrkClock {
 			var nextState = SCLOrkClockState.new(
 				currentState.cohortName,
 				nextBeat,
-				SCLOrkClock.localTimeToServerTime(
+				SCLOrkClock.localToServerTime(
 					currentState.beats2secs(nextBeat)
 				),
 				newTempo,
@@ -295,7 +304,7 @@ SCLOrkClock {
 	}
 
 	beats {
-		^this.secs2beats(thisThread.seconds);
+		^currentState.secs2beats(thisThread.seconds, timeDiff);
 	}
 
 	schedAbs { | beats, item |
@@ -375,11 +384,11 @@ SCLOrkClock {
 	}
 
 	beats2secs { | beats |
-		^currentState.beats2secs(beats);
+		^currentState.beats2secs(beats, timeDiff);
 	}
 
 	secs2beats { | secs |
-		^currentState.secs2beats(secs);
+		^currentState.secs2beats(secs, timeDiff);
 	}
 
 	setMeterAtBeat { | newBeatsPerBar, beats |

@@ -1,7 +1,7 @@
 SCLOrkClockState {
 	var <>cohortName;
 	var <>applyAtBeat;
-	var <>applyAtTime;  // idea: always keep applyAtTime as server-side time
+	var <>applyAtTime;
 	var <>tempo;
 	var <>beatsPerBar;
 	var <>baseBar;
@@ -34,7 +34,7 @@ SCLOrkClockState {
 		var beatsPerBar = Float.from64Bits(msg[8], msg[9]);
 		var baseBar = Float.from64Bits(msg[10], msg[11]);
 		var baseBarBeat = Float.from64Bits(msg[12], msg[13]);
-		^SCLOrkClockState.new(
+		var state = SCLOrkClockState.new(
 			cohortName,
 			applyAtBeat,
 			applyAtTime,
@@ -42,12 +42,10 @@ SCLOrkClockState {
 			beatsPerBar,
 			baseBar,
 			baseBarBeat);
+		^state;
 	}
 
 	init {
-		if (applyAtTime.isNil, {
-			applyAtTime = thisThread.seconds;
-		});
 	}
 
 	beatDur {
