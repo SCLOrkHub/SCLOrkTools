@@ -91,20 +91,21 @@ SCLOrkClock {
 			};
 			wire.onMessageReceived = { | wire, msg |
 				switch (msg[0],
+					// TODO: can you just combine these?
 					'/clockRegister', {
-						var currentState = SCLOrkClockState.newFromMessage(msg);
-						var clock = clockMap.at(currentState.cohortName);
+						var state = SCLOrkClockState.newFromMessage(msg);
+						var clock = clockMap.at(state.cohortName);
 						if (clock.isNil, {
-							clock = super.newCopyArgs(currentState).init;
-							clockMap.put(currentState.cohortName, clock);
+							clock = super.newCopyArgs(state).init;
+							clockMap.put(state.cohortName, clock);
 						}, {
-							clock.prUpdate(currentState);
+							clock.prUpdate(state);
 						});
 					},
 					'/clockUpdate', {
-						var newState = SCLOrkClockState.newFromMessage(msg);
-						var clock = clockMap.at(newState.cohortName);
-						clock.prUpdate(newState);
+						var state = SCLOrkClockState.newFromMessage(msg);
+						var clock = clockMap.at(state.cohortName);
+						clock.prUpdate(state);
 					}
 				);
 			};

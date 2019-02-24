@@ -8,15 +8,6 @@ SCLOrkClockServer {
 	var wireSerial;
 	var wireMap;
 
-	// Need a slick way of soring currentState, PriorityQueue of upcoming states for each clock cohort.
-	// Every cohort needs a valid currentState. Next state queue could be empy if there's nothing.
-	// When requesting a cohort state, server can "groom" the next state list, meaning that it will
-	// use each currentState to determine if the next state has already been applied, then pop it off
-	// and replace current state with it if it has, etc etc. Grooming only has to happen when server
-	// is requested to report state, because otherwise the state is stored at low cost to the server
-	// so doesn't need lots of care. But... should be protected from threading issues with a mutex
-	// or something.
-
 	var cohortStateMap;
 
 	*new {
@@ -54,8 +45,10 @@ SCLOrkClockServer {
 			wireOnMessageReceived: { | wire, msg |
 				switch (msg[0],
 					'/clockGetAll', {
-						// groom and then send every item in every queue for every cohort.
-
+						cohortStateMap.values.do({ | item, index |
+							this.prGroomState(item);
+							this.prSendState(item);
+						});
 					},
 					'/clockCreate', {
 						var cohortName = msg[1];
@@ -70,27 +63,29 @@ SCLOrkClockServer {
 							msg[0] = '/clockRegister';
 							this.prSendAll(msg);
 						}, {
-							// Cohort already created, send update queue back to this
-							// client.
-
+							// Clock already exists, groom state then send it.
+							this.prGroomState(cohortState);
+							this.prSendState(cohortState, wire);
 						});
-
-						// client should report server time, initial tempo, etc.
-						// server will either create new priorityqueue with states or look up existing *** applyAtTime needs to be set here
-						// either way queue will be groomed and sent to client.
 					},
 					'/clockChange', {  // report a change scheduled by one of the cohort
 						var newState = SCLOrkClockState.newFromMessage(msg);
 						// This clock should already be registered.
-						var stateQueue = cohortStateMap.at(newState.cohortName);
-						if (stateQueue.notNil, {
+						var cohortState = cohortStateMap.at(newState.cohortName);
+						if (cohortState.notNil, {
 							// Quickly report this to all clients.
 							msg[0] = '/clockUpdate';
 							this.prSendAll(msg);
 
-							// Update our state queue for this cohort. - actually there has to be a pair - active state, then any scheduled
-							// future states.
-							stateQueue.put(newState.applyAtBeat, newState);
+							if (newState.applyAtBeat <=
+								cohortState.at(\current).applyAtBeat, {
+									cohortState.put(\current, newState);
+								}, {
+									cohortState.at(\stateQueue).put(
+										newState.applyAtBeat, newState);
+							});
+
+							this.prGroomState(cohortState);
 						}, {
 							"*** clock change requested for unknown cohort %".format(
 								newState.name).postln;
@@ -121,7 +116,28 @@ SCLOrkClockServer {
 		});
 	}
 
-	prGroomQueue { | stateQueue |
-		// -- move through states in sorted order by applyAtBeat
+	// Remove any elapsed state changes from scheduled state queue.
+	prGroomState { | cohortState |
+		var nextBeat;
+		while ({
+			nextBeat = cohortState.at(\stateQueue).topPriority;
+			nextBeat.notNil and: {
+				nextBeat <= cohortState.at(\current).secs2beats(
+					Main.elapsedTime); }}, {
+			cohortState.put(\current, cohortState.at(\stateQueue).pop);
+		});
+	}
+
+	prSendState { | cohortState, wire |
+		var msg = cohortState.at(\current).toMessage;
+		msg[0] = '/clockUpdate';
+		wire.sendMsg(*msg);
+		// Queue will be sent out-of-order but doesn't matter, as receiving
+		// clocks will re-assemble correct order in their own queues.
+		cohortState.at(\stateQueue).do({ | item, index |
+			msg = item.toMessage;
+			msg[0] = '/clockUpdate';
+			wire.sendMsg(*msg);
+		});
 	}
 }
