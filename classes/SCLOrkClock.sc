@@ -28,7 +28,7 @@ SCLOrkClock {
 	*startSync { | serverName = "sclork-s01.local" |
 		if (syncStarted.isNil, {
 			syncStarted = true;
-			clockMap = IdentityDictionary.new;
+			clockMap = Dictionary.new;
 			syncNetAddr = NetAddr.new(serverName, SCLOrkClockServer.syncPort);
 			timeDiffs = Array.newClear(historySize);
 			timeDiffSum = 0.0;
@@ -113,7 +113,7 @@ SCLOrkClock {
 	}
 
 	*serverToLocalTime { | serverTime |
-		^(timeDiff + serverTime);
+		^(serverTime + timeDiff);
 	}
 
 	*localToServerTime { | localTime |
@@ -133,17 +133,18 @@ SCLOrkClock {
 
 		clock = clockMap.at(name);
 		if (clock.isNil, {
-			var currentState = SCLOrkClockState.new(name,
-				tempo: tempo, beatsPerBar: beatsPerBar);
-			var serverTime, stateMessage;
+			var stateMessage;
+			var currentState = SCLOrkClockState.new(
+				cohortName: name,
+				applyAtTime: SCLOrkClock.localToServerTime(Main.elapsedTime),
+				tempo: tempo,
+				beatsPerBar: beatsPerBar);
 
 			clock = super.newCopyArgs(currentState).init;
-			serverTime = SCLOrkClock.localToServerTime(
-				clock.currentState.applyAtTime);
 			clockMap.put(name, clock);
 
 			// Inform server of clock creation.
-			stateMessage = currentState.toMessage(serverTime);
+			stateMessage = currentState.toMessage;
 			stateMessage[0] = '/clockCreate';
 			wire.sendMsg(*stateMessage);
 		});

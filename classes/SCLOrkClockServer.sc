@@ -29,8 +29,8 @@ SCLOrkClockServer {
 	init {
 		this.prBindClockSync;
 		wireSerial = 0;
-		wireMap = IdentityDictionary.new;
-		cohortStateMap = IdentityDictionary.new;
+		wireMap = Dictionary.new;
+		cohortStateMap = Dictionary.new;
 
 		SCLOrkWire.bind(
 			port: knockPort,
@@ -105,9 +105,10 @@ SCLOrkClockServer {
 
 	prBindClockSync {
 		clockSyncOSCFunc = OSCFunc.new({ | msg, time, addr |
+			var mainTime = Main.elapsedTime;
 			var returnPort = msg[1];
 			var netAddr = NetAddr.new(addr.ip, returnPort);
-			netAddr.sendMsg('/clockSyncSet',time.high32Bits, time.low32Bits);
+			netAddr.sendMsg('/clockSyncSet', mainTime.high32Bits, mainTime.low32Bits);
 		},
 		path: '/clockSyncGet',
 		recvPort: syncPort

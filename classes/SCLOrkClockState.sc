@@ -10,7 +10,7 @@ SCLOrkClockState {
 	*new { |
 		cohortName = 'default',
 		applyAtBeat = 0.0,
-		applyAtTime = nil,  // will be thisThread.seconds if left nil
+		applyAtTime = nil,
 		tempo = 1.0,
 		beatsPerBar = 4.0,
 		baseBar = 0.0,
@@ -61,26 +61,21 @@ SCLOrkClockState {
 	}
 
 	beats2secs { | beats, timeDiff = 0.0 |
-		^(applyAtTime + timeDiff + ((beats - applyAtBeat) / tempo));
+		^(applyAtTime + ((beats - applyAtBeat) / tempo)) + timeDiff;
 	}
 
 	secs2beats { | secs, timeDiff = 0.0 |
-		^(applyAtBeat + (tempo * (secs - (applyAtTime + timeDiff))));
+		^(applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime)));
 	}
 
-	toMessage { | timeOverride |
+	toMessage {
 		var msg = Array.newClear(14);
 		msg[0] = nil;   // Leave blank for sender to populate
 		msg[1] = cohortName;
 		msg[2] = applyAtBeat.high32Bits;
 		msg[3] = applyAtBeat.low32Bits;
-		if (timeOverride.notNil, {
-			msg[4] = timeOverride.high32Bits;
-			msg[5] = timeOverride.low32Bits;
-		}, {
-			msg[4] = applyAtTime.high32Bits;
-			msg[5] = applyAtTime.low32Bits;
-		});
+		msg[4] = applyAtTime.high32Bits;
+		msg[5] = applyAtTime.low32Bits;
 		msg[6] = tempo.high32Bits;
 		msg[7] = tempo.low32Bits;
 		msg[8] = beatsPerBar.high32Bits;
