@@ -47,7 +47,7 @@ SCLOrkClockServer {
 					'/clockGetAll', {
 						cohortStateMap.values.do({ | item, index |
 							this.prGroomState(item);
-							this.prSendState(item);
+							this.prSendState(item, wire);
 						});
 					},
 					'/clockCreate', {
@@ -60,10 +60,11 @@ SCLOrkClockServer {
 							cohortState.put(\stateQueue, PriorityQueue.new);
 							cohortStateMap.put(cohortName, cohortState);
 							// Re-use message to notify all clients about this new clock.
-							msg[0] = '/clockRegister';
+							msg[0] = '/clockUpdate';
 							this.prSendAll(msg);
 						}, {
-							// Clock already exists, groom state then send it.
+							// Clock already exists, ignore provided state,
+							// groom existing state, then send it.
 							this.prGroomState(cohortState);
 							this.prSendState(cohortState, wire);
 						});

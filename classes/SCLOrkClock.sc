@@ -91,8 +91,7 @@ SCLOrkClock {
 			};
 			wire.onMessageReceived = { | wire, msg |
 				switch (msg[0],
-					// TODO: can you just combine these?
-					'/clockRegister', {
+					'/clockUpdate', {
 						var state = SCLOrkClockState.newFromMessage(msg);
 						var clock = clockMap.at(state.cohortName);
 						if (clock.isNil, {
@@ -102,11 +101,6 @@ SCLOrkClock {
 							clock.prUpdate(state);
 						});
 					},
-					'/clockUpdate', {
-						var state = SCLOrkClockState.newFromMessage(msg);
-						var clock = clockMap.at(state.cohortName);
-						clock.prUpdate(state);
-					}
 				);
 			};
 			wire.knock(serverName, SCLOrkClockServer.knockPort);
@@ -134,20 +128,21 @@ SCLOrkClock {
 
 		clock = clockMap.at(name);
 		if (clock.isNil, {
-			var stateMessage;
-			var currentState = SCLOrkClockState.new(
+			var msg;
+			var state = SCLOrkClockState.new(
 				cohortName: name,
 				applyAtTime: SCLOrkClock.localToServerTime(Main.elapsedTime),
 				tempo: tempo,
 				beatsPerBar: beatsPerBar);
 
-			clock = super.newCopyArgs(currentState).init;
+			clock = super.new.init;
+			clock.prForceState(state);
 			clockMap.put(name, clock);
 
 			// Inform server of clock creation.
-			stateMessage = currentState.toMessage;
-			stateMessage[0] = '/clockCreate';
-			wire.sendMsg(*stateMessage);
+			msg = state.toMessage;
+			msg[0] = '/clockCreate';
+			wire.sendMsg(*msg);
 		});
 		^clock;
 	}
@@ -158,7 +153,6 @@ SCLOrkClock {
 	}
 
 	init {
-		currentState.applyAtTime = thisThread.seconds;
 		isRunning = true;
 		queue = PriorityQueue.new;
 		stateQueue = PriorityQueue.new;
@@ -256,6 +250,10 @@ SCLOrkClock {
 		}, {
 			^nil;
 		});
+	}
+
+	prForceState { | state |
+		currentState = state;
 	}
 
 	prChangeClock { | state |
