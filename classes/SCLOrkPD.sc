@@ -103,7 +103,7 @@ SCLOrkPD {
 	prConstructUIElements {
 		var scrollCanvas, oldKeyDownAction;
 
-		window = Window.new("PublicDomain - player " ++
+		window = SCLOrkWindow.new("PublicDomain - player " ++
 			(playerNumber + 1).asString,
 		Rect.new(
 				0,

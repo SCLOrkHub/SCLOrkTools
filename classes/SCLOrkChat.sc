@@ -34,12 +34,10 @@ SCLOrkChat {
 	var messageViewRingBuffer;
 
 	*new { | name, asDirector = false, chatClient = nil |
-		if (instance.notNil, {
-			^instance;
-		}, {
+		if (instance.isNil, {
 			instance = super.newCopyArgs(name, asDirector, chatClient).init;
-			^instance;
 		});
+		^instance;
 	}
 
 	init {
@@ -106,7 +104,7 @@ SCLOrkChat {
 		var windowWidth = Window.screenBounds.width / 4.0;
 
 		// By default we occupy the right quarter of the screen.
-		window = Window.new("SCLOrkChat",
+		window = SCLOrkWindow.new("SCLOrkChat",
 			Rect.new(
 				Window.screenBounds.right - (windowWidth * 1.5),
 				0,
