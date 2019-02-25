@@ -224,7 +224,7 @@ SCLOrkClock {
 	}
 
 	prAdvance {
-		var sec = thisThread.seconds;
+		var sec = Main.elapsedTime;
 		var beat = this.beats;
 		var topBeat;
 		while ({
@@ -253,7 +253,7 @@ SCLOrkClock {
 	// recomputing beats (because state has changed), no task
 	// requeuing.
 	prAdvanceState {
-		var sec = thisThread.seconds;
+		var sec = Main.elapsedTime;
 		var topBeat;
 		while ({
 			topBeat = stateQueue.topPriority;
@@ -317,7 +317,7 @@ SCLOrkClock {
 	}
 
 	beats {
-		^currentState.secs2beats(thisThread.seconds, timeDiff);
+		^currentState.secs2beats(Main.elapsedTime, timeDiff);
 	}
 
 	schedAbs { | beats, item |
@@ -349,7 +349,7 @@ SCLOrkClock {
 	}
 
 	bar {
-		^currentState.bars2beats(this.beats);
+		^currentState.beats2bars(this.beats);
 	}
 
 	nextBar { | beat |
@@ -379,7 +379,7 @@ SCLOrkClock {
 	}
 
 	seconds {
-		^thisThread.seconds;
+		^Main.elapsedTime;
 	}
 
 	beats2secs { | beats |
