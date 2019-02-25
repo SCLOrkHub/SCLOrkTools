@@ -64,6 +64,12 @@ SCLOrkClock {
 			recvPort: syncPort,
 			).permanent_(true);
 
+			// SkipJack waits for timeout before executing first time, so
+			// avoid situation where clocks created before first time sync
+			// have times way off and skew to adjust.
+			requestLastSent = Main.elapsedTime;
+			syncNetAddr.sendMsg('/clockSyncGet', syncPort);
+
 			syncTask = SkipJack.new({
 				requestLastSent = Main.elapsedTime;
 				syncNetAddr.sendMsg('/clockSyncGet', syncPort);
@@ -166,24 +172,35 @@ SCLOrkClock {
 	}
 
 	prUpdate { | newState |
-		// newState could be for a beat count that is earlier than our
-		// current beat count. In that case we clobber the current state
-		// with this one, which may require recomputation of scheduling, etc.
-		// If newState is for a later beat count, it goes into the stateQueue,
-		// and we schedule a task for later to promote it to the current state.
-		if (newState.applyAtBeat <= this.beats, {
-			currentState = newState;
-			// Change in state can mean change in timing of items in the
-			// queue, re-schedule the next task.
-			this.prScheduleTop;
-		}, {
-			stateQueue.put(newState.applyAtBeat, newState);
-		});
+		// We ignore state changes for states calling for an earlier beat
+		// than the current state's starting beat, because we can't
+		// reliably compute times for states starting before our current
+		// state.
+		if (newState.applyAtBeat >= currentState.applyAtBeat, {
+			// newState could be for a beat count that is earlier than our
+			// current beat count. In that case we clobber the current state
+			// with this one, which may require recomputation of scheduling, etc.
+			// If newState is for a later beat count, it goes into the stateQueue,
+			// and we schedule a task for later to promote it to the current state.
+			if (newState.applyAtBeat <= this.beats, {
+				newState.applyAtTime = currentState.beats2secs(newState.applyAtBeat);
+				currentState = newState;
+				// Change in state can mean change in timing of items in the
+				// queue, re-schedule the next task.
+				this.prScheduleTop;
+			}, {
+				stateQueue.put(newState.applyAtBeat, newState);
+			});
 
-		// If we have a new state that may impact timing of state change schedules,
-		// so we reschedule. And if we added a new state it may be the top state
-		// change in the queue, so also schedule that.
-		this.prScheduleStateChange;
+			// If we have a new state that may impact timing of state change schedules,
+			// so we reschedule. And if we added a new state it may be the top state
+			// change in the queue, so also schedule that.
+			this.prScheduleStateChange;
+		}, {
+			"*** clock % dropping new state at beat %, before current state beat %.".format(
+				currentState.cohortName, newState.applyAtBeat, currentState.applyAtBeat
+			).postln;
+		});
 	}
 
 	prStopLocal {
@@ -241,7 +258,13 @@ SCLOrkClock {
 		while ({
 			topBeat = stateQueue.topPriority;
 			topBeat.notNil and: { topBeat <= this.beats }}, {
+			var applyAtTime = currentState.beats2secs(topBeat);
 			currentState = stateQueue.pop;
+			currentState.applyAtTime = applyAtTime;
+
+			// Tempo change could mean new timing for tasks, reschedule
+			// task processing.
+			this.prScheduleTop;
 		});
 
 		if (topBeat.notNil, {
@@ -256,7 +279,7 @@ SCLOrkClock {
 		currentState = state;
 	}
 
-	prChangeClock { | state |
+	prSendChange { | state |
 		var stateMsg = state.toMessage;
 		stateMsg[0] = '/clockChange';
 		wire.sendMsg(*stateMsg);
@@ -289,17 +312,7 @@ SCLOrkClock {
 	tempo_ { | newTempo |
 		if (currentState.tempo != newTempo, {
 			var nextBeat = this.beats.roundUp;
-			var nextState = SCLOrkClockState.new(
-				currentState.cohortName,
-				nextBeat,
-				SCLOrkClock.localToServerTime(
-					currentState.beats2secs(nextBeat)
-				),
-				newTempo,
-				currentState.beatsPerBar,
-				currentState.baseBar,
-				currentState.baseBarBeat);
-			this.prChangeClock(nextState);
+			this.setTempoAtBeat(newTempo, nextBeat);
 		});
 	}
 
@@ -333,20 +346,6 @@ SCLOrkClock {
 	}
 
 	beatsPerBar_ { | newBeatsPerBar |
-		if (currentState.beatsPerBar != newBeatsPerBar, {
-			var nextBeat = this.beats.roundUp;
-			var nextState = SCLOrkClockState.new(
-				currentState.cohortName,
-				nextBeat,
-				SCLOrkClock.localTimeToServerTime(
-					currentState.beats2secs(nextBeat)
-				),
-				currentState.tempo,
-				newBeatsPerBar,
-				currentState.beats2bars(nextBeat),
-				nextBeat);
-			this.prChangeClock(nextState);
-		});
 	}
 
 	bar {
@@ -395,5 +394,7 @@ SCLOrkClock {
 	}
 
 	setTempoAtBeat { | newTempo, beats |
+		var state = currentState.setTempoAtBeat(newTempo, beats);
+		this.prSendChange(state);
 	}
 }

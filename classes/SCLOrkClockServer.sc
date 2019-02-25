@@ -69,7 +69,7 @@ SCLOrkClockServer {
 							this.prSendState(cohortState, wire);
 						});
 					},
-					'/clockChange', {  // report a change scheduled by one of the cohort
+					'/clockChange', {
 						var newState = SCLOrkClockState.newFromMessage(msg);
 						// This clock should already be registered.
 						var cohortState = cohortStateMap.at(newState.cohortName);

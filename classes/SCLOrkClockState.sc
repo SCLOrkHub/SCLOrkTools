@@ -1,6 +1,7 @@
 SCLOrkClockState {
 	var <>cohortName;
 	var <>applyAtBeat;
+	// Time only needs to be valid for the initial and current state.
 	var <>applyAtTime;
 	var <>tempo;
 	var <>beatsPerBar;
@@ -10,7 +11,7 @@ SCLOrkClockState {
 	*new { |
 		cohortName = 'default',
 		applyAtBeat = 0.0,
-		applyAtTime = nil,
+		applyAtTime = 0.0,
 		tempo = 1.0,
 		beatsPerBar = 4.0,
 		baseBar = 0.0,
@@ -66,6 +67,20 @@ SCLOrkClockState {
 
 	secs2beats { | secs, timeDiff = 0.0 |
 		^(applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime)));
+	}
+
+	setTempoAtBeat { | newTempo, beats |
+		var state = SCLOrkClockState.new(
+			cohortName: cohortName,
+			applyAtBeat: beats,
+			// Local clocks will compute and attach a server time to their copy
+			// of this state, so it will set to a valid value when becoming current.
+			applyAtTime: 0.0,
+			tempo: newTempo,
+			beatsPerBar: beatsPerBar,
+			baseBar: baseBar,
+			baseBarBeat: baseBarBeat);
+		^state;
 	}
 
 	toMessage {
