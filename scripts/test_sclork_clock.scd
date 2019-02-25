@@ -13,7 +13,7 @@ SCLOrkClock.startSync("127.0.0.1");
 )
 
 (
-~clock.setTempoAtBeat(2.0, 16.0);
+~clock.setTempoAtBeat(3.0, 16.0);
 ~clock.setTempoAtBeat(0.5, 32.0);
 ~clock.setTempoAtBeat(1.0, 24.0);
 )

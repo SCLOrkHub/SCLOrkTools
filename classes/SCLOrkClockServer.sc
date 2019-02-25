@@ -125,7 +125,10 @@ SCLOrkClockServer {
 			nextBeat.notNil and: {
 				nextBeat <= cohortState.at(\current).secs2beats(
 					Main.elapsedTime); }}, {
-			cohortState.put(\current, cohortState.at(\stateQueue).pop);
+			var currentState = cohortState.at(\stateQueue).pop;
+			currentState.applyAtTime = cohortState.at(\current).beats2secs(
+				nextBeat);
+			cohortState.put(\current, currentState);
 		});
 	}
 
