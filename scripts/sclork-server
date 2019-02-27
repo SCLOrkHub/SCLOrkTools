@@ -1,0 +1,34 @@
+#!/sbin/openrc-run
+
+# Gentoo Initscript for the SuperCollider Server instances we want
+# to run by default on sclork-s01. Copy this file into
+# /etc/init.d/, change ownership to root, and then run:
+# rc-update add sclork-server default
+# to make it part of the default run level, so it will start
+# automatically at boot.
+
+command=/usr/local/bin/sclang
+command_args="/usr/local/share/SuperCollider/Extensions/SCLOrkCore/scripts/server_bot.scd"
+pidfile=/var/run/sclork-server.pid
+
+description="Runs a few SCLOrkCore Quark objects for SCLOrk."
+
+depend() {
+	# we read files, so we need the file system.
+	need localmount
+	# we write a pid file, so we need bootmisc.
+	after bootmisc
+}
+
+start() {
+	ebegin "Starting SCLOrk Server Daemon"
+	start-stop-daemon --user luken --background --make-pidfile --pidfile ${pidfile} --start --exec ${command} -- ${command_args}
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping SCLOrk Server Daemon"
+	start-stop-daemon --pidfile ${pidfile} --stop --exec ${command} -- ${command_args}
+	eend $?
+}
+
