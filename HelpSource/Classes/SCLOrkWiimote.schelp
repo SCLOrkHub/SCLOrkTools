@@ -1,0 +1,42 @@
+TITLE:: SCLOrkWiiMote
+summary:: Wrapper class around HID access to WiiMotes.
+categories:: Quarks>SCLOrkCore
+related:: Classes/HID, Guides/HID-permissions
+
+DESCRIPTION::
+
+note::
+Without setting permissions as detailed in in the HID permissions help article the code will not be able to connect to the WiiMote.
+::
+
+CLASSMETHODS::
+
+METHOD:: new
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isConnected
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+METHOD:: free
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: init
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::
