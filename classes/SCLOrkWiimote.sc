@@ -3,7 +3,7 @@ SCLOrkWiimote {
 	const wiimoteProductIdOld = 0x306;
 	const wiimoteProductIdNew = 0x330;
 
-	var <hid;
+	var hid;
 
 	// Writable element arrays, each HIDElement object represents
 	// a single byte in the communication channel.
@@ -16,20 +16,21 @@ SCLOrkWiimote {
 	var buttonReportElements;          // 0x30
 	var buttonAndAccelReportElements;  // 0x31
 
-	var <readingAngles;
+	var statusSerial;
 
 	// Wiimote Status
-	var statusSerial;
 	var <isBatteryLow;
 	var <batteryLevel;
 	var <leds;
+	var <rumble;
 	var <buttonStates;
-	var <roll;
-	var <pitch;
-	var <yaw;
+	var <isPollingEnabled;
+	var <xAccel;
+	var <yAccel;
+	var <zAccel;
 
 	var <>onButton;
-	var <>onAnglesUpdated;
+	var <>onAccelUpdated;
 
 	*prGetAttachedwiimotes {
 		var deviceList;
@@ -47,7 +48,7 @@ SCLOrkWiimote {
 		^SCLOrkWiimote.prGetAttachedwiimotes.notNil;
 	}
 
-	*new {
+	*new { | enablePolling = true |
 		var deviceList, productId, path, hid;
 		deviceList = SCLOrkWiimote.prGetAttachedwiimotes;
 		if (deviceList.size == 0, {
@@ -61,10 +62,10 @@ SCLOrkWiimote {
 			^nil;
 		});
 
-		^super.newCopyArgs(hid).init;
+		^super.newCopyArgs(hid).init(enablePolling);
 	}
 
-	init {
+	init { | enablePolling |
 		var statusFunction, acknowledgeFunction, dataFunction;
 
 		reportingModeElements = Array.newClear(2);
@@ -72,8 +73,10 @@ SCLOrkWiimote {
 		buttonReportElements = Array.newClear(2);
 		buttonAndAccelReportElements = Array.newClear(5);
 		statusSerial = 0;
+		rumble = false;
 
 		onButton = {};
+		onAccelUpdated = {};
 
 		// Build button states map and seed initial values.
 		buttonStates = Dictionary.new;
@@ -141,32 +144,37 @@ SCLOrkWiimote {
 		};
 
 		buttonAndAccelReportElements[2].action = { | value, element |
-			pitch = (element.arrayValue / 128.0) - 1.0;
+			xAccel = (element.arrayValue / 128.0) - 1.0;
 		};
 
 		buttonAndAccelReportElements[3].action = { | value, element |
-			roll = (element.arrayValue / 128.0) - 1.0;
+			yAccel = (element.arrayValue / 128.0) - 1.0;
 		};
 
 		buttonAndAccelReportElements[4].action = { | value, element |
-			yaw = (element.arrayValue / 128.0) - 1.0;
+			zAccel = (element.arrayValue / 128.0) - 1.0;
 		};
 
-		// Set up for passive button monitoring.
-		this.readingAngles = false;
-
-		// Initialize led and battery status values.
-		this.pollStatus;
+		this.isPollingEnabled = enablePolling;
+		this.getStatus;
 	}
 
-	readingAngles_ { | enabled |
-		readingAngles = enabled;
+	isPollingEnabled_ { | enabled |
+		isPollingEnabled = enabled;
 		if (enabled, {
+			if (rumble, {
+				reportingModeElements[0].value = 0x05;
+			}, {
+				reportingModeElements[0].value = 0x04;
+			});
 			reportingModeElements[1].value = 0x31;
-			reportingModeElements[0].value = 0x04;
 		}, {
+			if (rumble, {
+				reportingModeElements[0].value = 0x01;
+			}, {
+				reportingModeElements[0].value = 0x00;
+			});
 			reportingModeElements[1].value = 0x30;
-			reportingModeElements[0].value = 0x00;
 		});
 	}
 
@@ -247,15 +255,32 @@ SCLOrkWiimote {
 	}
 
 	leds_ { | newLeds |
+		var ledCommand;
 		leds = newLeds.bitAnd(0x0f);
 		// LEDs are most significant nybble of LED command byte.
-		ledElement.value = (leds << 4).bitAnd(0x000000f0);
+		ledCommand = (leds << 4).bitAnd(0xf0);
+		// Maintain rumble status, LSb of command byte.
+		if (rumble, {
+			ledCommand = ledCommand.bitOr(0x01);
+		});
+		ledElement.value = ledCommand;
 	}
 
-	pollStatus {
-		statusRequestElement.value = statusSerial;
+	rumble_ { | newRumble |
+		rumble = newRumble;
+		// Since rumble is included in every command sent to WiiMote, we resend
+		// the current LED value but include the new rumble state bit.
+		this.leds = leds;
+	}
+
+	getStatus {
+		if (rumble, {
+			statusRequestElement.value = (statusSerial << 1).bitOr(0x01);
+		}, {
+			statusRequestElement.value = (statusSerial << 1).bitAnd(0xfe);
+		});
 		// Change to a new number, to force re-sending of byte. Byte can be any
 		// value, just needs to be sent every time.
-		statusSerial = (statusSerial + 1) % 255;
+		statusSerial = (statusSerial + 1) % 128;
 	}
 }
