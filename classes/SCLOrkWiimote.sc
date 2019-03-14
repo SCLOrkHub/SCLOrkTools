@@ -17,6 +17,12 @@ SCLOrkWiimote {
 	var buttonAndAccelReportElements;  // 0x31
 
 	var statusSerial;
+	var lastFirstButtonByte;
+	var lastSecondButtonByte;
+	var accelUpdateTask;
+	var xAccelValues;
+	var yAccelValues;
+	var zAccelValues;
 
 	// Wiimote Status
 	var <isBatteryLow;
@@ -24,11 +30,12 @@ SCLOrkWiimote {
 	var <leds;
 	var <rumble;
 	var <buttonStates;
-	var <isPollingEnabled;
+	var <accelUpdateRate;
 	var <xAccel;
 	var <yAccel;
 	var <zAccel;
 
+	// Callback functions.
 	var <>onButton;
 	var <>onAccelUpdated;
 
@@ -48,7 +55,7 @@ SCLOrkWiimote {
 		^SCLOrkWiimote.prGetAttachedwiimotes.notNil;
 	}
 
-	*new { | enablePolling = true |
+	*new { | accelUpdateRate = 30.0 |
 		var deviceList, productId, path, hid;
 		deviceList = SCLOrkWiimote.prGetAttachedwiimotes;
 		if (deviceList.size == 0, {
@@ -62,10 +69,10 @@ SCLOrkWiimote {
 			^nil;
 		});
 
-		^super.newCopyArgs(hid).init(enablePolling);
+		^super.newCopyArgs(hid).init(accelUpdateRate);
 	}
 
-	init { | enablePolling |
+	init { | updateRate |
 		var statusFunction, acknowledgeFunction, dataFunction;
 
 		reportingModeElements = Array.newClear(2);
@@ -118,13 +125,13 @@ SCLOrkWiimote {
 		// Third byte of status report is LED state and battery low indicator.
 		statusReportElements[2].action = { | value, element |
 			// Most significant nybble are LED state bits.
-			leds = (element.rawValue >> 4).bitAnd(0x0f);
-			isBatteryLow = (element.rawValue.bitAnd(0x01) == 1);
+			leds = (element.arrayValue >> 4).bitAnd(0x0f);
+			isBatteryLow = (element.arrayValue.bitAnd(0x01) == 1);
 		};
 
 		// Sixth byte of status report is battery level value.
 		statusReportElements[5].action = { | value, element |
-			batteryLevel = element.rawValue / 255.0;
+			batteryLevel = element.arrayValue / 255.0;
 		};
 
 		buttonReportElements[0].action = { | value, element |
@@ -135,118 +142,151 @@ SCLOrkWiimote {
 			this.prParseSecondButtonByte(element.arrayValue);
 		};
 
+		// By setting the repeat value to true we expect that the Wiimote
+		// will send accelerometer updates at ~200Hz. We therefore poll
+		// all values in this one status function, rather than processing
+		// the bytes inidividually in each separate HIDElement action.
+		buttonAndAccelReportElements[0].repeat = true;
 		buttonAndAccelReportElements[0].action = { | value, element |
+			var xAccelRaw, yAccelRaw, zAccelRaw;
 			this.prParseFirstButtonByte(element.arrayValue);
+
+			// In this mode bits 5 and 6 of this byte contain the two
+			// least significant bits of X accelerometer data.
+			xAccelRaw = (
+				buttonAndAccelReportElements[2].arrayValue << 2
+			).bitOr(
+				element.arrayValue.bitAnd(0x60) >> 5
+			);
+			// The Y and Z acceleration value LSb are packed into the 5th
+			// and 6th bits of the second button byte, respectively. Note
+			// that Y and Z only get one additional bit of precision, as
+			// opposed to the two bits provided X.
+			yAccelRaw = (
+				buttonAndAccelReportElements[3].arrayValue << 1
+			).bitOr(
+				buttonAndAccelReportElements[1].arrayValue.bitAnd(0x20) >> 5
+			);
+			zAccelRaw = (
+				buttonAndAccelReportElements[4].arrayValue << 1
+			).bitOr(
+				buttonAndAccelReportElements[1].bitAnd(0x40) >> 6
+			);
+			xAccel = (xAccelRaw.asFloat / 512.0) - 1.0;
+			yAccel = (yAccelRaw.asFloat / 256.0) - 1.0;
+			zAccel = (zAccelRaw.asFloat / 256.0) - 1.0;
+			this.onAccelUpdated.value(xAccel, yAccel, zAccel, this);
 		};
 
 		buttonAndAccelReportElements[1].action = { | value, element |
 			this.prParseSecondButtonByte(element.arrayValue);
 		};
 
-		buttonAndAccelReportElements[2].action = { | value, element |
-			xAccel = (element.arrayValue / 128.0) - 1.0;
-		};
-
-		buttonAndAccelReportElements[3].action = { | value, element |
-			yAccel = (element.arrayValue / 128.0) - 1.0;
-		};
-
-		buttonAndAccelReportElements[4].action = { | value, element |
-			zAccel = (element.arrayValue / 128.0) - 1.0;
-		};
-
-		this.isPollingEnabled = enablePolling;
 		this.getStatus;
+		this.accelUpdateRate = updateRate;
 	}
 
-	isPollingEnabled_ { | enabled |
-		isPollingEnabled = enabled;
-		if (enabled, {
+	accelUpdateRate_ { | updateRate |
+		accelUpdateRate = updateRate;
+		if (updateRate > 0.0, {
+			reportingModeElements[1].value = 0x31;
 			if (rumble, {
 				reportingModeElements[0].value = 0x05;
 			}, {
 				reportingModeElements[0].value = 0x04;
 			});
-			reportingModeElements[1].value = 0x31;
 		}, {
+			reportingModeElements[1].value = 0x30;
 			if (rumble, {
 				reportingModeElements[0].value = 0x01;
 			}, {
 				reportingModeElements[0].value = 0x00;
 			});
-			reportingModeElements[1].value = 0x30;
 		});
 	}
 
 	prParseFirstButtonByte { | byte |
-		var dPadLeft = byte.bitTest(0);
-		var dPadRight = byte.bitTest(1);
-		var dPadDown = byte.bitTest(2);
-		var dPadUp = byte.bitTest(3);
-		var plus = byte.bitTest(4);
+		// Mask off non-button bytes
+		byte = byte.bitAnd(0x1f);
 
-		if (buttonStates.at(\dPadLeft) != dPadLeft, {
-			buttonStates.put(\dPadLeft, dPadLeft);
-			onButton.value(\dPadLeft, dPadLeft);
-		});
+		if (lastFirstButtonByte != byte, {
+			var dPadLeft = byte.bitTest(0);
+			var dPadRight = byte.bitTest(1);
+			var dPadDown = byte.bitTest(2);
+			var dPadUp = byte.bitTest(3);
+			var plus = byte.bitTest(4);
 
-		if (buttonStates.at(\dPadRight) != dPadRight, {
-			buttonStates.put(\dPadRight, dPadRight);
-			onButton.value(\dPadRight, dPadRight);
-		});
+			if (buttonStates.at(\dPadLeft) != dPadLeft, {
+				buttonStates.put(\dPadLeft, dPadLeft);
+				onButton.value(\dPadLeft, dPadLeft, this);
+			});
 
-		if (buttonStates.at(\dPadDown) != dPadDown, {
-			buttonStates.put(\dPadDown, dPadDown);
-			onButton.value(\dPadDown, dPadDown);
-		});
+			if (buttonStates.at(\dPadRight) != dPadRight, {
+				buttonStates.put(\dPadRight, dPadRight);
+				onButton.value(\dPadRight, dPadRight, this);
+			});
 
-		if (buttonStates.at(\dPadUp) != dPadUp, {
-			buttonStates.put(\dPadUp, dPadUp);
-			onButton.value(\dPadUp, dPadUp);
-		});
+			if (buttonStates.at(\dPadDown) != dPadDown, {
+				buttonStates.put(\dPadDown, dPadDown);
+				onButton.value(\dPadDown, dPadDown, this);
+			});
 
-		if (buttonStates.at(\plus) != plus, {
-			buttonStates.put(\plus, plus);
-			onButton.value(\plus, plus);
+			if (buttonStates.at(\dPadUp) != dPadUp, {
+				buttonStates.put(\dPadUp, dPadUp);
+				onButton.value(\dPadUp, dPadUp, this);
+			});
+
+			if (buttonStates.at(\plus) != plus, {
+				buttonStates.put(\plus, plus);
+				onButton.value(\plus, plus, this);
+			});
+
+			lastFirstButtonByte = byte;
 		});
 	}
 
 	prParseSecondButtonByte { | byte |
-		var two = byte.bitTest(0);
-		var one = byte.bitTest(1);
-		var b = byte.bitTest(2);
-		var a = byte.bitTest(3);
-		var minus = byte.bitTest(4);
-		var home = byte.bitTest(7);
+		byte = byte.bitAnd(0x9f);
 
-		if (buttonStates.at(\two) != two, {
-			buttonStates.put(\two, two);
-			onButton.value(\two, two);
-		});
+		if (lastSecondButtonByte != byte, {
+			var two = byte.bitTest(0);
+			var one = byte.bitTest(1);
+			var b = byte.bitTest(2);
+			var a = byte.bitTest(3);
+			var minus = byte.bitTest(4);
+			var home = byte.bitTest(7);
 
-		if (buttonStates.at(\one) != one, {
-			buttonStates.put(\one, one);
-			onButton.value(\one, one);
-		});
+			if (buttonStates.at(\two) != two, {
+				buttonStates.put(\two, two);
+				onButton.value(\two, two);
+			});
 
-		if (buttonStates.at(\b) != b, {
-			buttonStates.put(\b, b);
-			onButton.value(\b, b);
-		});
+			if (buttonStates.at(\one) != one, {
+				buttonStates.put(\one, one);
+				onButton.value(\one, one);
+			});
 
-		if (buttonStates.at(\a) != a, {
-			buttonStates.put(\a, a);
-			onButton.value(\a, a);
-		});
+			if (buttonStates.at(\b) != b, {
+				buttonStates.put(\b, b);
+				onButton.value(\b, b);
+			});
 
-		if (buttonStates.at(\minus) != minus, {
-			buttonStates.put(\minus, minus);
-			onButton.value(\minus, minus);
-		});
+			if (buttonStates.at(\a) != a, {
+				buttonStates.put(\a, a);
+				onButton.value(\a, a);
+			});
 
-		if (buttonStates.at(\home) != home, {
-			buttonStates.put(\home, home);
-			onButton.value(\home, home);
+			if (buttonStates.at(\minus) != minus, {
+				buttonStates.put(\minus, minus);
+				onButton.value(\minus, minus);
+			});
+
+			if (buttonStates.at(\home) != home, {
+				buttonStates.put(\home, home);
+				onButton.value(\home, home);
+			});
+
+			lastSecondButtonByte = byte;
 		});
 	}
 
@@ -279,8 +319,9 @@ SCLOrkWiimote {
 		}, {
 			statusRequestElement.value = (statusSerial << 1).bitAnd(0xfe);
 		});
-		// Change to a new number, to force re-sending of byte. Byte can be any
-		// value, just needs to be sent every time.
+		// Change to a new number, to force re-sending of byte. Outside of the
+		// LSb which controls rumble, byte can be any value, just needs to be
+		// sent every time.
 		statusSerial = (statusSerial + 1) % 128;
 	}
 }
