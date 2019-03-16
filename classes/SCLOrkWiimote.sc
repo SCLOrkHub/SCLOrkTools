@@ -3,6 +3,8 @@ SCLOrkWiimote {
 	const wiimoteProductIdOld = 0x306;
 	const wiimoteProductIdNew = 0x330;
 
+	classvar instance;
+
 	var hid;
 
 	// Writable element arrays, each HIDElement object represents
@@ -39,7 +41,7 @@ SCLOrkWiimote {
 	var <>onButton;
 	var <>onAccelUpdated;
 
-	*prGetAttachedwiimotes {
+	*prGetAttachedWiimotes {
 		var deviceList;
 
 		HID.findAvailable;
@@ -52,12 +54,16 @@ SCLOrkWiimote {
 	}
 
 	*isConnected {
-		^SCLOrkWiimote.prGetAttachedwiimotes.notNil;
+		^SCLOrkWiimote.prGetAttachedWiimotes.notNil;
 	}
 
 	*new { | accelUpdateRate = 30.0 |
 		var deviceList, productId, path, hid;
-		deviceList = SCLOrkWiimote.prGetAttachedwiimotes;
+		if (instance.notNil, {
+			^instance;
+		});
+
+		deviceList = SCLOrkWiimote.prGetAttachedWiimotes;
 		if (deviceList.size == 0, {
 			^nil;
 		});
@@ -69,7 +75,8 @@ SCLOrkWiimote {
 			^nil;
 		});
 
-		^super.newCopyArgs(hid).init(accelUpdateRate);
+		instance = super.newCopyArgs(hid).init(accelUpdateRate);
+		^instance;
 	}
 
 	init { | updateRate |
@@ -81,6 +88,9 @@ SCLOrkWiimote {
 		buttonAndAccelReportElements = Array.newClear(5);
 		statusSerial = 0;
 		rumble = false;
+		batteryLevel = 0.0;
+		leds = 0;
+		accelUpdateRate = updateRate;
 
 		onButton = {};
 		onAccelUpdated = {};
@@ -105,12 +115,29 @@ SCLOrkWiimote {
 		// hard-coded values.
 		hid.elements.do({ | element, index |
 			switch (element.reportID,
-				0x11, { ledElement = element },
-				0x12, { reportingModeElements[element.reportIndex] = element },
-				0x15, { statusRequestElement = element },
-				0x20, { statusReportElements[element.reportIndex] = element },
-				0x30, { buttonReportElements[element.reportIndex] = element },
-				0x31, { buttonAndAccelReportElements[element.reportIndex] = element }
+				0x11, {
+					ledElement = element;
+					element.repeat = true; },
+				0x12, {
+					reportingModeElements[element.reportIndex] = element;
+					element.repeat = true;
+				},
+				0x15, {
+					statusRequestElement = element;
+					element.repeat = true;
+				},
+				0x20, {
+					statusReportElements[element.reportIndex] = element;
+					element.repeat = true;
+				},
+				0x30, {
+					buttonReportElements[element.reportIndex] = element;
+					element.repeat = true;
+				},
+				0x31, {
+					buttonAndAccelReportElements[element.reportIndex] = element;
+					element.repeat = true;
+				}
 			);
 		});
 
@@ -127,6 +154,7 @@ SCLOrkWiimote {
 			// Most significant nybble are LED state bits.
 			leds = (element.arrayValue >> 4).bitAnd(0x0f);
 			isBatteryLow = (element.arrayValue.bitAnd(0x01) == 1);
+			this.prResetDataReporting;
 		};
 
 		// Sixth byte of status report is battery level value.
@@ -146,49 +174,55 @@ SCLOrkWiimote {
 		// will send accelerometer updates at ~200Hz. We therefore poll
 		// all values in this one status function, rather than processing
 		// the bytes inidividually in each separate HIDElement action.
-		buttonAndAccelReportElements[0].repeat = true;
 		buttonAndAccelReportElements[0].action = { | value, element |
-			var xAccelRaw, yAccelRaw, zAccelRaw;
 			this.prParseFirstButtonByte(element.arrayValue);
 
-			// In this mode bits 5 and 6 of this byte contain the two
-			// least significant bits of X accelerometer data.
-			xAccelRaw = (
-				buttonAndAccelReportElements[2].arrayValue << 2
-			).bitOr(
-				element.arrayValue.bitAnd(0x60) >> 5
-			);
-			// The Y and Z acceleration value LSb are packed into the 5th
-			// and 6th bits of the second button byte, respectively. Note
-			// that Y and Z only get one additional bit of precision, as
-			// opposed to the two bits provided X.
-			yAccelRaw = (
-				buttonAndAccelReportElements[3].arrayValue << 1
-			).bitOr(
-				buttonAndAccelReportElements[1].arrayValue.bitAnd(0x20) >> 5
-			);
-			zAccelRaw = (
-				buttonAndAccelReportElements[4].arrayValue << 1
-			).bitOr(
-				buttonAndAccelReportElements[1].bitAnd(0x40) >> 6
-			);
-			xAccel = (xAccelRaw.asFloat / 512.0) - 1.0;
-			yAccel = (yAccelRaw.asFloat / 256.0) - 1.0;
-			zAccel = (zAccelRaw.asFloat / 256.0) - 1.0;
-			this.onAccelUpdated.value(xAccel, yAccel, zAccel, this);
+			if (element.arrayValue.notNil
+				and: { buttonAndAccelReportElements[1].arrayValue.notNil }
+				and: { buttonAndAccelReportElements[2].arrayValue.notNil }
+				and: { buttonAndAccelReportElements[3].arrayValue.notNil }
+				and: { buttonAndAccelReportElements[4].arrayValue.notNil },
+				{
+					var xAccelRaw, yAccelRaw, zAccelRaw;
+
+					// In this mode bits 5 and 6 of this byte contain the two
+					// least significant bits of X accelerometer data.
+					xAccelRaw = (
+						buttonAndAccelReportElements[2].arrayValue << 2
+					).bitOr(
+						element.arrayValue.bitAnd(0x60) >> 5
+					);
+					// The Y and Z acceleration value LSb are packed into the 5th
+					// and 6th bits of the second button byte, respectively. Note
+					// that Y and Z only get one additional bit of precision, as
+					// opposed to the two bits provided X.
+					yAccelRaw = (
+						buttonAndAccelReportElements[3].arrayValue << 1
+					).bitOr(
+						buttonAndAccelReportElements[1].arrayValue.bitAnd(0x20) >> 5
+					);
+					zAccelRaw = (
+						buttonAndAccelReportElements[4].arrayValue << 1
+					).bitOr(
+						buttonAndAccelReportElements[1].arrayValue.bitAnd(0x40) >> 6
+					);
+					xAccel = (xAccelRaw.asFloat / 512.0) - 1.0;
+					yAccel = (yAccelRaw.asFloat / 256.0) - 1.0;
+					zAccel = (zAccelRaw.asFloat / 256.0) - 1.0;
+					this.onAccelUpdated.value(xAccel, yAccel, zAccel, this);
+			});
 		};
 
 		buttonAndAccelReportElements[1].action = { | value, element |
 			this.prParseSecondButtonByte(element.arrayValue);
 		};
 
+		this.prResetDataReporting;
 		this.getStatus;
-		this.accelUpdateRate = updateRate;
 	}
 
-	accelUpdateRate_ { | updateRate |
-		accelUpdateRate = updateRate;
-		if (updateRate > 0.0, {
+	prResetDataReporting {
+		if (accelUpdateRate > 0.0, {
 			reportingModeElements[1].value = 0x31;
 			if (rumble, {
 				reportingModeElements[0].value = 0x05;
@@ -203,6 +237,11 @@ SCLOrkWiimote {
 				reportingModeElements[0].value = 0x00;
 			});
 		});
+	}
+
+	accelUpdateRate_ { | updateRate |
+		accelUpdateRate = updateRate;
+		this.prResetDataReporting;
 	}
 
 	prParseFirstButtonByte { | byte |
