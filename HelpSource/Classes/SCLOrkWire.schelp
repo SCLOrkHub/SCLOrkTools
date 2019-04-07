@@ -1,6 +1,6 @@
 TITLE:: SCLOrkWire
 summary:: A reliable, connection-oriented OSC communication class using UDP.
-categories:: Quarks>SCLOrkCore
+categories:: Quarks>SCLOrkTools
 related:: Reference/SCLOrkWire-Design-Document
 
 DESCRIPTION::

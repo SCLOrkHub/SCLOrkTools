@@ -1,6 +1,6 @@
 TITLE:: SCLOrkChat
 summary:: Provides a Graphical User Interface for a SCLOrkChatClient object.
-categories:: Quarks>SCLOrkUI
+categories:: Quarks>SCLOrkTools
 related:: Guides/SCLOrkChat-User-Guide, Classes/SCLOrkChatClient
 
 DESCRIPTION::

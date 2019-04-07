@@ -8,10 +8,10 @@
 # automatically at boot.
 
 command=/usr/local/bin/sclang
-command_args="/usr/local/share/SuperCollider/Extensions/SCLOrkCore/scripts/server_bot.scd"
+command_args="/usr/local/share/SuperCollider/Extensions/SCLOrkTools/scripts/server_bot.scd"
 pidfile=/var/run/sclork-server.pid
 
-description="Runs a few SCLOrkCore Quark objects for SCLOrk."
+description="Runs a few SCLOrkTools Quark objects for SCLOrk."
 
 depend() {
 	# we read files, so we need the file system.

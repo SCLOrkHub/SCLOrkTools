@@ -1,6 +1,6 @@
 TITLE:: SCLOrkWiimote
 summary:: Wrapper class around HID access to WiiMotes.
-categories:: Quarks>SCLOrkCore
+categories:: Quarks>SCLOrkTools
 related:: Classes/HID, Guides/HID-permissions
 
 DESCRIPTION::
