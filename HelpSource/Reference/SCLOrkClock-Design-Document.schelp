@@ -1,6 +1,6 @@
 title:: SCLOrkClock Design Document
 summary:: SCLOrkClock Design Discussion
-categories:: Quarks>SCLOrkCore
+categories:: Quarks>SCLOrkTools
 related:: Classes/SCLOrkClock, Classes/SCLOrkWire
 
 This is a design document for a centralized clock server system for the Santa Clara Laptop Orchestra. It describes a client-server protocol that allows for the centralized creation, control, and management of distributed network link::Classes/Clock:: objects for use in performance.

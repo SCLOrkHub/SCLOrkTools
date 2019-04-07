@@ -1,6 +1,6 @@
 title:: SCLOrkWire Design Document
 summary:: Design Discussion and Documentation for SCLOrkWire
-categories:: Quarks>SCLOrkCor
+categories:: Quarks>SCLOrkTools
 related:: Classes/SCLOrkWire
 
 A link::Classes/SCLOrkWire:: class creates a reliable, two-way, connection-oriented OSC network connection between two computers using OSC over UDP as the underlying transport mechanism.
