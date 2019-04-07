@@ -28,7 +28,7 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 				bot.prUnwedge;
 			});
 			(30.rand).wait;
-			bot.connect("bot-%-%".format(i, Main.elapsedTime.round.asInt));
+			bot.connect("bot-%-%".format(i, Main.elapsedTime.round.asInteger));
 			1.wait;
 			10.rand.do({
 				var msgType = \plain;
@@ -43,7 +43,7 @@ Enim praesent elementum facilisis leo vel fringilla est ullamcorper eget. In mol
 				(5.rand + 1).wait;
 				if (10.rand > 7, {
 					bot.name = "new-%-%".format(i,
-						Main.elapsedTime.round.asInt);
+						Main.elapsedTime.round.asInteger);
 					(10.rand + 1).wait;
 				});
 			});
