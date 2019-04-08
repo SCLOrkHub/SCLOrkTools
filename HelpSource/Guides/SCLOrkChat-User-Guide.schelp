@@ -1,15 +1,13 @@
-TITLE:: SCLOrkChat User Guide
+title:: SCLOrkChat User Guide
 summary:: General user manual for the SCLOrkChat system.
 categories:: Quarks>SCLOrkTools
 related:: Classes/SCLOrkChat
 
-SECTION::Introduction
+section:: Introduction
 
-The SCLOrkChat Quark is a collection of classes designed for use by the Santa Clara Laptop Orchestra, but as it is open source it is free for use for anyone. It is designed to be a network chat interface useful for communication during live performance by the orchestra. As such it includes many features specifically to facilitate that, such as minimal default configuration, ability to operate without an Internet connection, lightweight code sharing, and special features for the director's use.
+SCLOrkChat is a collection of classes designed for use by the Santa Clara Laptop Orchestra, but as it is open source it is free for use for anyone. It is designed to be a network chat interface useful for communication during live performance by the orchestra. As such it includes many features specifically to facilitate that, such as minimal default configuration, ability to operate without an Internet connection, lightweight code sharing, and special features for the director's use.
 
-This Quark lives on GitHub at https://github.com/lnihlen/SCLOrkChat, and is maintained by its primary author Luke Nihlen. Issues can be filed there, or just send me email. PRs are also invited. If you find this Quark useful, particularly if you aren't a part of SCLOrk, I'd be delighted to hear it.
-
-SECTION::Quick Start
+section:: Quick Start
 
 In a SuperCollider document, write the following, replacing the "my name" string with your name:
 

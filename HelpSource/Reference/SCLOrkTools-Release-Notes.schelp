@@ -5,6 +5,16 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+section:: 0.0.1 - 7 April 2019
+
+First draft release of consolidated Quark, for testing with chamber SCLOrk at the next rehearsal scheduled for 8 April. Some new features were under development in SCLOrkCore and SCLOrkUI, the last incarnation of the separate repositories, included now here:
+
+list::
+## Separation of UI classes into the code::scide_scqt/:: directory, to allow for a single Quark that can still work even on headless SuperCollider configurations like the SCLOrk server, code::sclork-s01::.
+## Adds partial implementation of link::Classes/SCLOrkWiimote::, and accompanying link::Classes/SCLOrkWiimoteUI::. Buttons now working, accelerometer data still TBD.
+## Also adds a partial implementation of the new version of link::Classes/SCLOrkClock::, now with tempo changes, multiple clocks instances, scheduling, a UI, and other advanced features.
+::
+
 section:: Originial Multiple Quark Release Notes
 
 SCLOrkTools started as multiple individual Quarks, but as interdependencies between the individual Quarks started to develop I decided to organized them into two individual Quarks, SCLOrkCore and SCLOrkUI. I kept them as individual Quarks because SCLOrk runs a headless server during performances, it doesn't have support for Qt or IDE objects, and I wanted to keep the UI code separate so I could install the SCLOrkCore code on the headless server only.
@@ -96,7 +106,7 @@ First live performance using SCLOrkNet, so updating version to reflect productio
 
 subsection:: 0.2.0 - 13 January 2019
 
-Adds SCLOrkWire classes, tests, and documentation. Refactors SCLOrkChat objects to re-use wires. Some API changes to link::SCLOrkChatClient:: requiring changes to the SCLOrkChat Quark as well.
+Adds SCLOrkWire classes, tests, and documentation. Refactors SCLOrkChat objects to re-use wires. Some API changes to link::Classes/SCLOrkChatClient:: requiring changes to the SCLOrkChat Quark as well.
 
 subsection:: 0.1.1 - 1 January 2019
 
@@ -149,7 +159,7 @@ list::
 ## Forwards cmd+. to GUI, and also automaticallys stops old voices when they change name.
 ::
 
-Future work is to use link::Classes/JitLib:: to get a real awareness of voice state, instead of the rough approximation using string tracking we do now, as well as further UI elements for editing of parameters.
+Future work is to use link::Overviews/JITLib:: to get a real awareness of voice state, instead of the rough approximation using string tracking we do now, as well as further UI elements for editing of parameters.
 
 subsection:: 0.0.2 - 21 January 2019
 

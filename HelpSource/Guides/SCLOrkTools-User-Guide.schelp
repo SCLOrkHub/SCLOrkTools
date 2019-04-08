@@ -1,0 +1,54 @@
+title:: SCLOrkTools User Guide
+summary:: The organization and structure of the software in SCLOrkTools.
+categories:: Quarks>SCLOrkTools
+related:: Reference/SCLOrkTools-Release-Notes
+
+section:: Overview
+
+SCLOrkTools is a Quark maintained primarily by Luke Nihlen for use by the Santa Clara University Laptop Orchestra, conducted by Bruno Ruviaro. The code lives on link::https://github.com/lnihlen/SCLOrkTools##GitHub::, is GPLv3 open source, and contributions, issue reports, feedback, and all else are enthusiastically welcomed there. If you find this Quark useful, particularly if you aren't a part of SCLOrk, I'd be delighted to hear it.
+
+SCLOrkTools is the consolidation of several different Quarks that I developed independently into one. Those with historical interest are directed to the link::Reference/SCLOrkTools-Release-Notes##release notes::, but the point here is that while there are many interdependencies between the different parts of the tools they can still best be considered as a few different projects, which we detail here.
+
+subsection:: SCLOrkChat - Network Chat and Code Sharing
+
+For a user manual please consult the link::Guides/SCLOrkChat-User-Guide::. In terms of engineering overview, all network communication happens using link::Classes/SCLOrkWire::. A server object, the link::Classes/SCLOrkChatServer::, runs on the SCLOrk server. Network topology is a classic "star" configuration, with all communication between client and server and no client-client communication. A link::Classes/SCLOrkChatClient:: class provides a convenient client-side abstraction, which is the same class that the link::Classes/SCLOrkChat:: UI uses.
+
+table::
+## link::Classes/SCLOrkChat:: || The primary chat user interface.
+## link::Classes/SCLOrkChatMessageView:: || A utility class for link::Classes/SCLOrkChat::, handles all of the logic around rendering of a single chat message.
+## link::Classes/SCLOrkChatClient:: || A programmatic client interface to the SCLOrkChat system.
+## link::Classes/SCLOrkChatServer:: || A chat server, run one per chat system instance.
+## link::Classes/SCLOrkChatMessage:: || A simple wrapper class around the chat message format.
+::
+
+subsection:: SCLOrkClock - Network Clock Synchronization
+
+The link::Classes/SCLOrkClock:: has recently undergone a substantial refactor and as succh the documentation is out of date, so it was deleted during the consolidation of SCLOrkClock out of its own repositories and in to SCLOrkTools. New documentation is TBD, or a PR on GitHub would be gladly accepted!
+
+In short, SCLOrkClock exposes an API very similar to link::Classes/TempoClock::, and also includes facilities for synchronization of these clocks across a LAN.
+
+table::
+## link::Classes/SCLOrkClock:: || The client clock set, a singleton instance that makes one of every clock cohort on the network.
+## link::Classes/SCLOrkClockServer:: || Coordinates the various clock cohorts on the network, runs on the server.
+::
+
+subsection:: SCLOrkPD - Support for Public Domain, a SCLOrk composition
+
+The Public Domain piece plays with the idea of being able to sample from different eras of music depending on the evolution of copyright law, and specifically the defintion of Public Domain, as it is restricted to increasingly older music. As performers we wanted to be able to improvise code::Pbindef:: statements, but also to coordinate switching between many different templates to serve as starting places for that improvisation. The SCLOrkPD objects parse code::.scd:: files containing a set of code::Pbindef:: statements, called a emphasis::preset::, organized into individual emphasis::voices::. The UI then allow for switching between presets with appropriate voice already selected, and for interactive editing and performance right in the UI.
+
+table::
+## link::Classes/SCLOrkPD:: || The primary SCLOrk Public Domain user interface.
+## link::Classes/SCLOrkPDParameterView:: || A utility class for link::Classes/SCLOrkPD::, renders a single parameter inside of the voice.
+## link::Classes/SCLOrkPDPreset:: || Parses an entire Public Domain preset .scd file into the individual voices.
+## link::Classes/SCLOrkPDVoice:: || An individual voice within a preset, parsed from the .scd file.
+::
+
+subsection:: Miscellaneous Support Classes
+
+Various tools developed to support the other parts of the SCLOrkTools, or SCLOrk performance overall.
+
+table::
+## link::Classes/SCLOrkWire:: || A reliable UDP-based OSC network communication class.
+## link::Classes/SCLOrkWiimote:: || Uses the SuperCollider HID classes to provide communication with a paired Wiimote.
+## link::Classes/SCLOrkWiimoteUI:: || Provides visualization of the SCLOrkWiimote state.
+::
