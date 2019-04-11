@@ -16,7 +16,7 @@ SCLOrkWiimoteUI {
 	var oneText;
 	var twoText;
 	var homeText;
-	var enableScopesCheckBox;
+	var enableAccelCheckBox;
 	var xyzScope;
 
 	var autoConnectTask;
@@ -31,6 +31,10 @@ SCLOrkWiimoteUI {
 		this.prConstructUIElements;
 		this.prConnectUI;
 		this.prStartAutoconnect;
+	}
+
+	free {
+		wiimote.onButton = {};
 	}
 
 	prStartAutoconnect {
@@ -102,9 +106,9 @@ SCLOrkWiimoteUI {
  				twoText = StaticText.new.string_("2").background_(
 					Color.white).align_(\center)
 			),
-			enableScopesCheckBox = CheckBox.new.string_(
-				"enable scopes").value_(false),
-			xyzScope = ScopeView.new,
+			enableAccelCheckBox = CheckBox.new.string_(
+				"enable accelerometer").value_(false),
+			xyzScope = nil,
 			nil
 		);
 
@@ -187,6 +191,17 @@ SCLOrkWiimoteUI {
 			oneText.enabled = true;
 			twoText.enabled = true;
 			homeText.enabled = true;
+			enableAccelCheckBox.enabled = true;
+			enableAccelCheckBox.action = { | v |
+				if (v.value, {
+					wiimote.enableAccelerometer;
+					xyzScope = wiimote.accelerometerBus.scope;
+				}, {
+					wiimote.disableAccelerometer;
+					xyzScope = nil;
+				});
+			}
+
 		}, {
 			statusText.string = "scanning";
 			connectButton.action = {
@@ -209,8 +224,8 @@ SCLOrkWiimoteUI {
 			oneText.enabled = false;
 			twoText.enabled = false;
 			homeText.enabled = false;
-			enableScopesCheckBox.enabled = false;
-			xyzScope.enabled = false;
+			enableAccelCheckBox.enabled = false;
+			xyzScope = nil;
 		});
 	}
 }

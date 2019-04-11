@@ -21,10 +21,9 @@ SCLOrkWiimote {
 	var statusSerial;
 	var lastFirstButtonByte;
 	var lastSecondButtonByte;
-	var accelUpdateTask;
-	var xAccelValues;
-	var yAccelValues;
-	var zAccelValues;
+
+	var <isUsingAccelerometer;
+	var <accelerometerBus;
 
 	// Wiimote Status
 	var <isBatteryLow;
@@ -32,14 +31,11 @@ SCLOrkWiimote {
 	var <leds;
 	var <rumble;
 	var <buttonStates;
-	var <accelUpdateRate;
 	var <xAccel;
 	var <yAccel;
 	var <zAccel;
 
-	// Callback functions.
 	var <>onButton;
-	var <>onAccelUpdated;
 
 	*prGetAttachedWiimotes {
 		var deviceList;
@@ -57,7 +53,7 @@ SCLOrkWiimote {
 		^SCLOrkWiimote.prGetAttachedWiimotes.notNil;
 	}
 
-	*new { | accelUpdateRate = 30.0 |
+	*new {
 		var deviceList, productId, path, hid;
 		if (instance.notNil, {
 			^instance;
@@ -75,11 +71,11 @@ SCLOrkWiimote {
 			^nil;
 		});
 
-		instance = super.newCopyArgs(hid).init(accelUpdateRate);
+		instance = super.newCopyArgs(hid).init;
 		^instance;
 	}
 
-	init { | updateRate |
+	init {
 		var statusFunction, acknowledgeFunction, dataFunction;
 
 		reportingModeElements = Array.newClear(2);
@@ -87,13 +83,12 @@ SCLOrkWiimote {
 		buttonReportElements = Array.newClear(2);
 		buttonAndAccelReportElements = Array.newClear(5);
 		statusSerial = 0;
+		isUsingAccelerometer = false;
 		rumble = false;
 		batteryLevel = 0.0;
 		leds = 0;
-		accelUpdateRate = updateRate;
 
 		onButton = {};
-		onAccelUpdated = {};
 
 		// Build button states map and seed initial values.
 		buttonStates = Dictionary.new;
@@ -209,7 +204,7 @@ SCLOrkWiimote {
 					xAccel = (xAccelRaw.asFloat / 512.0) - 1.0;
 					yAccel = (yAccelRaw.asFloat / 256.0) - 1.0;
 					zAccel = (zAccelRaw.asFloat / 256.0) - 1.0;
-					this.onAccelUpdated.value(xAccel, yAccel, zAccel, this);
+					accelerometerBus.set(xAccel, yAccel, zAccel);
 			});
 		};
 
@@ -221,8 +216,20 @@ SCLOrkWiimote {
 		this.getStatus;
 	}
 
+	enableAccelerometer { | server |
+		isUsingAccelerometer = true;
+		accelerometerBus = Bus.control(server, 3);
+		this.prResetDataReporting;
+	}
+
+	disableAccelerometer {
+		isUsingAccelerometer = false;
+		accelerometerBus = nil;
+		this.prResetDataReporting;
+	}
+
 	prResetDataReporting {
-		if (accelUpdateRate > 0.0, {
+		if (isUsingAccelerometer, {
 			reportingModeElements[1].value = 0x31;
 			if (rumble, {
 				reportingModeElements[0].value = 0x05;
@@ -237,11 +244,6 @@ SCLOrkWiimote {
 				reportingModeElements[0].value = 0x00;
 			});
 		});
-	}
-
-	accelUpdateRate_ { | updateRate |
-		accelUpdateRate = updateRate;
-		this.prResetDataReporting;
 	}
 
 	prParseFirstButtonByte { | byte |
