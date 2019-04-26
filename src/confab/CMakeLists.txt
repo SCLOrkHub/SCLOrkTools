@@ -7,6 +7,7 @@ set(confab_src_files
 add_executable(confab ${confab_src_files})
 
 target_link_libraries(confab
+    gflags::gflags
     leveldb
     oscpack
     pistache_static

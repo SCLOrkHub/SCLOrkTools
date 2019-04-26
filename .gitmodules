@@ -7,3 +7,6 @@
 [submodule "third_party/leveldb"]
 	path = third_party/leveldb
 	url = https://github.com/google/leveldb
+[submodule "third_party/gflags"]
+	path = third_party/gflags
+	url = https://github.com/gflags/gflags.git
