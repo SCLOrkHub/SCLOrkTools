@@ -9,6 +9,6 @@ add_executable(confab ${confab_src_files})
 target_link_libraries(confab
     leveldb
     oscpack
-    pistache
+    pistache_static
     yaml-cpp
 )
