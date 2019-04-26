@@ -1,3 +1,5 @@
+#### gflags
+add_subdirectory(gflags)
 
 #### leveldb
 SET(LEVELDB_BUILD_TESTS OFF CACHE BOOL "build LevelDB's unit tests")
