@@ -47,12 +47,12 @@ YAML key           | Value Type | Required | Description
 ```deprecated:```  | string     | optional | An asset id that replaces this one.
 ```deprecates:```  | string     | optional | An asset id that this asset replaced.
 ```data_binary:``` | string     | optional | For small assets can optionally Base64 encode blob within the YAML directly.
-```data_string:``` | string     | optional | At most one of ```data_binary``` or ```data_string``` keys can exist. Raw character data.
+```data_string:``` | string     | optional | At most one of ```data_binary``` or ```data_string``` keys can exist. Raw character data in UTF-8.
 ```ttl:```         | string     | optional | A date/time string for when this resource cache should be considered stale and refreshed.
 
 Assets can currently be one of the following types:
 
-Asset Type   | YAML string   | Description
+Asset Type   | Type String   | Description
 -------------|---------------|------------
 Code Snippet | ```snippet``` | A snippet of SuperCollider code, which can be edited or executed directly.
 Image        | ```image```   | An image file.
@@ -79,7 +79,7 @@ aren't available locally, and also that the canonical server never marks an asse
 
 Asset fetch, and asset refresh.
 
-For an asset Fetch confab mirror sends a GET HTTP request to upstream server with url /asset/fetch/{Base64 Asset ID}. The
+For an asset Fetch confab mirror sends a GET HTTP request to upstream server with url ```/asset/fetch/{Base64 Asset ID}```. The
 upstream confab mirror will repond with either an error code or 200 OK with mime type used to indicate return type. If
 the return type is application/yaml the UTF-8 string returned is the entire asset entry, meaning there was no separate
 data addenda.
@@ -87,6 +87,7 @@ data addenda.
 Asset Add Protocol
 ------------------
 
+```/asset/add``` with a POST request.
 
 Resource Deprecation
 --------------------
@@ -100,4 +101,5 @@ OSC Client Requests
 - get string: pass the string directly over OSC
 - get image: way to ask for an image that's been rescaled
 - get meme: pre-process a meme, cache into file, send it
+- copy code: push code assets directly to or from the paste buffer
 
