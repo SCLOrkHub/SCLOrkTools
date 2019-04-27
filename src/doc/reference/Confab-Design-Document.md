@@ -18,19 +18,37 @@ mode, meaning that it is the authoritative answer on all resources.
 Each local mirror is designed with the principle that it may not always have a reliable connection to its upstream
 mirror, and so will need to cache resource addition reports for streaming when a connection is re-established. There
 may also be a need to build in better support for asset consistency checking due to loss of connectivity or client
-mirrors having unreliable power or other software stability. The performance environment can be an unpredictable one,
-so confab should design for robustness.
+mirrors having unreliable power or other software stability. The ensemble performance environment can be an
+unpredictable one, so confab should design for robustness.
 
-Resource Wire Format
---------------------
+Asset Wire Format
+-----------------
+
 The LevelDB library allows for serialization of resources directly to the database, and supports both caching and
 compression. We rely on this library for the storage of both the metadata about a resource as well as the actual
 resource binary data. The resource key identifier is the 128-bit hash as computed by the
 [xxHash](https://github.com/Cyan4973/xxHash) XXH3 algorithm. This means that new assets can be created locally by
 simply computing the hash of the asset before communicating the asset creation to the broader world via key.
 
-The resource is a binary blob consisting of a YAML metadata section, followed by a ```\0``` null terminator, then
-followed by a binary blob of size specified in the YAML portion, if appropriate.
+Keys are stored in the LevelDB as ```asset-<Base64-encoded key value>```. Every asset stores a YAML metadata string,
+and may include the asset binary directly in the YAML as a Base64-encoded string, or may provide the asset data
+stored as a separate binary, under a key with UTF-8 string ```-data```` appended, and which will be provided as a
+separate file when sent via HTTP.
+
+The YAML metadata for an asset is a dictionary containing the following keys:
+
+YAML key           | Value Type | Required | Description
+-------------------|------------|----------|------------
+```size:```        | integer    | required | Size of asset in bytes.
+```type:```        | string     | required | One of the enumerated type strings described in the Asset Type table.
+```name:```        | string     | optional | Human-readable string name of this asset. Does not have to be unique to this asset.
+```extension:```   | string     | optional | Filename extension of the binary blog, for example ```png```, ```yaml``` or ```wav```.
+```creator:```     | string     | optional | An asset id of a person encoded as a Base64 string.
+```deprecated:```  | string     | optional | An asset id that replaces this one.
+```deprecates:```  | string     | optional | An asset id that this asset replaced.
+```data_binary:``` | string     | optional | For small assets can optionally Base64 encode blob within the YAML directly.
+```data_string:``` | string     | optional | At most one of ```data_binary``` or ```data_string``` keys can exist. Raw character data.
+```ttl:```         | string     | optional | A date/time string for when this resource cache should be considered stale and refreshed.
 
 Assets can currently be one of the following types:
 
@@ -38,30 +56,36 @@ Asset Type   | YAML string   | Description
 -------------|---------------|------------
 Code Snippet | ```snippet``` | A snippet of SuperCollider code, which can be edited or executed directly.
 Image        | ```image```   | An image file.
-Meme         | ```meme```    | Additional metadata consisting of an image asset reference and string to construct a meme.
-Audio Sample | ```sample```  | A sound file.
-Person       | ```person```  | A collection of metadata around an identity.
+YAML         | ```yaml```    | YAML data in UTF-8 format.
+Audio Sample | ```sound```   | A sound file.
 
-The YAML metadata is a dictionary containing the following keys:
+Asset Request Protocol
+----------------------
 
-YAML key         | Value type | Required | Description
------------------|------------|----------|------------
-```name:```      | string     | optional | Human-readable string name of this asset. Does not have to be unique to this asset.
-```size:```      | integer    | required | Size of blob concatenated to YAML string. Can be zero.
-```extension:``` | string     | optional | Filename extension of the binary blog, for example ```png``` or ```wav```.
-```creator:```   | string     | optional | An asset id of a person encoded as a hexadecimal 128-bit string.
+When the SuperCollider client code issues a request for an asset from confab it will include the desired asset key. Confab
+should check its local database for the availability of the asset, and if available it should extract the asset metadata from
+the database, along with any additional supporting files, and inform the SuperCollider code of the availablility of the data
+and the path to the files.
 
-Resource Request Protocol
--------------------------
+The asset in the database might also be marked as stale, in that when confab looks up the asset it
+has a ```ttl``` field for a date that has expired. In that case confab should defer returning the asset to SuperCollider until
+it verifies that the asset has not yet been deprecated.
 
 The confab program will open a TCP port as specified in the configuration to handle incoming resource requests from
-downstream mirrors. It may also open up an OSC UDP port, possibly using SCLOrkWire, to process local client requests
+downstream mirrors via HTTP. It may also open up an OSC UDP port, possibly using SCLOrkWire, to process local client requests
 for assets from SuperCollider. Lastly, there may be a configuration option to specify that this server is the
 *canonical* or root server, meaning that there is no further upstream server available to process resource requests that
-aren't available locally.
+aren't available locally, and also that the canonical server never marks an asset in the cache as stale.
 
-Resource Add Protocol
----------------------
+Asset fetch, and asset refresh.
+
+For an asset Fetch confab mirror sends a GET HTTP request to upstream server with url /asset/fetch/{Base64 Asset ID}. The
+upstream confab mirror will repond with either an error code or 200 OK with mime type used to indicate return type. If
+the return type is application/yaml the UTF-8 string returned is the entire asset entry, meaning there was no separate
+data addenda.
+
+Asset Add Protocol
+------------------
 
 
 Resource Deprecation
