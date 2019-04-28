@@ -1,4 +1,7 @@
-#include "Version.hpp"
+#include "common/Version.hpp"
+
+#include <algorithm>
+#include <stdio.h>
 
 namespace Common {
 
@@ -6,6 +9,9 @@ Version::Version(int major, int minor, int sub) :
     m_major(major),
     m_minor(minor),
     m_sub(sub) {
+    m_major = std::max(m_major, 0);
+    m_minor = std::max(m_minor, 0);
+    m_sub = std::max(m_sub, 0);
 }
 
 Version::Version(const Version& version) {
@@ -17,6 +23,12 @@ Version& Version::operator=(const Version& version) {
     m_minor = version.minor();
     m_sub = version.sub();
     return *this;
+}
+
+std::string Version::toString() const {
+    char buffer[128];
+    snprintf(buffer, 128, "%d.%d.%d", m_major, m_minor, m_sub);
+    return std::string(buffer);
 }
 
 bool Version::operator<(const Version& version) const {

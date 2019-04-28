@@ -1,5 +1,7 @@
-#ifndef SRC_COMMON_VERSION_HPP_
-#define SRC_COMMON_VERSION_HPP_
+#ifndef SRC_COMMON_INCLUDE_COMMON_VERSION_HPP_
+#define SRC_COMMON_INCLUDE_COMMON_VERSION_HPP_
+
+#include <string>
 
 namespace Common {
 
@@ -9,7 +11,7 @@ namespace Common {
  */
 class Version {
 public:
-    /*! Construct a Version object with provided version numbers.
+    /*! Construct a Version object with provided version numbers. Negative numbers are truncated to zero.
      *
      * \param major The major version number.
      * \param minor The minor version number.
@@ -30,6 +32,12 @@ public:
      * \returns A reference to this Version object.
      */
     Version& operator=(const Version& version);
+
+    /*! Constructs a string in x.y.z format.
+     *
+     * \returns A string with the version numbers in major.minor.sub format.
+     */
+    std::string toString() const;
 
     /*! Version comparison for less than.
      *
@@ -99,4 +107,4 @@ private:
 
 }  // namespace Common
 
-#endif  // SRC_COMMON_VERSION_HPP_
+#endif  // SRC_COMMON_INCLUDE_COMMON_VERSION_HPP_
