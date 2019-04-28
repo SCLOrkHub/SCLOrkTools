@@ -1,5 +1,4 @@
-Confab Design Document
-======================
+# Confab Design Document {#Confab-Design-Document}
 
 [TOC]
 
@@ -8,27 +7,32 @@ images, memes, emoji, and code sharing in SCLOrkChat.
 
 This document serves as an overview of the design of the confab program.
 
-Network Topology
------------------
+# Overview
 
-It is a system designed to allow any client to create new binary assets which are organized into a database and
-synchronized in a pull basis using a tree of confab servers, at root of which is a confab program running in "canonical"
-mode, meaning that it is the authoritative answer on all resources.
+# Database Design {#Confab-Design-Document-Database-Design}
 
-Each local mirror is designed with the principle that it may not always have a reliable connection to its upstream
-mirror, and so will need to cache resource addition reports for streaming when a connection is re-established. There
-may also be a need to build in better support for asset consistency checking due to loss of connectivity or client
-mirrors having unreliable power or other software stability. The ensemble performance environment can be an
-unpredictable one, so confab should design for robustness.
-
-Asset Wire Format
------------------
-
-The LevelDB library allows for serialization of resources directly to the database, and supports both caching and
-compression. We rely on this library for the storage of both the metadata about a resource as well as the actual
-resource binary data. The resource key identifier is the 128-bit hash as computed by the
+The [LevelDB](https://github.com/google/leveldb) library allows for serialization of resources directly to the database,
+and supports both caching and compression. We rely on this library for the storage of both the metadata about a resource
+as well as the actual resource binary data. The resource key identifier is the 128-bit hash as computed by the
 [xxHash](https://github.com/Cyan4973/xxHash) XXH3 algorithm. This means that new assets can be created locally by
 simply computing the hash of the asset before communicating the asset creation to the broader world via key.
+
+## Database Configuration Key {#Confab-Design-Document-Database-Design-Database-Configuration-Key}
+
+Confab stores one configuration entry under the key name ```confab-db-config```. The value of this key is a YAML
+dictionary string with the following fields:
+
+YAML Key             | Value Type | Description
+---------------------|------------|------------
+```version_major:``` | integer    | Major version number of confab that most recently opened this database. Confab names version numbers as *major*.*minor*.*sub*, for example 1.2.3 is major version 1, minor version 2, sub version 3.
+```version_minor:``` | integer    | Minor version number of same.
+```version_sub:```   | integer    | Sub version of the same.
+```db_version:```    | integer    | Version of database schema. Currently 1.
+
+## Metadata Configuration
+
+
+## Asset Storage
 
 Keys are stored in the LevelDB as ```asset-<Base64-encoded key value>```. Every asset stores a YAML metadata string,
 and may include the asset binary directly in the YAML as a Base64-encoded string, or may provide the asset data
@@ -37,7 +41,7 @@ separate file when sent via HTTP.
 
 The YAML metadata for an asset is a dictionary containing the following keys:
 
-YAML key           | Value Type | Required | Description
+YAML Key           | Value Type | Required | Description
 -------------------|------------|----------|------------
 ```size:```        | integer    | required | Size of asset in bytes.
 ```type:```        | string     | required | One of the enumerated type strings described in the Asset Type table.
@@ -59,8 +63,22 @@ Image        | ```image```   | An image file.
 YAML         | ```yaml```    | YAML data in UTF-8 format.
 Audio Sample | ```sound```   | A sound file.
 
-Asset Request Protocol
-----------------------
+# Network Topology
+
+It is a system designed to allow any client to create new binary assets which are organized into a database and
+synchronized in a pull basis using a tree of confab servers, at root of which is a confab program running in "canonical"
+mode, meaning that it is the authoritative answer on all resources.
+
+Each local mirror is designed with the principle that it may not always have a reliable connection to its upstream
+mirror, and so will need to cache resource addition reports for streaming when a connection is re-established. There
+may also be a need to build in better support for asset consistency checking due to loss of connectivity or client
+mirrors having unreliable power or other software stability. The ensemble performance environment can be an
+unpredictable one, so confab should design for robustness.
+
+# Asset Wire Format
+
+
+# Asset Request Protocol
 
 When the SuperCollider client code issues a request for an asset from confab it will include the desired asset key. Confab
 should check its local database for the availability of the asset, and if available it should extract the asset metadata from
@@ -84,17 +102,13 @@ upstream confab mirror will repond with either an error code or 200 OK with mime
 the return type is application/yaml the UTF-8 string returned is the entire asset entry, meaning there was no separate
 data addenda.
 
-Asset Add Protocol
-------------------
+# Asset Add Protocol
 
 ```/asset/add``` with a POST request.
 
-Resource Deprecation
---------------------
+# Resource Deprecation
 
-
-OSC Client Requests
--------------------
+# OSC Client Requests
 
 - get metadata: comes back as YAML blob for parsing, also warms the local cache if asset isn't present
 - get file: get a path to the local file extracted and decompressed from the db

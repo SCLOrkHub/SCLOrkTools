@@ -19,5 +19,6 @@ find_package(Doxygen)
     endif (DOXYGEN_FOUND)
 endif (BUILD_DOC)
 
+add_subdirectory(common)
 add_subdirectory(confab)
 
