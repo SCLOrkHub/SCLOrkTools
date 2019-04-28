@@ -1,57 +1,73 @@
-#ifndef SRC_CONFAB_DATABASE_H_
-#define SRC_CONFAB_DATABASE_H_
+#ifndef SRC_CONFAB_DATABASE_HPP_
+#define SRC_CONFAB_DATABASE_HPP_
 
 #include "leveldb/db.h"
 
+#include <cstdint>
+
 namespace Confab {
 
-/*! \brief Encapsulates a LevelDB database for use in Confab.
+/*! Encapsulates a LevelDB database for use in Confab.
  *
  * The Database object allows semantic-level manipulation of the asset database. It provides functionality to store
  * asset metadata, files, and other entries as needed by the system. It includes convenience routines for common
  * database use cases in the confab program.
+ *
+ * \sa [Database Design Document](@ref Confab-Design-Document-Database-Design)
  */
 class Database {
 public:
-    /*! \brief Constructs an empty Database object.
+    /*! Constructs an empty Database object.
      *
-     * Database objects start out closed and in a default empty state. To open or create the database file tree call
-     * createNew() or open().
-     *
-     * \sa createNew(), open(), ~Database()
+     * \param database An pointer to an existing LevelDB database object (or a mock for testing), or nullptr. Note that
+     *                 Database will take ownership of this pointer.
+     * \sa open(), ~Database()
      */
-    Database();
+    Database(leveldb::DB* database = nullptr);
 
-    /*! \brief Destructs a Database object.
+    /*! Close and then destruct an open Database.
      *
-     * Will flush and close the database if those functions weren't called explicitly.
-     *
-     * \sa flush(), close()
+     * \sa close()
      */
     ~Database();
 
-    /*! \brief Open or create Database LevelDB file tree.
-     *
-     * Will attempt to open or create the LevelDB database directory specified in the \a path argument.
+    /*! Open or create Database LevelDB database file tree.
      *
      * \param path A path to a directory where the Confab LevelDB database is stored.
-     * \param createNew If true, open() will attempt to create a new database, and will treat an existing database
-     *                  as an error condition. If false, open() will expect a valid database to exist at \a path.
+     * \param createNew If true, open() will attempt to create a new database, and will treat an existing or already
+     *                  initialized database as an error condition. If false, open() will expect a valid database to
+     *                  exist at \a path.
      * \return true on success, or false on error.
      */
     bool open(const char* path, bool createNew);
 
-    /*! \brief Close the database.
+    /*! Sets up a new LevelDB database for use with Confab.
      *
-     * Will flush any pending transactions and then close the Database file tree.
+     * \return true on success, or false on error.
+     * \sa [Configuration Key Design](@ref Confab-Design-Document-Database-Design-Database-Configuration-Key)
+     */
+    bool initializeEmpty();
+
+    /*! Perform basic sanity checks on an open database.
+     *
+     * This method also calls the underlying LevelDB validation functions, which for a large database can take some
+     * time.
+     *
+     * \return true on success, or false on error.
+     */
+    bool validate();
+
+    /*! Close the database, and delete any internal references to it.
+     *
      */
     void close();
 
 private:
     leveldb::DB* m_database;
+    uint8_t m_databaseVersion;
 };
 
 }  // namespace Confab
 
-#endif  // SRC_CONFAB_DATABASE_H_
+#endif  // SRC_CONFAB_DATABASE_HPP_
 
