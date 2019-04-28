@@ -2,11 +2,14 @@
 set(GFLAGS_BUILD_STATIC_LIBS ON CACHE BOOL "build gflags as a static library")
 set(GFLAGS_BUILD_gflags_LIB ON CACHE BOOL "build multithreaded gflags library")
 set(GFLAGS_BUILD_gflags_nothreads_LIB ON CACHE BOOL "build single-threaded gflags library")
-
 add_subdirectory(gflags)
 
 #### glog
 add_subdirectory(glog)
+
+#### googletest
+set(BUILD_GMOCK ON CACHE BOOL "include gmock in googletest build")
+add_subdirectory(googletest)
 
 #### leveldb
 set(LEVELDB_BUILD_TESTS OFF CACHE BOOL "build LevelDB's unit tests")

@@ -17,10 +17,9 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 set(confab_src_files
     Database.cpp
     Database.hpp
-    confab.cpp
 )
 
-add_executable(confab ${confab_src_files})
+add_executable(confab confab.cpp ${confab_src_files})
 
 target_link_libraries(confab
     gflags::gflags
