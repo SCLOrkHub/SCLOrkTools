@@ -29,7 +29,7 @@ bool Database::open(const char* path, bool createNew) {
     options.error_if_exists = createNew;
     leveldb::Status status = leveldb::DB::Open(options, path, &m_database);
     if (!status.ok()) {
-        LOG(ERROR) << "Failure opening or creating database at '" << path << "'. LevelDB status: " << status.ToString();
+        LOG(FATAL) << "Failure opening or creating database at '" << path << "'. LevelDB status: " << status.ToString();
         return false;
     } else {
         LOG(INFO) << "Opened database file at '" << path << "'.";
@@ -51,10 +51,10 @@ bool Database::initializeEmpty() {
     std::string config;
     leveldb::Status status = m_database->Get(leveldb::ReadOptions(), kConfabConfigKey, &config);
     if (status.ok()) {
-        LOG(ERROR) << "Attempt to initialize database with existing configuration key.";
+        LOG(FATAL) << "Attempt to initialize database with existing configuration key.";
         return false;
     } else if (!status.IsNotFound()) {
-        LOG(ERROR) << "Error looking up configuration key. LevelDB status: " << status.ToString();
+        LOG(FATAL) << "Error looking up configuration key. LevelDB status: " << status.ToString();
         return false;
     }
 
@@ -67,7 +67,7 @@ bool Database::initializeEmpty() {
 
     status = m_database->Put(leveldb::WriteOptions(), kConfabConfigKey, out.c_str());
     if (!status.ok()) {
-        LOG(ERROR) << "Error writing config key to database. LevelDB status: " << status.ToString();
+        LOG(FATAL) << "Error writing config key to database. LevelDB status: " << status.ToString();
         return false;
     }
 
@@ -81,7 +81,7 @@ bool Database::validate() {
     std::string configYAML;
     leveldb::Status status = m_database->Get(leveldb::ReadOptions(), kConfabConfigKey, &configYAML);
     if (!status.ok()) {
-        LOG(ERROR) << "Failure reading database config key. LevelDB status: " << status.ToString();
+        LOG(FATAL) << "Failure reading database config key. LevelDB status: " << status.ToString();
         return false;
     }
 
@@ -89,7 +89,7 @@ bool Database::validate() {
     try {
         config = YAML::Load(configYAML);
     } catch (YAML::ParserException exception) {
-        LOG(ERROR) << "Error parsing database config key YAML. " << exception.msg;
+        LOG(FATAL) << "Error parsing database config key YAML. " << exception.msg;
         return false;
     }
 
@@ -102,7 +102,7 @@ bool Database::validate() {
         versionSub = config["version_sub"].as<int>();
         m_databaseVersion = config["db_version"].as<uint8_t>();
     } catch (YAML::Exception exception) {
-        LOG(ERROR) << "Database config value missing required field. " << exception.msg;
+        LOG(FATAL) << "Database config value missing required field. " << exception.msg;
         return false;
     }
 

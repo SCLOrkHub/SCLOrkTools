@@ -1,10 +1,12 @@
 #### gflags
 set(GFLAGS_BUILD_STATIC_LIBS ON CACHE BOOL "build gflags as a static library")
 set(GFLAGS_BUILD_gflags_LIB ON CACHE BOOL "build multithreaded gflags library")
-set(GFLAGS_BUILD_gflags_nothreads_LIB ON CACHE BOOL "build single-threaded gflags library")
 add_subdirectory(gflags)
 
 #### glog
+# Can't seem to reliably connect glog to gflags so programs can make their own logging flags and/or configure logging
+# manually.
+set(WITH_GFLAGS OFF CACHE BOOL "use gflags in glog")
 add_subdirectory(glog)
 
 #### googletest
@@ -27,6 +29,8 @@ set(PISTACHE_BUILD_EXAMPLES OFF CACHE BOOL "build Pistache examples")
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "build Pistache tests")
 set(PISTACHE_ENABLE_NETWORK_TESTS OFF CACHE BOOL "enable Pistache network tests")
 set(PISTACHE_USE_SSL OFF CACHE BOOL "enable ssl in Pistache")
+# Pistache still seems to get confused if it fails to find cppcheck.
+set(CMAKE_CXX_CPPCHECK "" CACHE STRING "" FORCE)
 add_subdirectory(pistache)
 
 #### yaml-cpp
