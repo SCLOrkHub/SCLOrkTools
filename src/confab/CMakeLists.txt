@@ -1,5 +1,8 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+find_package(Boost REQUIRED iostreams)
+include_directories(${BOOST_INCLUDE_DIRS})
+
 set(CONFAB_VERSION_MAJOR 0)
 set(CONFAB_VERSION_MINOR 0)
 set(CONFAB_VERSION_SUB 1)
@@ -22,6 +25,7 @@ set(confab_src_files
 add_executable(confab confab.cpp ${confab_src_files})
 
 target_link_libraries(confab
+    ${BOOST_LIBRARIES}
     gflags::gflags
     glog::glog
     leveldb
