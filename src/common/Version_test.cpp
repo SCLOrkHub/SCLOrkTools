@@ -8,12 +8,12 @@ TEST(VersionTest, Constructor) {
     Common::Version v1(1, 2, 3);
     EXPECT_EQ(1, v1.major());
     EXPECT_EQ(2, v1.minor());
-    EXPECT_EQ(3, v1.sub());
+    EXPECT_EQ(3, v1.patch());
 
     Common::Version v2(9, -3, 6);
     EXPECT_EQ(9, v2.major());
     EXPECT_EQ(0, v2.minor());
-    EXPECT_EQ(6, v2.sub());
+    EXPECT_EQ(6, v2.patch());
 }
 
 TEST(VersionTest, CopyConstructor) {
@@ -22,11 +22,11 @@ TEST(VersionTest, CopyConstructor) {
 
     EXPECT_EQ(7, v1.major());
     EXPECT_EQ(8, v1.minor());
-    EXPECT_EQ(9, v1.sub());
+    EXPECT_EQ(9, v1.patch());
 
     EXPECT_EQ(7, v2.major());
     EXPECT_EQ(8, v2.minor());
-    EXPECT_EQ(9, v2.sub());
+    EXPECT_EQ(9, v2.patch());
 }
 
 TEST(VersionTest, Assignment) {
@@ -37,15 +37,15 @@ TEST(VersionTest, Assignment) {
 
     EXPECT_EQ(8, v3.major());
     EXPECT_EQ(0, v3.minor());
-    EXPECT_EQ(1, v3.sub());
+    EXPECT_EQ(1, v3.patch());
 
     EXPECT_EQ(8, v2.major());
     EXPECT_EQ(0, v2.minor());
-    EXPECT_EQ(1, v2.sub());
+    EXPECT_EQ(1, v2.patch());
 
     EXPECT_EQ(8, v1.major());
     EXPECT_EQ(0, v1.minor());
-    EXPECT_EQ(1, v1.sub());
+    EXPECT_EQ(1, v1.patch());
 }
 
 TEST(VersionTest, ToString) {
