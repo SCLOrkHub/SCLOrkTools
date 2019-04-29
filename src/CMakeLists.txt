@@ -19,6 +19,8 @@ find_package(Doxygen)
     endif (DOXYGEN_FOUND)
 endif (BUILD_DOC)
 
+include_directories(${CMAKE_CURRENT_LIST_DIR}/common/include)
+
 add_subdirectory(common)
 add_subdirectory(confab)
 

@@ -1,15 +1,19 @@
 #ifndef SRC_CONFAB_CONFAB_VERSION_H_
 #define SRC_CONFAB_CONFAB_VERSION_H_
 
+#include "common/Version.hpp"
+
 #include <cstdint>
 
 namespace Confab {
 
 const int kConfabVersionMajor = @CONFAB_VERSION_MAJOR@;
 const int kConfabVersionMinor = @CONFAB_VERSION_MINOR@;
-const int kConfabVersionSub = @CONFAB_VERSION_SUB@;
+const int kConfabVersionPatch = @CONFAB_VERSION_PATCH@;
 
 const uint8_t kConfabDatabaseVersion = @CONFAB_DATABASE_VERSION@;
+
+static const Common::Version confabVersion(kConfabVersionMajor, kConfabVersionMinor, kConfabVersionPatch);
 
 }
 

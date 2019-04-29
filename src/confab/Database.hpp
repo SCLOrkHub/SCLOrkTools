@@ -37,9 +37,11 @@ public:
      * \param createNew If true, open() will attempt to create a new database, and will treat an existing or already
      *                  initialized database as an error condition. If false, open() will expect a valid database to
      *                  exist at \a path.
+     * \param cacheSize Size in bytes of the LRU memory cache to request from LevelDB. A size <= 0 will disable the
+     *                  cache.
      * \return true on success, or false on error.
      */
-    bool open(const char* path, bool createNew);
+    bool open(const char* path, bool createNew, int cacheSize);
 
     /*! Sets up a new LevelDB database for use with Confab.
      *
@@ -63,6 +65,12 @@ public:
     void close();
 
 private:
+    /*! Write the most recent version of the config key and value to the database.
+     *
+     * \return true on success, or false on error.
+     */
+    bool writeConfigData();
+
     leveldb::DB* m_database;
     uint8_t m_databaseVersion;
 };

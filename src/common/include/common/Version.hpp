@@ -7,7 +7,7 @@ namespace Common {
 
 /*! Allows comparison of x.y.z style version numbers.
  *
- * A simple utility class supporting manipulation of version numbers provided in a major.minor.sub version style.
+ * A simple utility class supporting manipulation of version numbers provided in a major.minor.patch version style.
  */
 class Version {
 public:
@@ -15,9 +15,9 @@ public:
      *
      * \param major The major version number.
      * \param minor The minor version number.
-     * \param sub The sub version number.
+     * \param patch The patch version number.
      */
-    Version(int major, int minor, int sub);
+    Version(int major, int minor, int patch);
 
     /*! Copy constructor.
      *
@@ -35,7 +35,7 @@ public:
 
     /*! Constructs a string in x.y.z format.
      *
-     * \returns A string with the version numbers in major.minor.sub format.
+     * \returns A string with the version numbers in major.minor.patch format.
      */
     std::string toString() const;
 
@@ -93,16 +93,16 @@ public:
      */
     int minor() const { return m_minor; }
 
-    /*! Version sub value.
+    /*! Version patch value.
      *
-     * \returns The value of the Version sub number, or the "z" value in version "x.y.z".
+     * \returns The value of the Version patch number, or the "z" value in version "x.y.z".
      */
-    int sub() const { return m_sub; }
+    int patch() const { return m_patch; }
 
 private:
     int m_major;
     int m_minor;
-    int m_sub;
+    int m_patch;
 };
 
 }  // namespace Common
