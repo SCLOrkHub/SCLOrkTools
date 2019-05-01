@@ -19,6 +19,7 @@ find_package(Doxygen)
     endif (DOXYGEN_FOUND)
 endif (BUILD_DOC)
 
+# Allow other projects to include the Common library headers.
 include_directories(${CMAKE_CURRENT_LIST_DIR}/common/include)
 
 add_subdirectory(common)
