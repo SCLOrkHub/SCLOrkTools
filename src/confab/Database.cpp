@@ -2,12 +2,12 @@
 
 #include "ConfabVersion.hpp"
 #include "common/Version.hpp"
+#include "schemas/Asset_generated.h"
+#include "schemas/Config_generated.h"
 
 #include <glog/logging.h>
-#include <yaml-cpp/yaml.h>
+#include <leveldb/cache.h>
 
-#include <boost/iostreams/device/array.hpp>
-#include <boost/iostreams/stream.hpp>
 #include <string>
 
 namespace {
@@ -79,23 +79,13 @@ bool Database::validate() {
         return false;
     }
 
-    Common::Version configVersion(0, 0, 0);
+    leveldb::Slice configSlice = configIterator->value();
+    // TODO: revisit flatbuffer verification.
 
-    YAML::Node config;
-    try {
-        leveldb::Slice configSlice = configIterator->value();
-        boost::iostreams::array_source configSource{configSlice.data(), configSlice.size()};
-        boost::iostreams::stream<boost::iostreams::array_source> configStream{configSource};
+    const Data::Config* config = Data::GetConfig(configSlice.data());
+    Common::Version configVersion(config->versionMajor(), config->versionMinor(), config->versionPatch());
 
-        config = YAML::Load(configStream);
-        configVersion = Common::Version(config["version_major"].as<int>(), config["version_minor"].as<int>(),
-            config["version_patch"].as<int>());
-        m_databaseVersion = config["db_version"].as<uint8_t>();
-    } catch (YAML::Exception exception) {
-        LOG(FATAL) << "Error parsing database config key YAML. " << exception.msg;
-        return false;
-    }
-
+    config = nullptr;
     delete configIterator;
 
     // We treat a newer version of the database than the program as a fatal error, but an older version of the database
@@ -123,15 +113,12 @@ void Database::close() {
 bool Database::writeConfigData() {
     CHECK(m_database) << "Database should already be open.";
 
-    YAML::Emitter out;
+    flatbuffers::FlatBufferBuilder builder;
+    auto config = Data::CreateConfig(builder, kConfabVersionMajor, kConfabVersionMinor, kConfabVersionPatch);
+    builder.Finish(config);
 
-    out << YAML::BeginMap;
-    out << YAML::Key << "version_major" << YAML::Value << Confab::kConfabVersionMajor;
-    out << YAML::Key << "version_minor" << YAML::Value << Confab::kConfabVersionMinor;
-    out << YAML::Key << "version_patch" << YAML::Value << Confab::kConfabVersionPatch;
-    out << YAML::Key << "db_version" << YAML::Value << static_cast<int>(Confab::kConfabDatabaseVersion);
-
-    leveldb::Status status = m_database->Put(leveldb::WriteOptions(), kConfabConfigKey, out.c_str());
+    leveldb::Status status = m_database->Put(leveldb::WriteOptions(), kConfabConfigKey, leveldb::Slice(
+        reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize()));
     if (!status.ok()) {
         LOG(FATAL) << "Error writing config data to database. LevelDB status: " << status.ToString();
         return false;

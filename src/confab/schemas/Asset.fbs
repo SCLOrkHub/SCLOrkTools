@@ -1,0 +1,29 @@
+namespace Confab.Data;
+
+enum Type : uint {
+    kInvalid = 1,
+    kSnippet,
+    kImage,
+    kYAML,
+    kSample
+}
+
+table Inline { bytes:[ubyte]; }
+table Separate { key:ulong; }
+
+union AssetData { Inline, Separate }
+
+table Asset {
+    type:Type = kInvalid;
+
+    key:ulong;
+    name:string;
+    fileExtension:string;
+    author:ulong;
+    deprecatedBy:ulong;
+    deprecates:[ulong];
+    data:AssetData;
+    expiresOn:ulong;
+}
+
+root_type Asset;

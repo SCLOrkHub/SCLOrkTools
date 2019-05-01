@@ -15,7 +15,7 @@ const uint8_t kConfabDatabaseVersion = @CONFAB_DATABASE_VERSION@;
 
 static const Common::Version confabVersion(kConfabVersionMajor, kConfabVersionMinor, kConfabVersionPatch);
 
-}
+}  // namespace Confab
 
 #endif  // SRC_CONFAB_CONFAB_VERSION_H_
 

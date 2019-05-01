@@ -1,0 +1,10 @@
+namespace Confab.Data;
+
+table Config {
+    versionMajor:int;
+    versionMinor:int;
+    versionPatch:int;
+}
+
+root_type Config;
+file_identifier "cnfb";

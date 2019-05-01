@@ -1,7 +1,20 @@
+# Allow inclusion of headers across project.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-find_package(Boost REQUIRED iostreams)
-include_directories(${BOOST_INCLUDE_DIRS})
+set(confab_schema_files
+    schemas/Asset.fbs
+    schemas/Config.fbs
+)
+
+build_flatbuffers(
+    "${confab_schema_files}"
+    ""
+    "confab_schemas"
+    ""
+    "${CMAKE_CURRENT_BINARY_DIR}/schemas"
+    ""
+    ""
+)
 
 set(CONFAB_VERSION_MAJOR 0)
 set(CONFAB_VERSION_MINOR 0)
@@ -24,8 +37,8 @@ set(confab_src_files
 
 add_executable(confab confab.cpp ${confab_src_files})
 
-target_link_libraries(confab
-    ${BOOST_LIBRARIES}
+target_link_libraries(confab PRIVATE
+    flatbuffers
     gflags::gflags
     glog::glog
     leveldb
@@ -34,3 +47,5 @@ target_link_libraries(confab
     sclorktools_common
     yaml-cpp
 )
+
+add_dependencies(confab confab_schemas)

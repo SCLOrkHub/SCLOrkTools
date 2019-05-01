@@ -1,3 +1,6 @@
+### flatbuffers
+add_subdirectory(flatbuffers)
+
 #### gflags
 set(GFLAGS_BUILD_STATIC_LIBS ON CACHE BOOL "build gflags as a static library")
 set(GFLAGS_BUILD_gflags_LIB ON CACHE BOOL "build multithreaded gflags library")

@@ -1,9 +1,7 @@
 #ifndef SRC_CONFAB_DATABASE_HPP_
 #define SRC_CONFAB_DATABASE_HPP_
 
-#include "leveldb/db.h"
-
-#include <cstdint>
+#include <leveldb/db.h>
 
 namespace Confab {
 
@@ -72,7 +70,6 @@ private:
     bool writeConfigData();
 
     leveldb::DB* m_database;
-    uint8_t m_databaseVersion;
 };
 
 }  // namespace Confab
