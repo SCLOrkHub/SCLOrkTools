@@ -8,11 +8,6 @@ enum Type : uint {
     kSample
 }
 
-table Inline { bytes:[ubyte]; }
-table Separate { key:ulong; }
-
-union AssetData { Inline, Separate }
-
 table Asset {
     type:Type = kInvalid;
 
@@ -22,7 +17,7 @@ table Asset {
     author:ulong;
     deprecatedBy:ulong;
     deprecates:[ulong];
-    data:AssetData;
+    inlineData:[ubyte];
     expiresOn:ulong;
 }
 
