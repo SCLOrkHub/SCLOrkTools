@@ -146,6 +146,13 @@ public:
      */
     void close();
 
+    /*! Converts a 64-bit binary key into a human-readable hexadecimal string.
+     *
+     * \param key A binary key.
+     * \return A hexadecimal string of key.
+     */
+    std::string keyToString(uint64_t key) const;
+
 private:
     /*! Write the most recent version of the config key and value to the database.
      *
