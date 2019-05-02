@@ -8,15 +8,19 @@
 #include <glog/logging.h>
 #include <leveldb/cache.h>
 
+#include <cstring>
+#include <inttypes.h>
 #include <string>
 #include <utility>
 
 namespace {
     const char* kConfigKey = "confab-db-config";
-    const uint64_t kPrependMask = 0x00ffffffffffffff;
-    const uint64_t kAssetPrepend = 0xaa00000000000000;
-    const uint64_t kDataPrepend = 0xdd00000000000000;
-}
+    const uint64_t kPrependMask = 0xffffffffffffff00;
+    const uint64_t kAssetPrepend = 0x00000000000000aa;
+    const uint64_t kDataPrepend = 0x00000000000000dd;
+    const size_t kAssetKeySizeBytes = 9;
+    const size_t kDataKeySizeBytes = 9;
+}  // namespace
 
 namespace Confab {
 
@@ -114,11 +118,23 @@ Database::SlicePtr<const Data::Asset> Database::findAsset(uint64_t key) {
 
     std::array<uint64_t, 2> assetKey{ key, key };
     assetKey[0] = (assetKey[0] & kPrependMask) | kAssetPrepend;
-    leveldb::Iterator* iterator = m_database->NewIterator(leveldb::ReadOptions());
-    iterator->Seek(leveldb::Slice(reinterpret_cast<const char*>(assetKey.data()), 9));
+    auto keySlice = leveldb::Slice(reinterpret_cast<const char*>(assetKey.data()), kAssetKeySizeBytes);
+
+    DCHECK_EQ(keySlice.data()[0], 0xaa) << "Machine assumed to be little-endian.";
+
+    auto iterator = m_database->NewIterator(leveldb::ReadOptions());
+    iterator->Seek(keySlice);
+
     if (!iterator->Valid()) {
+        LOG(ERROR) << "Invalid iterator on asset seek for key: " << keyToString(key);
         return SlicePtr<const Data::Asset>(nullptr);
     }
+
+    if (std::memcmp(keySlice.data(), iterator->key().data(), kAssetKeySizeBytes) != 0) {
+        LOG(INFO) << "Asset " << keyToString(key) << " not found in database.";
+        return SlicePtr<const Data::Asset>(nullptr);
+    }
+
     const Data::Asset* asset = Data::GetAsset(iterator->value().data());
     return SlicePtr<const Data::Asset>(asset, iterator);
 }
@@ -126,12 +142,37 @@ Database::SlicePtr<const Data::Asset> Database::findAsset(uint64_t key) {
 Database::SlicePtr<const uint8_t> Database::findData(uint64_t key) {
     CHECK(m_database) << "Database should already be open.";
 
-    return SlicePtr<const uint8_t>(nullptr);
+    std::array<uint64_t, 2> dataKey{ key, key };
+    dataKey[0] = (dataKey[0] & kPrependMask) | kDataPrepend;
+    auto keySlice = leveldb::Slice(reinterpret_cast<const char*>(dataKey.data()), kDataKeySizeBytes);
+
+    DCHECK_EQ(keySlice.data()[0], 0xdd) << "Machine assumed to be little-endian.";
+
+    auto iterator = m_database->NewIterator(leveldb::ReadOptions());
+    iterator->Seek(keySlice);
+
+    if (!iterator->Valid()) {
+        LOG(ERROR) << "Invalid iterator on asset data seek for key: " << keyToString(key);
+        return SlicePtr<const uint8_t>(nullptr);
+    }
+
+    if (std::memcmp(keySlice.data(), iterator->key().data(), kAssetKeySizeBytes) != 0) {
+        LOG(INFO) << "Asset data " << keyToString(key) << " not found in database.";
+        return SlicePtr<const uint8_t>(nullptr);
+    }
+
+    return SlicePtr<const uint8_t>(reinterpret_cast<const uint8_t*>(iterator->value().data()), iterator);
 }
 
 void Database::close() {
     delete m_database;
     m_database = nullptr;
+}
+
+std::string Database::keyToString(uint64_t key) const {
+    char buf[17];
+    snprintf(buf, 17, PRIu64, key);
+    return std::string(buf);
 }
 
 bool Database::writeConfigData() {
