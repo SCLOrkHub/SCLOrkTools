@@ -1,3 +1,5 @@
+set(CMAKE_CXX_STANDARD 11)
+
 # Allow inclusion of headers across project.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
