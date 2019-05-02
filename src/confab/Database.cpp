@@ -11,7 +11,9 @@
 #include <string>
 
 namespace {
-    const char* kConfabConfigKey = "confab-db-config";
+    const char* kConfigKey = "confab-db-config";
+    const uint64_t kAssetPrepend = 0xffffffffffffffff;
+    const uint64_t kDataPrepend = 0x0000000000000000;
 }
 
 namespace Confab {
@@ -56,7 +58,7 @@ bool Database::initializeEmpty() {
 
     // First attempt to retrieve the configuration data, to see if this database is already initialized.
     std::string config;
-    leveldb::Status status = m_database->Get(leveldb::ReadOptions(), kConfabConfigKey, &config);
+    leveldb::Status status = m_database->Get(leveldb::ReadOptions(), kConfigKey, &config);
     if (status.ok()) {
         LOG(FATAL) << "Attempt to initialize database with existing configuration key.";
         return false;
@@ -73,8 +75,8 @@ bool Database::validate() {
 
     // Retrieve the configuration data, which should already be present in the database.
     leveldb::Iterator* configIterator = m_database->NewIterator(leveldb::ReadOptions());
-    configIterator->Seek(kConfabConfigKey);
-    if (!configIterator->Valid() || configIterator->key() != std::string(kConfabConfigKey)) {
+    configIterator->Seek(kConfigKey);
+    if (!configIterator->Valid() || configIterator->key() != std::string(kConfigKey)) {
         LOG(FATAL) << "Failure finding database config key.";
         return false;
     }
@@ -105,6 +107,22 @@ bool Database::validate() {
     return true;
 }
 
+Database::SlicePtr<const Data::Asset*> Database::find(uint64_t key) {
+    const Data::Asset* asset = nullptr;
+
+    return nullptr;
+}
+
+Database::SlicePtr<const uint8_t*> Database::findData(uint64_t key, size_t* size) {
+    CHECK(size) << "size argument should point to valid memory.";
+
+    *size = 0;
+    return nullptr;
+}
+
+void Database::release(uint64_t key) {
+}
+
 void Database::close() {
     delete m_database;
     m_database = nullptr;
@@ -117,7 +135,7 @@ bool Database::writeConfigData() {
     auto config = Data::CreateConfig(builder, kConfabVersionMajor, kConfabVersionMinor, kConfabVersionPatch);
     builder.Finish(config);
 
-    leveldb::Status status = m_database->Put(leveldb::WriteOptions(), kConfabConfigKey, leveldb::Slice(
+    leveldb::Status status = m_database->Put(leveldb::WriteOptions(), kConfigKey, leveldb::Slice(
         reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize()));
     if (!status.ok()) {
         LOG(FATAL) << "Error writing config data to database. LevelDB status: " << status.ToString();

@@ -3,7 +3,13 @@
 
 #include <leveldb/db.h>
 
+#include <memory>
+
 namespace Confab {
+
+namespace Data {
+    class Asset;
+}  // namespace Data
 
 /*! Encapsulates a LevelDB database for use in Confab.
  *
@@ -56,6 +62,51 @@ public:
      * \return true on success, or false on error.
      */
     bool validate();
+
+    /*! Non-owning pointer wrapper for returning results from Database queries with no copies.
+     */
+    template<class T>
+    class SlicePtr<T> : public std::unique_ptr<T> {
+    public:
+        /*! Construct a SlicePtr along with objects needed for reclamation.
+         *
+         * \param p Pointer to wrap.
+         * \param iterator The LevelDB Iterator from the query that is keeping slice valid.
+         * \param slice The Slice the Iterator returned.
+         */
+        SlicePtr(T* p, leveldb::Iterator* iterator, leveldb::Slice slice) :
+            std::unique_ptr<T>(p),
+            m_iterator(iterator),
+            m_slice(slice) { }
+
+        /* Destruct a SlicePtr. Deletes the Iterator, so the non-owning pointer will no longer be valid.
+         */
+        ~SlicePtr() override {
+            delete m_iterator;
+        }
+
+        size_t size() const { return m_slice.size(); }
+
+    private:
+        leveldb::Iterator* m_iterator;
+        leveldb::Slice* m_slice;
+    };
+
+    /*! Search for an Asset record associated with key and return it.
+     *
+     * \param key A 64-bit key uniquely identifying this asset.
+     * \return A pointer to an Asset object, or nullptr if not found. Free by calling release(key) after use.
+     */
+    SlicePtr<const Data::Asset*> find(uint64_t key);
+
+    /*! Larger assets store their data in a separate record. Search for a data record with key and return it.
+     *
+     * \param key A 64-bit key uniquely identifying this asset.
+     * \param size A pointer to a container for the size of the data returned.
+     * \return A pointer to the asset data, and stores the size of the data in size. Returns nullptr on error. Free
+     *          by calling release(key) after use.
+     */
+    SlicePtr<const uint8_t*> findData(uint64_t key, size_t* size);
 
     /*! Close the database, and delete any internal references to it.
      *
