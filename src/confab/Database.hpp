@@ -64,32 +64,66 @@ public:
     bool validate();
 
     /*! Non-owning pointer wrapper for returning results from Database queries with no copies.
+     *
+     * Uses semantics similar to std::unique_ptr<T>.
      */
     template<class T>
-    class SlicePtr<T> : public std::unique_ptr<T> {
+    class SlicePtr {
     public:
         /*! Construct a SlicePtr along with objects needed for reclamation.
          *
-         * \param p Pointer to wrap.
+         * \param pointer Pointer to wrap.
          * \param iterator The LevelDB Iterator from the query that is keeping slice valid.
-         * \param slice The Slice the Iterator returned.
          */
-        SlicePtr(T* p, leveldb::Iterator* iterator, leveldb::Slice slice) :
-            std::unique_ptr<T>(p),
-            m_iterator(iterator),
-            m_slice(slice) { }
+        explicit SlicePtr(T* pointer, leveldb::Iterator* iterator) :
+            m_pointer(pointer),
+            m_iterator(iterator) { }
 
-        /* Destruct a SlicePtr. Deletes the Iterator, so the non-owning pointer will no longer be valid.
+        /*! Convenience ctor to make an empty SlicePtr.
+         *
+         * \param p A null pointer.
          */
-        ~SlicePtr() override {
+        explicit SlicePtr(std::nullptr_t p) :
+            m_pointer(nullptr),
+            m_iterator(nullptr) { }
+
+        /*! Disabled copy constructor, for unique_ptr type semantics.
+         *
+         * \param p A SlicePtr.
+         */
+        SlicePtr(const SlicePtr<T>& p) = delete;
+
+        /*! Move ctor, invalidates source pointer.
+         *
+         * \param source The SlicePtr to copy.
+         */
+        SlicePtr(SlicePtr<T>&& source) :
+            m_pointer(source.m_pointer),
+            m_iterator(source.m_iterator) {
+            source.m_pointer = nullptr;
+            source.m_iterator = nullptr;
+        }
+
+        /*! Destruct a SlicePtr. Deletes the Iterator, so the non-owning pointer will no longer be valid.
+         */
+        ~SlicePtr() {
             delete m_iterator;
         }
 
-        size_t size() const { return m_slice.size(); }
+        /*! Get the size of the data pointed to by T.
+         *
+         * \return Size in bytes of *T.
+         */
+        size_t size() const {
+            if (m_iterator != nullptr) {
+                return m_iterator->value().size();
+            }
+            return 0;
+        }
 
     private:
+        T* m_pointer;
         leveldb::Iterator* m_iterator;
-        leveldb::Slice* m_slice;
     };
 
     /*! Search for an Asset record associated with key and return it.
@@ -97,16 +131,15 @@ public:
      * \param key A 64-bit key uniquely identifying this asset.
      * \return A pointer to an Asset object, or nullptr if not found. Free by calling release(key) after use.
      */
-    SlicePtr<const Data::Asset*> find(uint64_t key);
+    SlicePtr<const Data::Asset> findAsset(uint64_t key);
 
     /*! Larger assets store their data in a separate record. Search for a data record with key and return it.
      *
      * \param key A 64-bit key uniquely identifying this asset.
-     * \param size A pointer to a container for the size of the data returned.
      * \return A pointer to the asset data, and stores the size of the data in size. Returns nullptr on error. Free
      *          by calling release(key) after use.
      */
-    SlicePtr<const uint8_t*> findData(uint64_t key, size_t* size);
+    SlicePtr<const uint8_t> findData(uint64_t key);
 
     /*! Close the database, and delete any internal references to it.
      *

@@ -31,6 +31,7 @@ YAML Key             | Value Type | Description
 
 ## Metadata Configuration
 
+
 ## Asset Storage
 
 Keys are stored in the LevelDB as ```asset-<Base64-encoded key value>```. Every asset stores a YAML metadata string,

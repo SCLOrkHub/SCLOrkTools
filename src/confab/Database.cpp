@@ -9,11 +9,13 @@
 #include <leveldb/cache.h>
 
 #include <string>
+#include <utility>
 
 namespace {
     const char* kConfigKey = "confab-db-config";
-    const uint64_t kAssetPrepend = 0xffffffffffffffff;
-    const uint64_t kDataPrepend = 0x0000000000000000;
+    const uint64_t kPrependMask = 0x00ffffffffffffff;
+    const uint64_t kAssetPrepend = 0xaa00000000000000;
+    const uint64_t kDataPrepend = 0xdd00000000000000;
 }
 
 namespace Confab {
@@ -107,20 +109,24 @@ bool Database::validate() {
     return true;
 }
 
-Database::SlicePtr<const Data::Asset*> Database::find(uint64_t key) {
-    const Data::Asset* asset = nullptr;
+Database::SlicePtr<const Data::Asset> Database::findAsset(uint64_t key) {
+    CHECK(m_database) << "Database should already be open.";
 
-    return nullptr;
+    std::array<uint64_t, 2> assetKey{ key, key };
+    assetKey[0] = (assetKey[0] & kPrependMask) | kAssetPrepend;
+    leveldb::Iterator* iterator = m_database->NewIterator(leveldb::ReadOptions());
+    iterator->Seek(leveldb::Slice(reinterpret_cast<const char*>(assetKey.data()), 9));
+    if (!iterator->Valid()) {
+        return SlicePtr<const Data::Asset>(nullptr);
+    }
+    const Data::Asset* asset = Data::GetAsset(iterator->value().data());
+    return SlicePtr<const Data::Asset>(asset, iterator);
 }
 
-Database::SlicePtr<const uint8_t*> Database::findData(uint64_t key, size_t* size) {
-    CHECK(size) << "size argument should point to valid memory.";
+Database::SlicePtr<const uint8_t> Database::findData(uint64_t key) {
+    CHECK(m_database) << "Database should already be open.";
 
-    *size = 0;
-    return nullptr;
-}
-
-void Database::release(uint64_t key) {
+    return SlicePtr<const uint8_t>(nullptr);
 }
 
 void Database::close() {
