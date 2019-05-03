@@ -56,7 +56,7 @@ public:
 
     /*! Perform basic sanity checks on an open database.
      *
-     * This method also calls the underlying LevelDB validation functions, which for a large database can take some
+     * This method also calls the underlying LevelDB validation functions, which for a large database may take some
      * time.
      *
      * \return true on success, or false on error.
@@ -140,14 +140,14 @@ public:
 
     /*! Search for an Asset record associated with key and return it.
      *
-     * \param key A 64-bit key uniquely identifying this asset.
+     * \param key A key uniquely identifying this asset.
      * \return A pointer to an Asset object, or nullptr if not found. Free by calling release(key) after use.
      */
     SlicePtr<const Data::Asset> findAsset(uint64_t key);
 
     /*! Larger assets store their data in a separate record. Search for a data record with key and return it.
      *
-     * \param key A 64-bit key uniquely identifying this asset.
+     * \param key A key uniquely identifying this asset.
      * \return A pointer to the asset data, and stores the size of the data in size. Returns nullptr on error. Free
      *          by calling release(key) after use.
      */
@@ -164,6 +164,30 @@ public:
      * \return A hexadecimal string of key.
      */
     std::string keyToString(uint64_t key) const;
+
+    /*! Size of database asset and asset data keys in bytes.
+     */
+    static const size_t kAssetKeySize = 9;
+
+    /*! Given a key value, format it into the asset key used for accessing the database. (public for testing only)
+     *
+     * \param key The asset key.
+     * \return A byte array usable as a key in a database key lookup for an Asset object.
+     */
+    std::array<uint8_t, kAssetKeySize> makeAssetKey(uint64_t key) const;
+
+    /*! Given a key value, format it into the data key used for accessing the database. (public for testing only)
+     *
+     * \param key The asset key.
+     * \return A byte array usable as a key in a database key lookup for an AssetData object.
+     */
+    std::array<uint8_t, kAssetKeySize> makeDataKey(uint64_t key) const;
+
+    /*! Returns the key used to store the database configuration information under. (public for testing only)
+     *
+     * \return The string key used to store database configuration information.
+     */
+    const char* makeConfigKey() const;
 
 private:
     /*! Write the most recent version of the config key and value to the database.
