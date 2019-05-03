@@ -15,11 +15,8 @@
 
 namespace {
     const char* kConfigKey = "confab-db-config";
-    const uint64_t kPrependMask = 0xffffffffffffff00;
-    const uint64_t kAssetPrepend = 0x00000000000000aa;
-    const uint64_t kDataPrepend = 0x00000000000000dd;
-    const size_t kAssetKeySizeBytes = 9;
-    const size_t kDataKeySizeBytes = 9;
+    const uint8_t kAssetKeyPrefix = 0xaa;
+    const uint8_t kDataKeyPrefix = 0xdd;
 }  // namespace
 
 namespace Confab {
@@ -64,7 +61,7 @@ bool Database::initializeEmpty() {
 
     // First attempt to retrieve the configuration data, to see if this database is already initialized.
     std::string config;
-    leveldb::Status status = m_database->Get(leveldb::ReadOptions(), kConfigKey, &config);
+    leveldb::Status status = m_database->Get(leveldb::ReadOptions(), makeConfigKey(), &config);
     if (status.ok()) {
         LOG(FATAL) << "Attempt to initialize database with existing configuration key.";
         return false;
@@ -81,8 +78,8 @@ bool Database::validate() {
 
     // Retrieve the configuration data, which should already be present in the database.
     leveldb::Iterator* configIterator = m_database->NewIterator(leveldb::ReadOptions());
-    configIterator->Seek(kConfigKey);
-    if (!configIterator->Valid() || configIterator->key() != std::string(kConfigKey)) {
+    configIterator->Seek(makeConfigKey());
+    if (!configIterator->Valid() || configIterator->key() != std::string(makeConfigKey())) {
         LOG(FATAL) << "Failure finding database config key.";
         return false;
     }
@@ -116,21 +113,18 @@ bool Database::validate() {
 Database::SlicePtr<const Data::Asset> Database::findAsset(uint64_t key) {
     CHECK(m_database) << "Database should already be open.";
 
-    std::array<uint64_t, 2> assetKey{ key, key };
-    assetKey[0] = (assetKey[0] & kPrependMask) | kAssetPrepend;
-    auto keySlice = leveldb::Slice(reinterpret_cast<const char*>(assetKey.data()), kAssetKeySizeBytes);
-
-    DCHECK_EQ(keySlice.data()[0], 0xaa) << "Machine assumed to be little-endian.";
+    std::array<uint8_t, kAssetKeySize> assetKey = makeAssetKey(key);
+    auto keySlice = leveldb::Slice(reinterpret_cast<const char*>(assetKey.data()), kAssetKeySize);
 
     auto iterator = m_database->NewIterator(leveldb::ReadOptions());
     iterator->Seek(keySlice);
 
     if (!iterator->Valid()) {
-        LOG(ERROR) << "Invalid iterator on asset seek for key: " << keyToString(key);
+        LOG(INFO) << "Invalid iterator on asset seek for key: " << keyToString(key);
         return SlicePtr<const Data::Asset>(nullptr);
     }
 
-    if (std::memcmp(keySlice.data(), iterator->key().data(), kAssetKeySizeBytes) != 0) {
+    if (std::memcmp(keySlice.data(), iterator->key().data(), kAssetKeySize) != 0) {
         LOG(INFO) << "Asset " << keyToString(key) << " not found in database.";
         return SlicePtr<const Data::Asset>(nullptr);
     }
@@ -142,21 +136,18 @@ Database::SlicePtr<const Data::Asset> Database::findAsset(uint64_t key) {
 Database::SlicePtr<const uint8_t> Database::findData(uint64_t key) {
     CHECK(m_database) << "Database should already be open.";
 
-    std::array<uint64_t, 2> dataKey{ key, key };
-    dataKey[0] = (dataKey[0] & kPrependMask) | kDataPrepend;
-    auto keySlice = leveldb::Slice(reinterpret_cast<const char*>(dataKey.data()), kDataKeySizeBytes);
-
-    DCHECK_EQ(keySlice.data()[0], 0xdd) << "Machine assumed to be little-endian.";
+    std::array<uint8_t, kAssetKeySize> dataKey = makeDataKey(key);
+    auto keySlice = leveldb::Slice(reinterpret_cast<const char*>(dataKey.data()), kAssetKeySize);
 
     auto iterator = m_database->NewIterator(leveldb::ReadOptions());
     iterator->Seek(keySlice);
 
     if (!iterator->Valid()) {
-        LOG(ERROR) << "Invalid iterator on asset data seek for key: " << keyToString(key);
+        LOG(INFO) << "Invalid iterator on asset data seek for key: " << keyToString(key);
         return SlicePtr<const uint8_t>(nullptr);
     }
 
-    if (std::memcmp(keySlice.data(), iterator->key().data(), kAssetKeySizeBytes) != 0) {
+    if (std::memcmp(keySlice.data(), iterator->key().data(), kAssetKeySize) != 0) {
         LOG(INFO) << "Asset data " << keyToString(key) << " not found in database.";
         return SlicePtr<const uint8_t>(nullptr);
     }
@@ -175,6 +166,24 @@ std::string Database::keyToString(uint64_t key) const {
     return std::string(buf.data());
 }
 
+std::array<uint8_t, Database::kAssetKeySize> Database::makeAssetKey(uint64_t key) const {
+    std::array<uint8_t, kAssetKeySize> assetKey;
+    assetKey[0] = kAssetKeyPrefix;
+    std::memcpy(assetKey.data() + 1, reinterpret_cast<uint8_t*>(&key), kAssetKeySize - 1);
+    return assetKey;
+}
+
+std::array<uint8_t, Database::kAssetKeySize> Database::makeDataKey(uint64_t key) const {
+    std::array<uint8_t, kAssetKeySize> dataKey;
+    dataKey[0] = kDataKeyPrefix;
+    std::memcpy(dataKey.data() + 1, reinterpret_cast<uint8_t*>(&key), kAssetKeySize - 1);
+    return dataKey;
+}
+
+const char* Database::makeConfigKey() const {
+    return kConfigKey;
+}
+
 bool Database::writeConfigData() {
     CHECK(m_database) << "Database should already be open.";
 
@@ -182,7 +191,7 @@ bool Database::writeConfigData() {
     auto config = Data::CreateConfig(builder, kConfabVersionMajor, kConfabVersionMinor, kConfabVersionPatch);
     builder.Finish(config);
 
-    leveldb::Status status = m_database->Put(leveldb::WriteOptions(), kConfigKey, leveldb::Slice(
+    leveldb::Status status = m_database->Put(leveldb::WriteOptions(), makeConfigKey(), leveldb::Slice(
         reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize()));
     if (!status.ok()) {
         LOG(FATAL) << "Error writing config data to database. LevelDB status: " << status.ToString();

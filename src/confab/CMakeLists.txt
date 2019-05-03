@@ -37,6 +37,12 @@ set(confab_src_files
     Database.hpp
 )
 
+set(confab_test_files
+    Database_test.cpp
+
+    test_confab.cpp
+)
+
 add_executable(confab confab.cpp ${confab_src_files})
 
 target_link_libraries(confab PRIVATE
@@ -51,3 +57,15 @@ target_link_libraries(confab PRIVATE
 )
 
 add_dependencies(confab confab_schemas)
+
+add_executable(test_confab ${confab_src_files} ${confab_test_files})
+
+target_link_libraries(test_confab PRIVATE
+    flatbuffers
+    glog
+    gmock
+    leveldb
+    sclorktools_common
+)
+
+add_dependencies(test_confab confab_schemas)
