@@ -65,7 +65,7 @@ public:
 
     /*! Non-owning pointer wrapper for returning results from Database queries with no copies.
      *
-     * Uses semantics similar to std::unique_ptr<T>.
+     * Uses semantics similar to std::unique_ptr<T>. Note: specializations should always be const.
      */
     template<class T>
     class SlicePtr {
@@ -109,6 +109,18 @@ public:
         ~SlicePtr() {
             delete m_iterator;
         }
+
+        /*! Dereference operator.
+         *
+         * \return A reference to contents pointed to by the raw pointer.
+         */
+        T& operator*() { return *m_pointer; }
+
+        /*! Structure dereference operator.
+         *
+         * \return The raw pointer.
+         */
+        T* operator->() { return m_pointer; }
 
         /*! Get the size of the data pointed to by T.
          *

@@ -170,9 +170,9 @@ void Database::close() {
 }
 
 std::string Database::keyToString(uint64_t key) const {
-    char buf[17];
-    snprintf(buf, 17, PRIu64, key);
-    return std::string(buf);
+    std::array<char, 17> buf;
+    snprintf(buf.data(), 17, PRIu64, key);
+    return std::string(buf.data());
 }
 
 bool Database::writeConfigData() {
