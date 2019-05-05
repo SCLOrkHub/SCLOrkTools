@@ -36,6 +36,8 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 set(confab_src_files
     Database.cpp
     Database.hpp
+    OscHandler.cpp
+    OscHandler.hpp
 )
 
 set(confab_test_files

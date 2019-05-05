@@ -1,5 +1,6 @@
 #include "ConfabVersion.hpp"
 #include "Database.hpp"
+#include "OscHandler.hpp"
 
 #include "common/Version.hpp"
 
@@ -13,6 +14,8 @@ DEFINE_bool(create_new_database, false, "If true confab will make a new database
     "database to already exist.");
 
 DEFINE_int32(database_cache_size_mb, 16, "Size in megabytes of the memory cache the database should use.");
+DEFINE_int32(osc_listen_port, 4248, "UDP port on localhost to listen for incoming OSC commands from SuperCollider.");
+DEFINE_int32(osc_respond_port, 4249, "UDP port on localhost to send response messages to SuperCollider.");
 
 DEFINE_string(data_directory, "../data/confab", "Path where confab will store the database and log files. A zero or "
     "negative size will disable the cache");
@@ -61,6 +64,12 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    Confab::OscHandler osc(FLAGS_osc_listen_port, FLAGS_osc_respond_port);
+    osc.listen();
+
+    database.close();
+
     LOG(INFO) << "Stopping confab normally.";
     return 0;
 }
+
