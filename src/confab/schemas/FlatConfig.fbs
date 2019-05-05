@@ -1,10 +1,10 @@
 namespace Confab.Data;
 
-table Config {
+table FlatConfig {
     versionMajor:int;
     versionMinor:int;
     versionPatch:int;
 }
 
-root_type Config;
+root_type FlatConfig;
 file_identifier "cnfb";

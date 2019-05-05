@@ -4,8 +4,9 @@ set(CMAKE_CXX_STANDARD 11)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(confab_schema_files
-    schemas/Asset.fbs
-    schemas/Config.fbs
+    schemas/FlatAsset.fbs
+    schemas/FlatAssetData.fbs
+    schemas/FlatConfig.fbs
 )
 
 build_flatbuffers(
@@ -39,13 +40,13 @@ set(confab_src_files
 
 set(confab_test_files
     Database_test.cpp
-
-    test_confab.cpp
 )
 
-add_executable(confab confab.cpp ${confab_src_files})
+add_library(confab_lib ${confab_src_files})
 
-target_link_libraries(confab PRIVATE
+add_dependencies(confab_lib confab_schemas)
+
+target_link_libraries(confab_lib PUBLIC
     flatbuffers
     gflags::gflags
     glog::glog
@@ -56,16 +57,18 @@ target_link_libraries(confab PRIVATE
     yaml-cpp
 )
 
-add_dependencies(confab confab_schemas)
+add_executable(confab confab.cpp)
 
-add_executable(test_confab ${confab_src_files} ${confab_test_files})
+target_link_libraries(confab
+    confab_lib
+)
 
-target_link_libraries(test_confab PRIVATE
-    flatbuffers
-    glog
-    gmock
-    leveldb
-    sclorktools_common
+add_executable(test_confab test_confab.cpp ${confab_test_files})
+
+target_link_libraries(test_confab
+    confab_lib
+    gtest
 )
 
 add_dependencies(test_confab confab_schemas)
+

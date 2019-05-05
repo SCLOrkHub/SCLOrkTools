@@ -1,0 +1,8 @@
+namespace Confab.Data;
+
+table FlatAssetData {
+    data:[ubyte];
+}
+
+root_type FlatAssetData;
+
