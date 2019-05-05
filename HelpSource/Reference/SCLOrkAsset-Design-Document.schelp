@@ -1,0 +1,17 @@
+title:: SCLOrkAsset Design Document
+summary:: SCLOrkAsset Design Discussion
+categories:: Quarks>SCLOrkTools
+related:: Classes/SCLOrkAsset
+
+Details the SuperCollider side of the SCLOrkAsset system.
+
+section:: Confab Command Reference
+
+subsection:: /assetAdd
+
+Adds a new asset to the shared asset pool. After the asset is added there will be an strong::assetAdded:: message in response.
+
+table::
+## strong::label:: || type || One of the strings code::snippet::, code::image::, code::yaml::, or code::sample::.
+## strong::label:: || filePath || Path to the filename to add to the database.
+::
