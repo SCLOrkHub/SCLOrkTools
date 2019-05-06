@@ -9,6 +9,108 @@ This document serves as an overview of the design of the confab program.
 
 # Overview
 
+# Asset Streaming
+
+Confab is likely to be running in a peformance environment and therefore needs to be very careful in its usage of memory
+and disk resources. As a thought experiment, consider a large audio sample file (on the order of tens or possibly hundreds
+of MB). This Asset is not available locally, so first Confab issues a request to the Upstream Confab server. This server
+does have the file, so sends it along. Without asset streaming, the Confab instance is likely to allocate *at least one*
+buffer of the size of the asset, if not more, between downloading the Asset from the upstream instance, writing it to the
+database, and then saving it out to disk. Then when the SuperCollider synth process opens the audio file for sampling,
+that means that there are now potentially two copies of the asset now loaded into RAM at different (but potentially overlapping)
+times. For any asset over the asset size limit it is therefore proposed that a *streaming* mode be used for transmission,
+storage, and retrieval of the asset.
+
+The asset chunk size limit is currently based on the default memory page size of 4KB. 
+
+Pistache can both transmit and receive in streaming mode, with flushes happening in increments of the asset size. These can
+be sequentially added to the database as they are received. 
+
+xxHash can compute hashes in a streaming mode, meaning that on initial asset hash computation the asset file can be progressively
+loaded into 4KB chunks at a time with the hash computed. It might be possible to double-buffer, meaning kick off an asynchronous
+read into one buffer of the next 4KB of data while computing the hash of the current buffer. Some experimentation here of the
+optimum streaming hash implementation is necessary.
+
+LevelDB does not support streaming data into or out of individual keys but by appending a little-endian binary number to the data
+keys one can load the asset sequntially using a LevelDB::Iterator across the keys. Some experimentation also required here to
+determine the appropriate key size, there may be some overhead in allocation keeping paging at 4K kind of artificial.
+
+OR - what if you build/find a block alloator? Something that does one allocation at the beginning and can associate keys with
+blocks, so it knows what everyone is up to? Probably over-optimizing for now but could be an interesting thought long term.
+
+ChunkSize is 4096 bytes.
+InlineDataSize is 4096 bytes - some padding room for the rest of the metadata, say an even 4000 bytes or so. Maybe do a litle
+math on the optional fields and decide from there. Maybe half that, conservatively, so 2048 bytes.
+
+## So Asset Add plays out like this:
+
+Incoming OSC message has either string (if shorter than InlineDataSize, and UTF-8 data) or path to file.
+
+If it's a string compute the hash on the string, serialize the whole thing into an Asset record, save in DB, then return the key.
+If it's a path start the streaming process for add:
+  * Load the file in 4K chunks, considering multpile bufferings
+  * Compute incremental hash on 4K chunks.
+  * When hash is done create Asset Metadata record and record it.
+Unfortunately for adds the streaming method requires two file traversals. Second traversal streams the individual chunks into
+the database, and could also be double-buffered, or multi-buffered.
+
+In order for other systems to access the asset it will need to be pushed upstream. There is a separate process for doing this,
+but because upstream Internet connectivity may not be available the system should record the requests for upstreaming in the
+database, and not delete them until they have been finalized. Each asset upstreaming request is a key/value pair with the
+key being an upstream prepend byte 0x0a (chosen arbitrarily) followed by an 64-bit little-endian Unix epoch time value. The
+value of the record is the complete key of the asset or asset data chunk that should be upstreamed. It also means that chunks
+don't necessarily have to be streamed upstream, rather they can be sent as individual POST calls, allowing for some
+paralellization as multiple threads read from the database and send the data upstream.
+
+## Asset Read from OSC Side
+
+Asset cache life is a tunable parameter per-asset. The LevelDB frontend typically has a LRU cache in front of it so it is
+assumed that metadata reads on fast repeats should be pretty quick. It might be worth thinking about setting some flags
+on the chunk reads so that a large sequential chunk read doesn't wipe out the cache with chunks. Each Asset record on an
+edge can have a ttl that can force a refresh of the asset, for deprecation situations.
+
+There should be a separate process that is always trying to maintain a valid upstream connection (multiple) to the upstream
+server.
+
+All incoming reads hit the LevelDB database first.
+If found in the database:
+  Check the TTL. If it's expired, queue up a refresh request, similar to upload request, but don't block return of this asset.
+  If it's been deprecated then follow the chain of deprecations, announcing each one to the SuperCollider client as we go.
+  If they fit in an OSC response and are of the appropriate type to do so then the response is sent immediately with the data.
+  If they don't fit in the OSC response or are not of the appropriate type (not YAML or snippet) then a file return is needed, skip to that.
+If not found in the database issue an upstream pull request. These also go in the database, with different behavior expected when
+the pull is complete.
+
+File Return: check for file exists already. If it does, just return it (e.g. send Asset message to SC via OSC). SC side will update
+access time on file, which we use for SC-side file cache flushing.
+
+## Upstream Communication
+
+Polling process for establishing a connection to upstream server. Configurable timeout, default is longish, like 60 seconds.
+Edge clients may want something much faster, as locally created assets can't be shared without that connection.
+
+There are three interactios with upstream: asset refresh, asset pull, and asset add.
+
+### Asset Refresh
+
+The refresh requests are for a specific ID. The response will be a list of Assets. If the asset has not been deprecated the response
+from the server will be the single asset metadata as requested. If the asset has been deprecated the response will be a series
+of asset records connecting the deprecation from each to the next, until the current live asset has been found.
+
+## Asset Pull
+
+Doesn't just settle for metadata. Will peform the same request as a refresh, but if there's attached data on the associated asset
+it will download it as well. There may be a std::future waiting on the results to notify the client, as well, so fulfill once
+completed.
+
+## Asset Add
+
+On edge these are highest priority, as pulls from other clients won't work until this is complete. On non-leaf nodes these are
+lowest priority.
+
+
+# Stuff Below This is Deprecated and Needs a Rewrite
+
 # Database Design {#Confab-Design-Document-Database-Design}
 
 The [LevelDB](https://github.com/google/leveldb) library allows for serialization of resources directly to the database,
