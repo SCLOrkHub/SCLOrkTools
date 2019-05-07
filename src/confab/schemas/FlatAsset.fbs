@@ -16,9 +16,10 @@ table FlatAsset {
     fileExtension:string;
     author:ulong;
     deprecatedBy:ulong;
-    deprecates:[ulong];
+    deprecates:ulong;
     inlineData:[ubyte];
     expiresOn:ulong;
+    salt:[ubyte];
 }
 
 root_type FlatAsset;

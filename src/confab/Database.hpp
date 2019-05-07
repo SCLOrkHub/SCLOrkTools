@@ -29,9 +29,9 @@ public:
      * \param pointer Pointer to wrap.
      * \param iterator The LevelDB Iterator from the query that is keeping slice valid.
      */
-    explicit SlicePtr(T* pointer, leveldb::Iterator* iterator) :
+    explicit SlicePtr(T* pointer, std::unique_ptr<leveldb::Iterator> iterator) :
         m_pointer(pointer),
-        m_iterator(iterator) { }
+        m_iterator(std::move(iterator)) { }
 
     /*! Convenience ctor to make an empty SlicePtr.
      *
@@ -53,16 +53,13 @@ public:
      */
     SlicePtr(SlicePtr<T>&& source) :
         m_pointer(source.m_pointer),
-        m_iterator(source.m_iterator) {
+        m_iterator(std::move(source.m_iterator)) {
         source.m_pointer = nullptr;
-        source.m_iterator = nullptr;
     }
 
     /*! Destruct a SlicePtr. Deletes the Iterator, so the non-owning pointer will no longer be valid.
      */
-    ~SlicePtr() {
-        delete m_iterator;
-    }
+    ~SlicePtr() = default;
 
     /*! Dereference operator.
      *
@@ -107,7 +104,7 @@ public:
 
 private:
     T* m_pointer;
-    leveldb::Iterator* m_iterator;
+    std::unique_ptr<leveldb::Iterator> m_iterator;
 };
 
 using ConfigPtr = SlicePtr<const Data::FlatConfig>;

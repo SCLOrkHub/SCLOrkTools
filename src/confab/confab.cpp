@@ -1,3 +1,4 @@
+#include "AssetManager.hpp"
 #include "ConfabVersion.hpp"
 #include "Database.hpp"
 #include "OscHandler.hpp"
@@ -10,6 +11,13 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <experimental/filesystem>
+#include <fstream>
+#include <memory>
+
+namespace fs = std::experimental::filesystem;
+
+DEFINE_bool(chatty, false, "If true confab will log everything to stderr as well as to log files.");
 DEFINE_bool(create_new_database, false, "If true confab will make a new database, if false confab will expect the "
     "database to already exist.");
 
@@ -25,12 +33,26 @@ int main(int argc, char* argv[]) {
 
     // Manually configure glog flag to get it to log to the data directory.
     FLAGS_log_dir = FLAGS_data_directory + "/log";
+    FLAGS_alsologtostderr = FLAGS_chatty;
     google::InitGoogleLogging(argv[0]);
 
-    LOG(INFO) << "Starting confab v" << Confab::confabVersion.toString();
+    // Check for existing pid sentinel file, meaning a version of confab is already running on this data directory.
+    fs::path pidPath(FLAGS_data_directory + "/pid");
+    if (fs::exists(pidPath)) {
+        LOG(ERROR) << "Pid sentinel file " << pidPath << " already exists, exiting.";
+        return -1;
+    } else {
+        // Write sentinel file.
+        std::ofstream pidFile;
+        pidFile.open(pidPath);
+        pidFile << getpid();
+        pidFile.close();
+    }
 
-    Confab::Database database;
-    if (!database.open((FLAGS_data_directory + "/db").c_str(), FLAGS_create_new_database,
+    LOG(INFO) << "Starting confab v" << Confab::confabVersion.toString() << " on pid " << getpid();
+
+    std::shared_ptr<Confab::Database> database(new Confab::Database());
+    if (!database->open((FLAGS_data_directory + "/db").c_str(), FLAGS_create_new_database,
         FLAGS_database_cache_size_mb * 1024 * 1024)) {
         return -1;
     }
@@ -39,16 +61,24 @@ int main(int argc, char* argv[]) {
     // that the version written is equal to or older than our current version.
     if (FLAGS_create_new_database) {
         // Verify that no existing configuration information is present.
-        auto config = database.findConfig();
+        auto config = database->findConfig();
         if (config != nullptr) {
             LOG(ERROR) << "Create new database specified by database has an existing config key.";
             return -1;
         }
 
-        database.writeConfig(Confab::confabVersion);
-
+        if (!database->writeConfig(Confab::confabVersion)) {
+            LOG(ERROR) << "Error writing config information to database.";
+            return -1;
+        } else {
+            LOG(INFO) << "Wrote new config record to database.";
+        }
     } else {
-        auto config = database.findConfig();
+        auto config = database->findConfig();
+        if (config == nullptr) {
+            LOG(ERROR) << "Error reaading configuration information from database.";
+            return -1;
+        }
 
         auto databaseVersion = Common::Version(config->versionMajor(), config->versionMinor(), config->versionPatch());
         if (databaseVersion > Confab::confabVersion) {
@@ -64,12 +94,28 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    Confab::AsssetManager assetManager(database);
+
+    LOG(INFO) << "Opening up OSC ports for listen on " << FLAGS_osc_listen_port << " and respond on "
+        << FLAGS_osc_respond_port;
     Confab::OscHandler osc(FLAGS_osc_listen_port, FLAGS_osc_respond_port);
-    osc.listen();
 
-    database.close();
+    // It is possible to install signal handlers for SIGINT and SIGTERM using std::signal, but putting a condition
+    // variable call, or any thread synchronization primitives, in an asynchronous system event handler is considered
+    // unsafe. One recommended safe way to resolve this is to have the main thread open a socket or other file
+    // descriptor and block on that socket until a signal is received, and then can signal that socket in the signal
+    // handler. Because we are already processing data on the UDP socket inside of osc, we rather wait until that
+    // socket catches a SIGINT.
+    // NOTE: other threads created to handle web APIs will need to have signal masking or this will break.
+    osc.listenUntilSigInt();
 
-    LOG(INFO) << "Stopping confab normally.";
+    LOG(INFO) << "Termination signal caught, stopping confab normally.";
+
+    database->close();
+
+    // Delete pid sentinel file.
+    fs::remove(pidPath);
+
     return 0;
 }
 
