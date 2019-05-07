@@ -25,29 +25,22 @@ public:
      */
     ~OscHandler();
 
-    /*! Starts a new thread for processing OSC messages on the ports supplied in the ctor.
+    /*! Process incoming OSC messages until terminated with a SIGINT.
+     *
+     * This function won't return until the program receives a SIGINT.
      */
-    void listen();
-
-    /*! Stops the listening thread and closes the open OSC port. Any pending processing threads will run to completion.
-     */
-    void stop();
+    void listenUntilSigInt();
 
 private:
     class OscListener;
 
-    /*! Run the socket's listener loop, for responding to incoming OSC messages. Function should run on its own thread.
-     *
-     * Function will not return until Stop() is called and the runloop is interrupted.
+    /*! Processes an asset addition request. Should run as a task.
      */
-    void runListener();
-
-    /*! Processes an asset addition request. Function should run on its own thread.
-     */
-    void assetAdd(std::string type, std::string filePath);
+    void assetAddFile(std::string type, int serialNumber, std::string filePath);
 
     int m_listenPort;
     int m_sendPort;
+
     std::thread::id m_mainThreadID;
     std::unique_ptr<OscListener> m_listener;
     std::unique_ptr<UdpListeningReceiveSocket> m_socket;

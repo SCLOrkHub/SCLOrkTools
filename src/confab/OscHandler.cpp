@@ -6,6 +6,7 @@
 #include <osc/OscReceivedElements.h>
 
 #include <cstring>
+#include <future>
 
 namespace Confab {
 
@@ -29,17 +30,22 @@ public:
      */
     void ProcessMessage(const osc::ReceivedMessage& message, const IpEndpointName& endpoint) override {
         try {
-            if (std::strcmp("assetFind", message.AddressPattern()) == 0) {
+            if (std::strcmp("/assetFind", message.AddressPattern()) == 0) {
 
-            } else if (std::strcmp("assetAdd", message.AddressPattern()) == 0) {
+            } else if (std::strcmp("/assetAddFile", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
                 std::string type((arguments++)->AsString());
+                int serialNumber = (arguments++)->AsInt32();
                 std::string filePath((arguments++)->AsString());
                 if (arguments != message.ArgumentsEnd()) {
                     throw osc::ExcessArgumentException();
                 }
 
-                std::thread([=] { m_handler->assetAdd(type, filePath); });
+                LOG(INFO) << "processing [/assetAddFile " << type << ", " << serialNumber << ", " << filePath << "]";
+
+                std::async(std::launch::async, [this, type, serialNumber, filePath] {
+                    m_handler->assetAddFile(type, serialNumber, filePath);
+                });
             } else {
                 LOG(ERROR) << "OSC unknown message: " << message.AddressPattern();
             }
@@ -61,23 +67,14 @@ OscHandler::OscHandler(int listenPort, int sendPort) :
 OscHandler::~OscHandler() {
 }
 
-void OscHandler::listen() {
+void OscHandler::listenUntilSigInt() {
     m_listener.reset(new OscListener(this));
     m_socket.reset(new UdpListeningReceiveSocket(IpEndpointName(IpEndpointName::ANY_ADDRESS, m_listenPort),
         m_listener.get()));
-    std::thread([=] { runListener(); });
+    m_socket->RunUntilSigInt();
 }
 
-void OscHandler::stop() {
-    m_socket->Break();
-}
-
-void OscHandler::runListener() {
-    CHECK(m_mainThreadID != std::this_thread::get_id()) << "Should run on a dedicated thread.";
-    m_socket->Run();
-}
-
-void OscHandler::assetAdd(std::string type, std::string filePath) {
+void OscHandler::assetAddFile(std::string type, int serialNumber, std::string filePath) {
     CHECK(m_mainThreadID != std::this_thread::get_id()) << "Should run on a dedicated thread.";
 }
 

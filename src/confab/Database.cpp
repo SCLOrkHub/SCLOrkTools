@@ -27,9 +27,7 @@ Database::Database(leveldb::DB* database) :
 }
 
 Database::~Database() {
-    if (m_database != nullptr) {
-        close();
-    }
+    close();
 }
 
 bool Database::open(const char* path, bool createNew, int cacheSize) {
@@ -54,12 +52,10 @@ bool Database::open(const char* path, bool createNew, int cacheSize) {
 ConfigPtr Database::findConfig() {
     CHECK(m_database) << "Database should already be open.";
 
-    auto iterator = m_database->NewIterator(leveldb::ReadOptions());
+    std::unique_ptr<leveldb::Iterator> iterator(m_database->NewIterator(leveldb::ReadOptions()));
     iterator->Seek(kConfigKey);
 
     if (!iterator->Valid() || iterator->key() != std::string(kConfigKey)) {
-        LOG(INFO) << "Config key not found in database.";
-        delete iterator;
         return ConfigPtr(nullptr);
     }
 
@@ -69,12 +65,11 @@ ConfigPtr Database::findConfig() {
 
     if (!ok) {
         LOG(ERROR) << "Flatbuffer validation failed for database config key.";
-        delete iterator;
         return ConfigPtr(nullptr);
     }
 
     auto config = Data::GetFlatConfig(value.data());
-    return ConfigPtr(config, iterator);
+    return ConfigPtr(config, std::move(iterator));
 }
 
 bool Database::writeConfig(const Common::Version& version) {
@@ -84,8 +79,11 @@ bool Database::writeConfig(const Common::Version& version) {
     configBuilder.add_versionMinor(version.minor());
     configBuilder.add_versionPatch(version.patch());
     auto config = configBuilder.Finish();
-    builder.Finish(config);
-    return true;
+    builder.Finish(config, Data::FlatConfigIdentifier());
+    auto status = m_database->Put(leveldb::WriteOptions(), kConfigKey, leveldb::Slice(reinterpret_cast<const char*>(
+        builder.GetBufferPointer()), builder.GetSize()));
+
+    return status.ok();
 }
 
 AssetPtr Database::findAsset(uint64_t key) {
@@ -94,24 +92,22 @@ AssetPtr Database::findAsset(uint64_t key) {
     auto assetKey = makeAssetKey(key);
     auto keySlice = leveldb::Slice(reinterpret_cast<const char*>(assetKey.data()), sizeof(AssetKey));
 
-    auto iterator = m_database->NewIterator(leveldb::ReadOptions());
+    std::unique_ptr<leveldb::Iterator> iterator(m_database->NewIterator(leveldb::ReadOptions()));
     iterator->Seek(keySlice);
 
     if (!iterator->Valid()) {
         LOG(INFO) << "Invalid iterator on asset seek for key: " << keyToString(key);
-        delete iterator;
         return AssetPtr(nullptr);
     }
 
     if (iterator->key().size() != sizeof(AssetKey) ||
         std::memcmp(keySlice.data(), iterator->key().data(), sizeof(AssetKey)) != 0) {
         LOG(INFO) << "Asset " << keyToString(key) << " not found in database.";
-        delete iterator;
         return AssetPtr(nullptr);
     }
 
     auto asset = Data::GetFlatAsset(iterator->value().data());
-    return AssetPtr(asset, iterator);
+    return AssetPtr(asset, std::move(iterator));
 }
 
 DataPtr Database::findAssetData(uint64_t key) {
@@ -120,24 +116,22 @@ DataPtr Database::findAssetData(uint64_t key) {
     auto dataKey = makeDataKey(key);
     auto keySlice = leveldb::Slice(reinterpret_cast<const char*>(dataKey.data()), sizeof(AssetKey));
 
-    auto iterator = m_database->NewIterator(leveldb::ReadOptions());
+    std::unique_ptr<leveldb::Iterator> iterator(m_database->NewIterator(leveldb::ReadOptions()));
     iterator->Seek(keySlice);
 
     if (!iterator->Valid()) {
         LOG(INFO) << "Invalid iterator on asset data seek for key: " << keyToString(key);
-        delete iterator;
         return DataPtr(nullptr);
     }
 
     if (iterator->key().size() != sizeof(AssetKey) ||
         std::memcmp(keySlice.data(), iterator->key().data(), sizeof(AssetKey)) != 0) {
         LOG(INFO) << "Asset data " << keyToString(key) << " not found in database.";
-        delete iterator;
         return DataPtr(nullptr);
     }
 
     auto data = Data::GetFlatAssetData(iterator->value().data());
-    return DataPtr(data, iterator);
+    return DataPtr(data, std::move(iterator));
 }
 
 void Database::close() {

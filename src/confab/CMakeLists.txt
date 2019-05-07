@@ -1,4 +1,4 @@
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # Allow inclusion of headers across project.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -34,6 +34,10 @@ configure_file(
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 set(confab_src_files
+    Asset.cpp
+    Asset.hpp
+    AssetManager.cpp
+    AssetManager.hpp
     Database.cpp
     Database.hpp
     OscHandler.cpp
@@ -56,6 +60,7 @@ target_link_libraries(confab_lib PUBLIC
     oscpack
     pistache_static
     sclorktools_common
+    stdc++fs
     yaml-cpp
 )
 

@@ -11,7 +11,7 @@ Many responses include an Asset Record, the structure of which is detailed here.
 
 subsection:: Asset Type Enumeration
 
-Many messages send along a code::type:: field, which is a label and is one of the following:
+Many messages send along a code::type:: field, with currently supported values as below.
 
 table::
 ## code::snippet:: || A code snippet, in SuperCollider format.
@@ -27,13 +27,12 @@ The only required fields in an asset are the key and the type, so these are spec
 table::
 ## strong::label:: || key  || The asset key, typically a 16-digit hexadecimal string.
 ## strong::label:: || type || One of the Asset Type Enumeration values.
-## table::
-## strong::key name:: || strong::value type:: || strong::notes::
-## code::filePath:: || string || Path to the Asset file.
-## code::assetData:: || string || For smaller string assets, the asset data may be included directly here.
-## blah || blah || blah
-##
 ::
+
+table::
+## strong::key name:: || strong::value type:: || strong::notes::
+## code::filePath::   || string               || Path to the Asset file.
+## code::assetData::  || string               || For smaller string assets, the asset data may be included directly here.
 ::
 
 section:: Confab Command Messages
@@ -48,7 +47,7 @@ The file pointed to by code::filePath:: need only remain valid until the strong:
 
 table::
 ## strong::label::   || type         || One of the Asset Type Enumeration values.
-## strong::integer:: || serialNumber || A temporary client-side identifier of this asset. 
+## strong::integer:: || serialNumber || A temporary client-side identifier of this asset.
 ## strong::label::   || filePath     || Path to the filename to add to the database.
 ::
 
@@ -57,8 +56,9 @@ subsection:: /assetAddString
 Adds a new asset to the shared asset pool. For smaller assets like code snippets it is possible to send the asset directly in the OSC message. This should not be used on Assets larger than what is likely to fit into a single UDP message frame.
 
 table::
-## strong::label::  || type        || One of the Asset Type Enumeration values.
-## strong::string:: || assetString || The included asset data.
+## strong::label::   || type         || One of the Asset Type Enumeration values.
+## strong::integer:: || serialNumber || A temporary client-side identifier of this asset.
+## strong::string::  || assetString  || The included asset data.
 ::
 
 subsection:: /assetFind
@@ -74,7 +74,7 @@ subsection:: /assetLoad
 Requests that Confab retrieve this Asset, which may require communicatation over the network, and make it available locally to SuperCollider.
 
 table::
-## string::label:: || key || An asset key string, typically a 16-digit hexadecimal number.
+## strong::label:: || key || An asset key string, typically a 16-digit hexadecimal number.
 ::
 
 section:: Confab Response Messages
@@ -86,10 +86,9 @@ subsection:: /assetAdded
 table::
 ## strong::integer:: || serialNumber || The unique identier provided in the strong::assetAdd:: command.
 ## strong::label::   || key          || An asset key string, used to uniquely identify the newly created asset.
+::
 
 subsection:: /assetFound
-
-
 
 subsection:: /assetLoaded
 
