@@ -1,3 +1,4 @@
+set(CMAKE_CXX_STANDARD 17)
 
 if (BUILD_DOC)
 find_package(Doxygen)

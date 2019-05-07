@@ -142,7 +142,7 @@ void Database::close() {
 // static
 std::string Database::keyToString(uint64_t key) {
     std::array<char, 17> buf;
-    snprintf(buf.data(), 17, PRIu64, key);
+    snprintf(buf.data(), 17, "%" PRIx64, key);
     return std::string(buf.data());
 }
 

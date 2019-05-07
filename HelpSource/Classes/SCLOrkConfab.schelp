@@ -1,0 +1,29 @@
+title:: SCLOrkConfab
+summary:: Primary Interface to the SCLOrkTools C++-based Asset sharing server.
+categories:: Quarks>SCLOrkTools
+related:: Classes/SCLOrkAssset
+
+description::
+(put long description here)
+
+classmethods::
+
+method:: startConfab
+Starts the confab service.
+
+argument:: pathToConfabBinary
+An override path to the confab binary. If not provided, SCLOrkConfab will look in the default path inside the Quark directory.
+
+argument:: pathToConfabDatabase
+An override path to the confab database directory. If not provided, SCLOrkConfab will look in the default '/data/confab/db' path inside the Quark directory.
+
+returns:: true on success, false on failure.
+
+instancemethods::
+
+
+examples::
+
+code::
+(some example code)
+::

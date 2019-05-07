@@ -34,18 +34,24 @@ public:
 
             } else if (std::strcmp("/assetAddFile", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
-                std::string type((arguments++)->AsString());
+                std::string typeString((arguments++)->AsString());
                 int serialNumber = (arguments++)->AsInt32();
                 std::string filePath((arguments++)->AsString());
                 if (arguments != message.ArgumentsEnd()) {
                     throw osc::ExcessArgumentException();
                 }
 
-                LOG(INFO) << "processing [/assetAddFile " << type << ", " << serialNumber << ", " << filePath << "]";
+                LOG(INFO) << "processing [/assetAddFile " << typeString << ", " << serialNumber << ", " << filePath
+                    << "]";
 
-                std::async(std::launch::async, [this, type, serialNumber, filePath] {
-                    m_handler->assetAddFile(type, serialNumber, filePath);
-                });
+                Asset::Type type = Asset::typeStringToEnum(typeString);
+                if (type == Asset::kInvalid) {
+                    LOG(ERROR) << "/assetAddFile got bad type string: " << typeString;
+                } else {
+                    std::async(std::launch::async, [this, type, serialNumber, filePath] {
+                        m_handler->assetAddFile(type, serialNumber, filePath);
+                    });
+                }
             } else {
                 LOG(ERROR) << "OSC unknown message: " << message.AddressPattern();
             }
@@ -74,8 +80,10 @@ void OscHandler::listenUntilSigInt() {
     m_socket->RunUntilSigInt();
 }
 
-void OscHandler::assetAddFile(std::string type, int serialNumber, std::string filePath) {
+void OscHandler::assetAddFile(Asset::Type type, int serialNumber, std::string filePath) {
     CHECK(m_mainThreadID != std::this_thread::get_id()) << "Should run on a dedicated thread.";
+
+    CHECK(false) << "not yet implemented!";
 }
 
 }  // namespace Confab
