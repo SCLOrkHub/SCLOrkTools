@@ -1,5 +1,5 @@
 #include "AssetManager.hpp"
-#include "ConfabVersion.hpp"
+#include "Constants.hpp"
 #include "Database.hpp"
 #include "OscHandler.hpp"
 
@@ -45,6 +45,10 @@ int main(int argc, char* argv[]) {
         // Write sentinel file.
         std::ofstream pidFile;
         pidFile.open(pidPath);
+        if (!pidFile) {
+            LOG(ERROR) << "Error opening pid file " << pidPath << " for writing.";
+            return -1;
+        }
         pidFile << getpid();
         pidFile.close();
     }
@@ -90,11 +94,11 @@ int main(int argc, char* argv[]) {
         if (databaseVersion < Confab::confabVersion) {
             LOG(INFO) << "Updating confab version in database " << databaseVersion.toString() << " to confab version "
                 << Confab::confabVersion.toString();
-            database.writeConfig(Confab::confabVersion);
+            database->writeConfig(Confab::confabVersion);
         }
     }
 
-    Confab::AsssetManager assetManager(database);
+    Confab::AssetManager assetManager(database);
 
     LOG(INFO) << "Opening up OSC ports for listen on " << FLAGS_osc_listen_port << " and respond on "
         << FLAGS_osc_respond_port;

@@ -1,6 +1,8 @@
 #ifndef SRC_CONFAB_OSC_HANDLER_HPP_
 #define SRC_CONFAB_OSC_HANDLER_HPP_
 
+#include "Asset.hpp"
+
 #include <memory>
 #include <string>
 #include <thread>
@@ -36,7 +38,7 @@ private:
 
     /*! Processes an asset addition request. Should run as a task.
      */
-    void assetAddFile(std::string type, int serialNumber, std::string filePath);
+    void assetAddFile(Asset::Type type, int serialNumber, std::string filePath);
 
     int m_listenPort;
     int m_sendPort;

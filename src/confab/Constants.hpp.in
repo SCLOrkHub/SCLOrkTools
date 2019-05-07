@@ -11,9 +11,10 @@ const int kConfabVersionMajor = @CONFAB_VERSION_MAJOR@;
 const int kConfabVersionMinor = @CONFAB_VERSION_MINOR@;
 const int kConfabVersionPatch = @CONFAB_VERSION_PATCH@;
 
-const uint8_t kConfabDatabaseVersion = @CONFAB_DATABASE_VERSION@;
-
 static const Common::Version confabVersion(kConfabVersionMajor, kConfabVersionMinor, kConfabVersionPatch);
+
+const size_t kChunkSize = 4096;
+const size_t kSingleChunkDataSize = 3 * 1024;
 
 }  // namespace Confab
 

@@ -1,3 +1,5 @@
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "build static libs instead" FORCE)
+
 ### flatbuffers
 add_subdirectory(flatbuffers)
 
@@ -35,6 +37,11 @@ set(PISTACHE_USE_SSL OFF CACHE BOOL "enable ssl in Pistache")
 # Pistache still seems to get confused if it fails to find cppcheck.
 set(CMAKE_CXX_CPPCHECK "" CACHE STRING "" FORCE)
 add_subdirectory(pistache)
+
+#### xxhash
+set(XXHASH_BUNDLED_MODE ON CACHE BOOL "build xxhash as part of another project")
+add_subdirectory(xxHash/cmake_unofficial)
+target_include_directories(xxhash PUBLIC xxHash)
 
 #### yaml-cpp
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "build yaml-cpp tests")

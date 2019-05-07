@@ -23,11 +23,9 @@ set(CONFAB_VERSION_MAJOR 0)
 set(CONFAB_VERSION_MINOR 0)
 set(CONFAB_VERSION_PATCH 1)
 
-set(CONFAB_DATABASE_VERSION 1)
-
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/ConfabVersion.hpp.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/ConfabVersion.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Constants.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/Constants.hpp"
 )
 
 # To pick up the pre-processed ConfabVersion.hpp.
@@ -61,6 +59,7 @@ target_link_libraries(confab_lib PUBLIC
     pistache_static
     sclorktools_common
     stdc++fs
+    xxhash
     yaml-cpp
 )
 

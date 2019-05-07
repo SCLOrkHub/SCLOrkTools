@@ -1,11 +1,12 @@
 namespace Confab.Data;
 
+// Keep these the same as the enum in Confab::Asset
 enum Type : uint {
     kInvalid = 1,
-    kSnippet,
-    kImage,
-    kYAML,
-    kSample
+    kSnippet = 2,
+    kImage = 3,
+    kYAML = 4,
+    kSample = 5
 }
 
 table FlatAsset {
