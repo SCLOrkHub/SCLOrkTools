@@ -64,7 +64,7 @@ public:
 
     /*! Add the file extension string.
      *
-     * \note the . is normally not stored.
+     * \note The . is normally not stored.
      *
      * \param fileExtension The extension of the file, e.g. "yaml", "png", "wav".
      */
@@ -76,6 +76,12 @@ public:
      * \return A non-owning pointer to the area reserved.
      */
     uint8_t* setInlineData(size_t size);
+
+    /*! Adds a salt value to the Asset.
+     *
+     * \param salt The salt value to add. It will be used as the starting state in hash computations.
+     */
+    void setSalt(uint64_t salt);
     ///@}
 
     /*! Methods for read-only access to a backing flatbuffer store.
@@ -159,6 +165,12 @@ public:
      * \return A UNIX epoch for when this Asset should be refreshed.
      */
     std::optional<uint64_t> expiresOn() const;
+
+    /*! Provides an initial state for the hashing function, to reduce the chance of hash collision on small data sizes.
+     *
+     * \return A salt value.
+     */
+    std::optional<uint64_t> salt() const;
     ///@}
 
     /// @cond UNDOCUMENTED
