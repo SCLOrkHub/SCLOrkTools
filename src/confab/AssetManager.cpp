@@ -10,6 +10,8 @@
 #include <experimental/filesystem>
 
 #include <fstream>
+#include <limits>
+#include <random>
 
 namespace fs = std::experimental::filesystem;
 
@@ -58,12 +60,19 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
             return;
         }
 
-        key = computeHashMemory(reinterpret_cast<uint8_t*>(inlineData), fileSize);
+        std::random_device randomDevice;
+        std::uniform_int_distribution<uint64_t> distribution(0, std::numeric_limits<uint64_t>::max());
+
+        uint64_t salt = distribution(randomDevice);
+        asset.setSalt(salt);
+
+        key = computeHashMemory(reinterpret_cast<uint8_t*>(inlineData), fileSize, salt);
     } else {
+        key = computeHashFile(filePath, fileSize, 0);
     }
 }
 
-uint64_t AssetManager::computeHashFile(const std::string& filePath, size_t expectedSize) {
+uint64_t AssetManager::computeHashFile(const std::string& filePath, size_t expectedSize, uint64_t salt) {
     DCHECK_LT(kSingleChunkDataSize, expectedSize) << "Single-chunk hashes should be computed with computeHashMemory()";
     std::array<char, kChunkSize> fileChunk;
 
@@ -75,7 +84,7 @@ uint64_t AssetManager::computeHashFile(const std::string& filePath, size_t expec
     }
 
     XXH64_state_t* hashState = XXH64_createState();
-    XXH64_reset(hashState, 0);
+    XXH64_reset(hashState, salt);
 
     inFile.read(fileChunk.data(), kChunkSize);
     size_t bytesRead = inFile.gcount();
@@ -96,7 +105,6 @@ uint64_t AssetManager::computeHashFile(const std::string& filePath, size_t expec
     uint64_t hash = XXH64_digest(hashState);
     XXH64_freeState(hashState);
 
-    // TODO: add salt?
     CHECK_NE(0, hash) << "hash can't be zero!";
 
     if (totalBytesRead != expectedSize) {
@@ -107,10 +115,12 @@ uint64_t AssetManager::computeHashFile(const std::string& filePath, size_t expec
     return hash;
 }
 
-uint64_t AssetManager::computeHashMemory(const uint8_t* data, size_t size) {
+uint64_t AssetManager::computeHashMemory(const uint8_t* data, size_t size, uint64_t salt) {
     DCHECK_GE(kChunkSize, size) << "Hashes larger than a single chunk should be computed with computeHashFile()";
 
-    size_t hash = XXH64(data, size, 0);
+    size_t hash = XXH64(data, size, salt);
+    CHECK_NE(0, hash) << "hash can't be zero!";
+
     return hash;
 }
 

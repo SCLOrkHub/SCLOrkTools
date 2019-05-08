@@ -20,7 +20,7 @@ table FlatAsset {
     deprecates:ulong;
     inlineData:[ubyte];
     expiresOn:ulong;
-    salt:[ubyte];
+    salt:ulong;
 }
 
 root_type FlatAsset;

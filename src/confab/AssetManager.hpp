@@ -39,10 +39,12 @@ public:
      *
      * \param filePath The path to the file to hash.
      * \param expectedSize The size of the file to hash, for comparison with number of bytes actually hashed.
+     * \param salt A starting value for the hasher. For smaller Assets this may be helpful to reduce the possibility of
+     *             of hash collisions.
      * \return The computed hash, or 0 on error.
      * \sa computeHashMemory()
      */
-    uint64_t computeHashFile(const std::string& filePath, size_t expectedSize);
+    uint64_t computeHashFile(const std::string& filePath, size_t expectedSize, uint64_t salt = 0);
 
     /*! Computes the hash of a single in-memory data chunk.
      *
@@ -50,10 +52,12 @@ public:
      *
      * \param data A pointer to the data to hash.
      * \param size The size of the data to hash, must be less than or equal to kChunkSize
+     * \param salt A starting value for the hasher. For smaller Assets this may be helpful to reduce the possibility of
+     *             of hash collisions.
      * \return The computed hash, or 0 on error.
      * \sa computeHashFile()
      */
-    uint64_t computeHashMemory(const uint8_t* data, size_t size);
+    uint64_t computeHashMemory(const uint8_t* data, size_t size, uint64_t salt = 0);
 
     /// @cond UNDOCUMENTED
     AssetManager() = delete;

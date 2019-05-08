@@ -69,5 +69,11 @@ void Asset::setFileExtension(const std::string& fileExtension) {
     m_assetBuilder->add_fileExtension(extension);
 }
 
+void Asset::setSalt(uint64_t salt) {
+    CHECK(m_assetBuilder);
+
+    m_assetBuilder->add_salt(salt);
+}
+
 }  // namespace Confab
 
