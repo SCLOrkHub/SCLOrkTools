@@ -2,6 +2,7 @@ namespace Confab.Data;
 
 table FlatAssetData {
     data:[ubyte];
+    hash:ulong;
 }
 
 root_type FlatAssetData;

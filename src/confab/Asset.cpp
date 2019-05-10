@@ -24,25 +24,12 @@ Asset::Type Asset::typeStringToEnum(const std::string& assetType) {
 }
 
 Asset::Asset(Asset::Type type) :
+    m_record(),
     m_flatAsset(nullptr),
-    m_builder(new flatbuffers::FlatBufferBuilder(kChunkSize)),
+    m_builder(new flatbuffers::FlatBufferBuilder(kDataChunkSize)),
     m_assetBuilder(new Data::FlatAssetBuilder(*m_builder)),
     m_type(type) {
-}
-
-Asset::Asset(const uint8_t* data, uint64_t key) {
-    m_flatAsset = Data::GetFlatAsset(data);
-    m_type = static_cast<Asset::Type>(m_flatAsset->type());
-    if (m_flatAsset->key() != 0) {
-        m_key = m_flatAsset->key();
-    } else {
-        m_key = key;
-    }
-}
-
-Asset::~Asset() {
-    delete m_assetBuilder;
-    delete m_builder;
+    m_assetBuilder->add_type(static_cast<Data::Type>(m_type));
 }
 
 void Asset::setKey(uint64_t key) {
@@ -73,6 +60,29 @@ void Asset::setSalt(uint64_t salt) {
     CHECK(m_assetBuilder);
 
     m_assetBuilder->add_salt(salt);
+}
+
+const SizedPointer Asset::flatten() {
+    auto asset = m_assetBuilder->Finish();
+    m_builder->Finish(asset);
+    return SizedPointer(m_builder->GetBufferPointer(), m_builder->GetSize());
+}
+
+// static
+const Asset Asset::LoadAsset(const Database::Record& record, uint64_t key) {
+    auto flatAsset = Data::GetFlatAsset(record.data().data());
+    return Asset(record, flatAsset, key);
+}
+
+Asset::Asset(const Database::Record& record, const Data::FlatAsset* flatAsset, uint64_t key) :
+    m_record(record),
+    m_flatAsset(flatAsset),
+    m_type(static_cast<Asset::Type>(m_flatAsset->type())) {
+    if (m_flatAsset->key() != 0) {
+        m_key = m_flatAsset->key();
+    } else {
+        m_key = key;
+    }
 }
 
 }  // namespace Confab

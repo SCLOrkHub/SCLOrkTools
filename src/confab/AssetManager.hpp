@@ -2,6 +2,7 @@
 #define SRC_CONFAB_ASSET_MANAGER_HPP_
 
 #include "Asset.hpp"
+#include "SizedPointer.hpp"
 
 #include <functional>
 #include <memory>
@@ -48,16 +49,55 @@ public:
 
     /*! Computes the hash of a single in-memory data chunk.
      *
-     * Note for chunks larger than kChunkSize computeHashFile is more efficient.
+     * Note for chunks larger than kDataChunkSize computeHashFile is more efficient.
      *
      * \param data A pointer to the data to hash.
-     * \param size The size of the data to hash, must be less than or equal to kChunkSize
+     * \param size The size of the data to hash, must be less than or equal to kDataChunkSize
      * \param salt A starting value for the hasher. For smaller Assets this may be helpful to reduce the possibility of
      *             of hash collisions.
      * \return The computed hash, or 0 on error.
      * \sa computeHashFile()
      */
     uint64_t computeHashMemory(const uint8_t* data, size_t size, uint64_t salt = 0);
+
+    /*! The size in bytes of the key associated with an Asset in the database.
+     *
+     * Currently 9 bytes, counting one byte for the kAsset prefix, followed by 8 bytes of the Asset key.
+     */
+    static const size_t kAssetDatabaseKeySize = 9;
+
+    /*! The size in bytes of the key associated with an AssetData entry in the database.
+     *
+     * Currently 17 bytes, counting one byte for the kData prefix, followed by 8 bytes of the Asset key, followed by
+     * 8 bytes indicated the chunk number (starting from 1).
+     */
+    static const size_t kAssetDataDatabaseKeySize = 17;
+
+    /*! Byte prefixes to prepend to Asset or AssetData keys for database.
+     */
+    enum KeyPrefix : uint8_t { kAsset = 0xaa, kData = 0xdd };
+
+    /*! Writes a byte sequence in keyOut suitable for storing or retrieving an Asset record from the database.
+     *
+     * \param key The key to format.
+     * \param keyOut A pointer to where to store the key sequence, must be at least kAssetDatabaseKeySize in size.
+     */
+    void makeAssetDatabaseKey(uint64_t key, SizedPointer keyOut);
+
+    /*! Writes a byte sequence in keyOut suitable for storing or retrieving an AssetData record from the database.
+     *
+     * \param key The key to format.
+     * \param chunkNumber The number in the sequence of chunks to include in the key.
+     * \param keyOut A pointer to where to store the key sequence, must be at least kAssetDataDatabaseKeySize in size.
+     */
+    void makeAssetDataDatabaseKey(uint64_t key, uint64_t chunkNumber, SizedPointer keyOut);
+
+    /*! Converts a 64-bit binary key into a human-readable hexadecimal string.
+     *
+     * \param key A binary key.
+     * \return A hexadecimal string of key.
+     */
+    static std::string keyToString(uint64_t key);
 
     /// @cond UNDOCUMENTED
     AssetManager() = delete;

@@ -1,12 +1,10 @@
 #include "AssetManager.hpp"
+#include "Config.hpp"
 #include "Constants.hpp"
 #include "Database.hpp"
 #include "OscHandler.hpp"
 
 #include "common/Version.hpp"
-
-// TODO: once reading/writing Asset records finalized, generalize technique to Config and remove this dependency.
-#include "schemas/FlatConfig_generated.h"
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -27,6 +25,8 @@ DEFINE_int32(osc_respond_port, 4249, "UDP port on localhost to send response mes
 
 DEFINE_string(data_directory, "../data/confab", "Path where confab will store the database and log files. A zero or "
     "negative size will disable the cache");
+
+const char* kConfigKey = "confab-db-config";
 
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -65,36 +65,42 @@ int main(int argc, char* argv[]) {
     // that the version written is equal to or older than our current version.
     if (FLAGS_create_new_database) {
         // Verify that no existing configuration information is present.
-        auto config = database->findConfig();
-        if (config != nullptr) {
+        auto configRecord = database->load(Confab::Config::getConfigKey());
+        if (!configRecord.empty()) {
             LOG(ERROR) << "Create new database specified by database has an existing config key.";
             return -1;
         }
 
-        if (!database->writeConfig(Confab::confabVersion)) {
+        Confab::Config config(Confab::confabVersion);
+
+        if (!database->store(Confab::Config::getConfigKey(), config.flatten())) {
             LOG(ERROR) << "Error writing config information to database.";
             return -1;
         } else {
             LOG(INFO) << "Wrote new config record to database.";
         }
     } else {
-        auto config = database->findConfig();
-        if (config == nullptr) {
+        auto configRecord = database->load(Confab::Config::getConfigKey());
+        if (configRecord.empty()) {
             LOG(ERROR) << "Error reaading configuration information from database.";
             return -1;
         }
+        auto config = Confab::Config::LoadConfig(configRecord);
 
-        auto databaseVersion = Common::Version(config->versionMajor(), config->versionMinor(), config->versionPatch());
-        if (databaseVersion > Confab::confabVersion) {
-            LOG(ERROR) << "Database records confab version " << databaseVersion.toString() << " which is newer than "
+        if (config.version() > Confab::confabVersion) {
+            LOG(ERROR) << "Database records confab version " << config.version().toString() << " which is newer than "
                 << "confab version " << Confab::confabVersion.toString();
             return -1;
         }
 
-        if (databaseVersion < Confab::confabVersion) {
-            LOG(INFO) << "Updating confab version in database " << databaseVersion.toString() << " to confab version "
+        if (config.version() < Confab::confabVersion) {
+            LOG(INFO) << "Updating confab version in database " << config.version().toString() << " to confab version "
                 << Confab::confabVersion.toString();
-            database->writeConfig(Confab::confabVersion);
+            Confab::Config currentConfig(Confab::confabVersion);
+            if (!database->store(Confab::Config::getConfigKey(), currentConfig.flatten())) {
+                LOG(ERROR) << "Error writing updated Config record to database.";
+                return -1;
+            }
         }
     }
 

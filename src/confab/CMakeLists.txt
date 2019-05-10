@@ -1,7 +1,7 @@
 set(CMAKE_CXX_STANDARD 17)
 
 # Allow inclusion of headers across project.
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(confab_schema_files
     schemas/FlatAsset.fbs
@@ -34,12 +34,17 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 set(confab_src_files
     Asset.cpp
     Asset.hpp
+    AssetData.cpp
+    AssetData.hpp
     AssetManager.cpp
     AssetManager.hpp
+    Config.cpp
+    Config.hpp
     Database.cpp
     Database.hpp
     OscHandler.cpp
     OscHandler.hpp
+    SizedPointer.hpp
 )
 
 set(confab_test_files

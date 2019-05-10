@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 #include <leveldb/db.h>
 
+/*
+
 TEST(DatabaseTest, makeAssetKey) {
     auto key1 = Confab::Database::makeAssetKey(0x0102030405060708);
     EXPECT_EQ(Confab::Database::KeyPrefix::kAsset, key1[0]);
@@ -28,4 +30,5 @@ TEST(DatabaseTest, makeDataKey) {
     EXPECT_EQ(0x60, key1[7]);
     EXPECT_EQ(0x70, key1[8]);
 }
+*/
 
