@@ -1,6 +1,9 @@
 #ifndef SRC_CONFAB_ASSET_HPP_
 #define SRC_CONFAB_ASSET_HPP_
 
+#include "Database.hpp"
+#include "SizedPointer.hpp"
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -35,9 +38,6 @@ public:
         kSample = 5
     };
 
-    /*! Methods for writing a new Asset to a backing Flatbuffer store.
-     */
-    ///@{
     /*! Utility to convert a string into the equivalent Asset::Type enumeration.
      *
      * \param assetType A string describing the asset type
@@ -45,16 +45,14 @@ public:
      */
     static Type typeStringToEnum(const std::string& assetType);
 
+    /*! Methods for writing a new Asset to a backing Flatbuffer store.
+     */
+    ///@{
     /*! Constructs a new Asset for writing.
      *
      * \param type The type of asset to make.
      */
     Asset(Type type);
-
-    /*! Destruct an Asset.
-     *
-     */
-    ~Asset();
 
     /*! Set a value for the key attribute, for writeable assets only.
      *
@@ -82,6 +80,12 @@ public:
      * \param salt The salt value to add. It will be used as the starting state in hash computations.
      */
     void setSalt(uint64_t salt);
+
+    /*! Finalize serialization and return a pointer to the flattened Asset.
+     *
+     * \return A pointer to the flattened asset data suitable for serialization.
+     */
+    const SizedPointer flatten();
     ///@}
 
     /*! Methods for read-only access to a backing flatbuffer store.
@@ -89,13 +93,13 @@ public:
     ///@{
     /*! Constructs a new Asset for read-only access, based on a backing FlatAsset store.
      *
-     * \param data The pointer to the FlatAsset. This Asset will not take ownership of the pointer, deletion is the
-     *             pointer owner's responsibility.
+     * \param record The database record containing a flatbuffer-serialized Asset.
      * \param key The key associated with this asset. If the serialized asset in data has a key the serialized key will
      *            override this value and it will be ignored. But if the key is absent from those data it can be
      *            provided here.
+     * \return An Asset wrapping the provided Database::Record.
      */
-    Asset(const uint8_t* data, uint64_t key = 0);
+    static const Asset LoadAsset(const Database::Record& record, uint64_t key);
 
     /*! The type of this Asset.
      *
@@ -177,20 +181,23 @@ public:
     Asset() = delete;
     Asset(const Asset& asset) = delete;
     Asset& operator=(const Asset& asset) = delete;
+    ~Asset() = default;
     /// @endcond UNDOCUMENTED
 
 private:
-    const Data::FlatAsset* m_flatAsset;
-    flatbuffers::FlatBufferBuilder* m_builder;
-    Data::FlatAssetBuilder* m_assetBuilder;
+    Asset(const Database::Record& record, const Data::FlatAsset* flatAsset, uint64_t key);
 
-    Type m_type;
+    const Database::Record m_record;
+    const Data::FlatAsset* m_flatAsset;
+
+    std::shared_ptr<flatbuffers::FlatBufferBuilder> m_builder;
+    std::shared_ptr<Data::FlatAssetBuilder> m_assetBuilder;
+
+    const Type m_type;
     std::optional<uint64_t> m_key;
 };
 
 }  // namespace Confab
 
 #endif  // SRC_CONFAB_ASSET_HPP_
-
-
 

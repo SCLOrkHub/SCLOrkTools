@@ -1,126 +1,78 @@
 #ifndef SRC_CONFAB_DATABASE_HPP_
 #define SRC_CONFAB_DATABASE_HPP_
 
-#include <leveldb/db.h>
+#include "SizedPointer.hpp"
 
 #include <memory>
 
-namespace Common {
-    class Version;
+namespace leveldb {
+    class DB;
+    class Iterator;
 }
 
 namespace Confab {
 
-namespace Data {
-    class FlatAsset;
-    class FlatAssetData;
-    class FlatConfig;
-}
-
-/*! Non-owning pointer wrapper for returning results from Database queries with no copies.
- *
- * Uses semantics similar to std::unique_ptr<T>. Note: specializations should always be const.
- */
-template<class T>
-class SlicePtr {
-public:
-    /*! Construct a SlicePtr along with objects needed for reclamation.
-     *
-     * \param pointer Pointer to wrap.
-     * \param iterator The LevelDB Iterator from the query that is keeping slice valid.
-     */
-    explicit SlicePtr(T* pointer, std::unique_ptr<leveldb::Iterator> iterator) :
-        m_pointer(pointer),
-        m_iterator(std::move(iterator)) { }
-
-    /*! Convenience ctor to make an empty SlicePtr.
-     *
-     * \param p A null pointer.
-     */
-    explicit SlicePtr(std::nullptr_t p) :
-        m_pointer(nullptr),
-        m_iterator(nullptr) { }
-
-    /*! Disabled copy constructor, for unique_ptr type semantics.
-     *
-     * \param p A SlicePtr.
-     */
-    SlicePtr(const SlicePtr<T>& p) = delete;
-
-    /*! Move ctor, invalidates source pointer.
-     *
-     * \param source The SlicePtr to copy.
-     */
-    SlicePtr(SlicePtr<T>&& source) :
-        m_pointer(source.m_pointer),
-        m_iterator(std::move(source.m_iterator)) {
-        source.m_pointer = nullptr;
-    }
-
-    /*! Destruct a SlicePtr. Deletes the Iterator, so the non-owning pointer will no longer be valid.
-     */
-    ~SlicePtr() = default;
-
-    /*! Dereference operator.
-     *
-     * \return A reference to contents pointed to by the raw pointer.
-     */
-    T& operator*() { return *m_pointer; }
-
-    /*! Structure dereference operator.
-     *
-     * \return The raw pointer.
-     */
-    T* operator->() { return m_pointer; }
-
-    /*! Get the size of the data pointed to by T.
-     *
-     * \return Size in bytes of *T.
-     */
-    size_t size() const {
-        if (m_iterator != nullptr) {
-            return m_iterator->value().size();
-        }
-        return 0;
-    }
-
-    /*! Equality comparison with nullptr.
-     *
-     * \param p The nullptr.
-     * \return True if data pointer is nullptr, false otherwise.
-     */
-    bool operator==(const std::nullptr_t p) const {
-        return m_pointer == nullptr;
-    }
-
-    /*! Inequality comparison with nullptr.
-     *
-     * \param p The nullptr.
-     * \return False if data pointer is nullptr, true otherwise.
-     */
-    bool operator!=(const std::nullptr_t p) const {
-        return m_pointer != nullptr;
-    }
-
-private:
-    T* m_pointer;
-    std::unique_ptr<leveldb::Iterator> m_iterator;
-};
-
-using ConfigPtr = SlicePtr<const Data::FlatConfig>;
-using AssetPtr = SlicePtr<const Data::FlatAsset>;
-using DataPtr = SlicePtr<const Data::FlatAssetData>;
-
 /*! Encapsulates a LevelDB database for use in Confab.
  *
- * The Database object allows semantic-level manipulation of the asset database. It provides functionality to store
- * asset metadata, files, and other entries as needed by the system. It includes convenience routines for common
- * database use cases in the confab program.
+ * The Database object is a low-level abstraction around the LevelDB database, adding very little logic of its own. It
+ * provide a level of indirection around the LevelDB API as well as allows for easy mocking or faking for testing of
+ * objects dependent on this one.
  *
  * \sa [Database Design Document](@ref Confab-Design-Document-Database-Design)
  */
 class Database {
 public:
+    /*! Storage class for Database return results.
+     *
+     * Provides read-only access to underlying data store without copying the data to a separate buffer.
+     */
+    class Record {
+    public:
+        /*! Default constructor makes an empty Record.
+         */
+        Record();
+
+        /*! Construct a record pointing at a Database load result.
+         *
+         * \param iterator The LevelDB data access iterator pointing at the desired results.
+         */
+        explicit Record(std::shared_ptr<leveldb::Iterator> iterator);
+
+        /*! Construct an empty record.
+         *
+         * \param nullPointer The nullptr.
+         */
+        explicit Record(nullptr_t nullPointer);
+
+
+        /*! True if this Record has no results.
+         *
+         * \return A boolean which is true if this Record is pointing at nothing.
+         */
+        bool empty() const;
+
+        /*! A pointer to the data associated with the key in the Database.
+         *
+         * \return A non-owning pointer to the data. Record will take care of the deletion of this pointer.
+         */
+        const SizedPointer data() const;
+
+        /*! The key associated with this Record.
+         *
+         * \return A non-owning pointer to the key data.
+         */
+        const SizedPointer key() const;
+
+        /// @cond UNDOCUMENTED
+        Record(const Record&) = default;
+        Record& operator=(const Record&) = default;
+        ~Record() = default;
+        /// @endcond UNDOCUMENTED
+
+    private:
+        std::shared_ptr<leveldb::Iterator> m_iterator;
+    };
+
     /*! Constructs an empty Database object.
      *
      * \param database An pointer to an existing LevelDB database object (or a mock for testing), or nullptr. Note that
@@ -129,11 +81,9 @@ public:
      */
     Database(leveldb::DB* database = nullptr);
 
-    /*! Close and then destruct an open Database.
-     *
-     * \sa close()
-     */
-    ~Database();
+    /// @cond UNDOCUMENTED
+    virtual ~Database() = default;
+    /// @endcond UNDOCUMENTED
 
     /*! Open or create Database LevelDB database file tree.
      *
@@ -145,72 +95,31 @@ public:
      *                  cache.
      * \return true on success, or false on error.
      */
-    bool open(const char* path, bool createNew, int cacheSize);
+    virtual bool open(const char* path, bool createNew, int cacheSize);
 
-    /*! Returns the singleton FlatConfig object stored in the database, or nullptr if not found.
+    /*! Loads the data associated with the provided key.
      *
-     * \return Deserialized config object or nullptr.
+     * \param key A pointer to the key data to search the database for.
+     * \return A Record providing a non-owning pointer to the data associated with key, or an empty record if the key
+     *         was not found in the database.
      */
-    ConfigPtr findConfig();
+    virtual const Record load(const SizedPointer& key);
 
-    /*! Write the most recent version of the config key and value to the database.
+    /*! Saves the provided data associated with the key. Overwrites old data that may have been present under that key.
      *
-     * \param version Confab Version number to save in the database.
-     * \return true on success, or false on error.
+     * \param key A pointer to the key to associate with the provided data.
+     * \param data A pointer to the data to associate with the provided key.
+     * \return Will be true on success, false on error.
      */
-    bool writeConfig(const Common::Version& version);
-
-    /*! Search for an Asset record associated with key and return it.
-     *
-     * \param key A key uniquely identifying this asset.
-     * \return A pointer to a FlatAsset object, or nullptr if not found.
-     */
-    SlicePtr<const Data::FlatAsset> findAsset(uint64_t key);
-
-    /*! Larger assets store their data in a separate record. Search for a data record with key and return it.
-     *
-     * \param key A key uniquely identifying this asset.
-     * \return A pointer to the FlatAssetData, and stores the size of the data in size, or nullptr if not found.
-     */
-    SlicePtr<const Data::FlatAssetData> findAssetData(uint64_t key);
+    virtual bool store(const SizedPointer& key, const SizedPointer& data);
 
     /*! Close the database, and delete any internal references to it.
      *
      */
-    void close();
-
-    /*! The array type of asset and asset data keys.
-     */
-    using AssetKey = std::array<uint8_t, 9>;
-
-    /*! Byte prefixes to prepend to hash keys for database.
-     */
-    enum KeyPrefix : uint8_t { kAsset = 0xaa, kData = 0xdd };
-
-    /*! Converts a 64-bit binary key into a human-readable hexadecimal string.
-     *
-     * \param key A binary key.
-     * \return A hexadecimal string of key.
-     */
-    static std::string keyToString(uint64_t key);
-
-    /*! Given a key value, format it into the asset key used for accessing the database. (public for testing only)
-     *
-     * \param key The asset key.
-     * \return A byte array usable as a key in a database key lookup for an Asset object.
-     */
-    static AssetKey makeAssetKey(uint64_t key);
-
-    /*! Given a key value, format it into the data key used for accessing the database. (public for testing only)
-     *
-     * \param key The asset key.
-     * \return A byte array usable as a key in a database key lookup for an AssetData object.
-     */
-    static AssetKey makeDataKey(uint64_t key);
+    virtual void close();
 
 private:
-
-    leveldb::DB* m_database;
+    std::shared_ptr<leveldb::DB> m_database;
 };
 
 }  // namespace Confab
