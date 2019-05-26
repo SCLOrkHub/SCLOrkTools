@@ -21,6 +21,8 @@ SCLOrkChat {
 	var reconnectButton;
 	var messageTypeLabel;
 	var messageTypePopUpMenu;
+	var showPickerButton;
+	var emojiPicker;
 
 	var chatMessageQueue;
 	var chatMessageQueueSemaphore;
@@ -113,6 +115,9 @@ SCLOrkChat {
 		);
 		window.alwaysOnTop = true;
 		window.userCanClose = false;
+		window.view.keyDownAction_({ |view, char, modifiers, unicode, keycode|
+			this.prKeyDown(char, modifiers);
+		});
 
 		window.layout = VLayout.new(
 			HLayout.new(
@@ -123,7 +128,7 @@ SCLOrkChat {
 				)
 			),
 			HLayout.new(
-				sendTextField = TextField.new()
+				sendTextField = TextField.new
 			),
 			HLayout.new(
 				[ autoScrollCheckBox = CheckBox.new(), align: \left ],
@@ -131,9 +136,12 @@ SCLOrkChat {
 				[ connectionStatusLabel = StaticText.new(), align: \center ],
 				[ reconnectButton = Button.new(), align: \center ],
 				nil,
+				[ showPickerButton = Button.new(), align: \right ],
 				[ messageTypeLabel = StaticText.new(), align: \right ],
 				[ messageTypePopUpMenu = PopUpMenu.new(), align: \right ],
-			)
+			),
+			[ emojiPicker = SCLOrkEmojiPickerView.new(fontSize, this, window.bounds.height / 4.0),
+				\padding: 0 ]
 		);
 
 		scrollCanvas = View();
@@ -176,7 +184,11 @@ SCLOrkChat {
 
 		reconnectButton.string = "Connect";
 		reconnectButton.font = font;
-		reconnectButton.action = { this.connect; };
+		reconnectButton.action = { this.connect };
+
+		showPickerButton.string = "😀";
+		showPickerButton.font = font;
+		showPickerButton.action = { this.prToggleEmojiPicker };
 
 		messageTypeLabel.string = "Type:";
 		messageTypeLabel.font = font;
@@ -525,5 +537,19 @@ SCLOrkChat {
 			chatClient.name = name;
 		});
 		window.name = "SCLOrkChat -" + name;
+	}
+
+	prToggleEmojiPicker {
+		if (emojiPicker.visible, {
+			emojiPicker.hidePicker;
+		}, {
+			emojiPicker.showPicker;
+		});
+	}
+
+	prKeyDown { |char, modifiers|
+		if (char == $:, {
+			this.prToggleEmojiPicker;
+		});
 	}
 }
