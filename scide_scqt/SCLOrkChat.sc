@@ -29,9 +29,9 @@ SCLOrkChat {
 	var autoScroll;
 	var chatMessageIndex;
 	var updateChatUiTask;
+	var pickerActive;
 
-	// List of clientIds in the same order as the clientListView
-	// list of usernames.
+	// List of clientIds in the same order as the clientListView list of usernames.
 	var clientIdList;
 	var messageViewRingBuffer;
 
@@ -53,6 +53,7 @@ SCLOrkChat {
 		quitTasks = false;
 		wedged = false;
 		chatClientConnected = false;
+		pickerActive = false;
 
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
@@ -115,9 +116,6 @@ SCLOrkChat {
 		);
 		window.alwaysOnTop = true;
 		window.userCanClose = false;
-		window.view.keyDownAction_({ |view, char, modifiers, unicode, keycode|
-			this.prKeyDown(char, modifiers);
-		});
 
 		window.layout = VLayout.new(
 			HLayout.new(
@@ -144,6 +142,10 @@ SCLOrkChat {
 				\padding: 0 ]
 		);
 
+		window.view.addAction({ |view, char, modifiers, unicode, keycode|
+			this.prKeyDown(view, char, modifiers, unicode, keycode);
+		}, \keyDownAction);
+
 		scrollCanvas = View();
 		scrollCanvas.layout = VLayout(nil);
 		chatItemScrollView.canvas = scrollCanvas;
@@ -152,6 +154,9 @@ SCLOrkChat {
 		font = Font.new(Font.defaultSansFace, fontSize);
 		clientListView.selectionMode = \multi;
 		clientListView.font = font;
+		clientListView.addAction({ |view, char, modifiers, unicode, keycode|
+			this.prKeyDown(view, char, modifiers, unicode, keycode);
+		}, \keyDownAction);
 
 		clearSelectionButton.string = "Clear";
 		clearSelectionButton.font = font;
@@ -345,6 +350,10 @@ SCLOrkChat {
 
 			v.string = "";
 		};
+
+		sendTextField.addAction({ |view, char, modifiers, unicode, keycode|
+			this.prKeyDown(view, char, modifiers, unicode, keycode);
+		}, \keyDownAction);
 	}
 
 	enqueueChatMessage { | chatMessage |
@@ -540,16 +549,40 @@ SCLOrkChat {
 	}
 
 	prToggleEmojiPicker {
-		if (emojiPicker.visible, {
+		if (pickerActive, {
 			emojiPicker.hidePicker;
+			pickerActive = false;
 		}, {
+			emojiPicker.clearSearch;
 			emojiPicker.showPicker;
+			pickerActive = true;
 		});
 	}
 
-	prKeyDown { |char, modifiers|
+	prKeyDown { |view, char, modifiers, unicode, keycode|
 		if (char == $:, {
 			this.prToggleEmojiPicker;
+		}, {
+			if (pickerActive, {
+				switch (keycode,
+					36, {  // enter key
+						this.prToggleEmojiPicker;
+					},
+					51, {  // delete key
+						emojiPicker.deleteLast;
+					},
+					53, {  // escape key
+						this.prToggleEmojiPicker;
+					}, {
+						keycode.postln;
+						emojiPicker.appendSearch(char);
+				});
+			});
+		});
+
+		if (sendTextField.hasFocus.not, {
+			sendTextField.focus(true);
+			sendTextField.string = sendTextField.string ++ char.asString;
 		});
 	}
 }
