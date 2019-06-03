@@ -31,7 +31,7 @@ SCLOrkEmojiPickerView : TextView {
 
 	clearSearch {
 		searchString = "";
-		searchPath = [];
+		searchPath = [ ];
 	}
 
 	appendSearch { |char|
