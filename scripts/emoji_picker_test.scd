@@ -22,23 +22,3 @@ SCLOrkEmoji.load;
 
 ~w.front;
 )
-
-(
-var count = 0;
-SCLOrkEmoji.load;
-SCLOrkEmoji.trie.at(*[\_count]).postln;
-)
-
-(
-~oldAction = ~picker.actions[0];
-~picker.insertAction(~oldAction,
-	Menu(MenuAction("loofa"), MenuAction("pooty")).title_("snooty"));
-~picker.removeAction(~oldAction);
-~picker.front;
-)
-
-(
-var a = [\a, \b, \c, \d];
-a.wrapPut(-1, (a.wrapAt(-1).asString ++ "e").asSymbol);
-a.postln;
-)

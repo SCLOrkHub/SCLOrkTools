@@ -3,7 +3,6 @@ SCLOrkEmojiMenu : Menu {
 	var searchString;
 	var isPopulated;
 
-
 	// For the root menu we want to prepopulate it, so that the windowing system knows
 	// how tall it is and will better fit it on screen.
 	*new { |trieNode, searchString, prepopulate = false|
@@ -33,12 +32,20 @@ SCLOrkEmojiMenu : Menu {
 			// If any matches we first add them.
 			if (match.notNil, {
 				var matchList = Array.new(match.size);
+				var targetMenu = this;
+
 				match.do({ |item, index|
 					matchList = matchList.add(SCLOrkEmoji.map.at(item) ++ ":" + item);
 				});
 				matchList.sort;
-				matchList.do({ |item, index|
-					this.addAction(MenuAction.new(item, {}));
+				matchList.size.do({ |i|
+					if (i % 25 == 0 and: { i > 0 }, {
+						var newMenu = Menu.new.string_(
+							"more.. (%)".format(matchList.size - i));
+						targetMenu.addAction(newMenu);
+						targetMenu = newMenu;
+					});
+					targetMenu.addAction(MenuAction.new(matchList[i], {}));
 				});
 
 				this.addAction(MenuAction.separator);
