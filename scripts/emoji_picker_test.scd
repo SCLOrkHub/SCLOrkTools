@@ -18,6 +18,7 @@ SCLOrkEmoji.load;
 
 ~showButton.string = "show";
 ~showButton.action = { ~picker.front };
+
 ~hideButton.string = "hide";
 
 ~w.front;

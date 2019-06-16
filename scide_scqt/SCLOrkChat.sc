@@ -19,19 +19,19 @@ SCLOrkChat {
 	var autoScrollCheckBox;
 	var connectionStatusLabel;
 	var reconnectButton;
+	var toggleEmojiButton;
 	var messageTypeLabel;
 	var messageTypePopUpMenu;
-	var showPickerButton;
-	var emojiPicker;
+	var emojiMenu;
 
 	var chatMessageQueue;
 	var chatMessageQueueSemaphore;
 	var autoScroll;
 	var chatMessageIndex;
 	var updateChatUiTask;
-	var pickerActive;
 
-	// List of clientIds in the same order as the clientListView list of usernames.
+	// List of clientIds in the same order as the clientListView
+	// list of usernames.
 	var clientIdList;
 	var messageViewRingBuffer;
 
@@ -53,7 +53,6 @@ SCLOrkChat {
 		quitTasks = false;
 		wedged = false;
 		chatClientConnected = false;
-		pickerActive = false;
 
 		this.prConstructUiElements();
 		this.prConnectChatUiUpdateLogic();
@@ -126,7 +125,7 @@ SCLOrkChat {
 				)
 			),
 			HLayout.new(
-				sendTextField = TextField.new
+				sendTextField = TextField.new()
 			),
 			HLayout.new(
 				[ autoScrollCheckBox = CheckBox.new(), align: \left ],
@@ -134,17 +133,11 @@ SCLOrkChat {
 				[ connectionStatusLabel = StaticText.new(), align: \center ],
 				[ reconnectButton = Button.new(), align: \center ],
 				nil,
-				[ showPickerButton = Button.new(), align: \right ],
+				[ toggleEmojiButton = Button.new(), align: \right ],
 				[ messageTypeLabel = StaticText.new(), align: \right ],
 				[ messageTypePopUpMenu = PopUpMenu.new(), align: \right ],
-			),
-			[ emojiPicker = SCLOrkEmojiPickerView.new(fontSize, this, window.bounds.height / 4.0),
-				\padding: 0 ]
+			)
 		);
-
-		window.view.addAction({ |view, char, modifiers, unicode, keycode|
-			this.prKeyDown(view, char, modifiers, unicode, keycode);
-		}, \keyDownAction);
 
 		scrollCanvas = View();
 		scrollCanvas.layout = VLayout(nil);
@@ -154,9 +147,6 @@ SCLOrkChat {
 		font = Font.new(Font.defaultSansFace, fontSize);
 		clientListView.selectionMode = \multi;
 		clientListView.font = font;
-		clientListView.addAction({ |view, char, modifiers, unicode, keycode|
-			this.prKeyDown(view, char, modifiers, unicode, keycode);
-		}, \keyDownAction);
 
 		clearSelectionButton.string = "Clear";
 		clearSelectionButton.font = font;
@@ -189,11 +179,19 @@ SCLOrkChat {
 
 		reconnectButton.string = "Connect";
 		reconnectButton.font = font;
-		reconnectButton.action = { this.connect };
+		reconnectButton.action = { this.connect; };
 
-		showPickerButton.string = "😀";
-		showPickerButton.font = font;
-		showPickerButton.action = { this.prToggleEmojiPicker };
+		emojiMenu = SCLOrkEmojiMenu.newRoot({ |picked|
+			sendTextField.string = sendTextField.string ++ picked;
+		});
+		toggleEmojiButton.string = "😀";
+		toggleEmojiButton.action = {
+			if (emojiMenu.visible.not, {
+				emojiMenu.front;
+			}, {
+				emojiMenu.close;
+			});
+		};
 
 		messageTypeLabel.string = "Type:";
 		messageTypeLabel.font = font;
@@ -350,10 +348,6 @@ SCLOrkChat {
 
 			v.string = "";
 		};
-
-		sendTextField.addAction({ |view, char, modifiers, unicode, keycode|
-			this.prKeyDown(view, char, modifiers, unicode, keycode);
-		}, \keyDownAction);
 	}
 
 	enqueueChatMessage { | chatMessage |
@@ -546,43 +540,5 @@ SCLOrkChat {
 			chatClient.name = name;
 		});
 		window.name = "SCLOrkChat -" + name;
-	}
-
-	prToggleEmojiPicker {
-		if (pickerActive, {
-			emojiPicker.hidePicker;
-			pickerActive = false;
-		}, {
-			emojiPicker.clearSearch;
-			emojiPicker.showPicker;
-			pickerActive = true;
-		});
-	}
-
-	prKeyDown { |view, char, modifiers, unicode, keycode|
-		if (char == $:, {
-			this.prToggleEmojiPicker;
-		}, {
-			if (pickerActive, {
-				switch (keycode,
-					36, {  // enter key
-						this.prToggleEmojiPicker;
-					},
-					51, {  // delete key
-						emojiPicker.deleteLast;
-					},
-					53, {  // escape key
-						this.prToggleEmojiPicker;
-					}, {
-						keycode.postln;
-						emojiPicker.appendSearch(char);
-				});
-			});
-		});
-
-		if (sendTextField.hasFocus.not, {
-			sendTextField.focus(true);
-			sendTextField.string = sendTextField.string ++ char.asString;
-		});
 	}
 }
