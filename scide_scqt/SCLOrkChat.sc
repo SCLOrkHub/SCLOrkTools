@@ -19,16 +19,20 @@ SCLOrkChat {
 	var autoScrollCheckBox;
 	var connectionStatusLabel;
 	var reconnectButton;
+	var recentEmojiButton;
 	var toggleEmojiButton;
 	var messageTypeLabel;
 	var messageTypePopUpMenu;
 	var emojiMenu;
+	var recentEmojiMenu;
+	var recentEmojiStale;
 
 	var chatMessageQueue;
 	var chatMessageQueueSemaphore;
 	var autoScroll;
 	var chatMessageIndex;
 	var updateChatUiTask;
+	var recentEmoji;
 
 	// List of clientIds in the same order as the clientListView
 	// list of usernames.
@@ -134,6 +138,7 @@ SCLOrkChat {
 				[ reconnectButton = Button.new(), align: \center ],
 				nil,
 				[ toggleEmojiButton = Button.new(), align: \right ],
+				[ recentEmojiButton = Button.new(), align: \right ],
 				[ messageTypeLabel = StaticText.new(), align: \right ],
 				[ messageTypePopUpMenu = PopUpMenu.new(), align: \right ],
 			)
@@ -181,8 +186,38 @@ SCLOrkChat {
 		reconnectButton.font = font;
 		reconnectButton.action = { this.connect; };
 
+		recentEmojiMenu = Menu.new(MenuAction.new("recent emoji"), {});
+		recentEmoji = Array.new(10);
+		recentEmojiButton.string = "⏱️";
+		recentEmojiStale = false;
+		recentEmojiButton.action = {
+			if (recentEmojiMenu.visible.not, {
+				if (recentEmojiStale, {
+					recentEmojiMenu.clear;
+					recentEmoji.do({ |item|
+						recentEmojiMenu.addAction(MenuAction.new(item, {
+							sendTextField.string = sendTextField.string ++ item;
+							sendTextField.focus(true);
+						}));
+					});
+					recentEmojiStale = false;
+				});
+				recentEmojiMenu.front;
+			}, {
+				recentEmojiMenu.close;
+			});
+		};
+
 		emojiMenu = SCLOrkEmojiMenu.newRoot({ |picked|
 			sendTextField.string = sendTextField.string ++ picked;
+			sendTextField.focus(true);
+			if (recentEmoji.includes(picked).not, {
+				recentEmoji = recentEmoji.addFirst(picked);
+				recentEmojiStale = true;
+				if (recentEmoji.size > 10, {
+					recentEmoji.pop();
+				});
+			});
 		});
 		toggleEmojiButton.string = "😀";
 		toggleEmojiButton.action = {
