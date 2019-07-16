@@ -7,10 +7,13 @@
 #include <string>
 #include <thread>
 
-// Forward declaration from OscPack library.
+// Forward declarations from OscPack library.
 class UdpListeningReceiveSocket;
+class UdpTransmitSocket;
 
 namespace Confab {
+
+class AssetManager;
 
 /*! Class for listening and responding to OSC messages from a single SuperCollider client.
  */
@@ -20,8 +23,9 @@ public:
      *
      * \param listenPort The localhost UDP port to listen to.
      * \param sendPort The localhost UDP port to send responding OSC messages back to SuperCollider on.
+     * \param assetManager A shared reference to the Asset Manager instance this OscHandler should use for Assets.
      */
-    OscHandler(int listenPort, int sendPort);
+    OscHandler(int listenPort, int sendPort, std::shared_ptr<Confab::AssetManager> assetManager);
 
     /*! Destructs an OSCHandler.
      */
@@ -36,16 +40,23 @@ public:
 private:
     class OscListener;
 
-    /*! Processes an asset addition request. Should run as a task.
+    /*! Processes an asset addition request for a given file path. Should run as a task.
      */
-    void assetAddFile(Asset::Type type, int serialNumber, std::string filePath);
+    void addAssetFile(Asset::Type type, int serialNumber, std::string filePath);
+
+    /*! Processes an asset addition request for a short string. Should run as a task.
+     */
+    void addAssetString(Asset::Type type, int serialNumber, std::string assetString);
+
 
     int m_listenPort;
     int m_sendPort;
+    std::shared_ptr<Confab::AssetManager> m_assetManager;
 
     std::thread::id m_mainThreadID;
+    std::unique_ptr<UdpTransmitSocket> m_transmitSocket;
     std::unique_ptr<OscListener> m_listener;
-    std::unique_ptr<UdpListeningReceiveSocket> m_socket;
+    std::unique_ptr<UdpListeningReceiveSocket> m_listenSocket;
 };
 
 }  // namespace Confab

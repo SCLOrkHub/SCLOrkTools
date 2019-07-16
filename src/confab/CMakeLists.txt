@@ -48,6 +48,7 @@ set(confab_src_files
 )
 
 set(confab_test_files
+    Asset_test.cpp
     Database_test.cpp
 )
 

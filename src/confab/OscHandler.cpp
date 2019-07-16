@@ -1,7 +1,10 @@
 #include "OscHandler.hpp"
 
+#include "AssetManager.hpp"
+
 #include <glog/logging.h>
 #include <ip/UdpSocket.h>
+#include <osc/OscOutboundPacketStream.h>
 #include <osc/OscPacketListener.h>
 #include <osc/OscReceivedElements.h>
 
@@ -49,7 +52,27 @@ public:
                     LOG(ERROR) << "/assetAddFile got bad type string: " << typeString;
                 } else {
                     std::async(std::launch::async, [this, type, serialNumber, filePath] {
-                        m_handler->assetAddFile(type, serialNumber, filePath);
+                        m_handler->addAssetFile(type, serialNumber, filePath);
+                    });
+                }
+            } else if (std::strcmp("/assetAddString", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                std::string typeString((arguments++)->AsString());
+                int serialNumber = (arguments++)->AsInt32();
+                std::string assetString((arguments++)->AsString());
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
+
+                LOG(INFO) << "processing [/assetAddString " << typeString << ", " << serialNumber << ", " << assetString
+                    << "]";
+
+                Asset::Type type = Asset::typeStringToEnum(typeString);
+                if (type == Asset::kInvalid) {
+                    LOG(ERROR) << "/assetAddString got bad type string: " << typeString;
+                } else {
+                    std::async(std::launch::async, [this, type, serialNumber, assetString] {
+                        m_handler->addAssetString(type, serialNumber, assetString);
                     });
                 }
             } else {
@@ -64,9 +87,10 @@ private:
     OscHandler* m_handler;
 };
 
-OscHandler::OscHandler(int listenPort, int sendPort) :
+OscHandler::OscHandler(int listenPort, int sendPort, std::shared_ptr<AssetManager> assetManager) :
     m_listenPort(listenPort),
     m_sendPort(sendPort),
+    m_assetManager(assetManager),
     m_mainThreadID(std::this_thread::get_id()) {
 }
 
@@ -74,16 +98,36 @@ OscHandler::~OscHandler() {
 }
 
 void OscHandler::listenUntilSigInt() {
+    m_transmitSocket.reset(new UdpTransmitSocket(IpEndpointName("127.0.0.1", m_sendPort)));
+
     m_listener.reset(new OscListener(this));
-    m_socket.reset(new UdpListeningReceiveSocket(IpEndpointName(IpEndpointName::ANY_ADDRESS, m_listenPort),
+    m_listenSocket.reset(new UdpListeningReceiveSocket(IpEndpointName(IpEndpointName::ANY_ADDRESS, m_listenPort),
         m_listener.get()));
-    m_socket->RunUntilSigInt();
+    m_listenSocket->RunUntilSigInt();
 }
 
-void OscHandler::assetAddFile(Asset::Type type, int serialNumber, std::string filePath) {
+void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string filePath) {
     CHECK(m_mainThreadID != std::this_thread::get_id()) << "Should run on a dedicated thread.";
 
-    CHECK(false) << "not yet implemented!";
+    m_assetManager->addAssetFile(type, filePath, [this, serialNumber](uint64_t assetId) {
+        char buffer[1024];
+        osc::OutboundPacketStream p(buffer, 1024);
+        p << osc::BeginMessage("/assetAdded") << serialNumber << AssetManager::keyToString(assetId).c_str()
+            << osc::EndMessage;
+        m_transmitSocket->Send(p.Data(), p.Size());
+    });
+}
+
+void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string assetString) {
+    CHECK(m_mainThreadID != std::this_thread::get_id()) << "Should run on a dedicated thread.";
+
+    m_assetManager->addAssetString(type, assetString, [this, serialNumber](uint64_t assetId) {
+        char buffer[1024];
+        osc::OutboundPacketStream p(buffer, 1024);
+        p << osc::BeginMessage("/assetAdded") << serialNumber << AssetManager::keyToString(assetId).c_str()
+            << osc::EndMessage;
+        m_transmitSocket->Send(p.Data(), p.Size());
+    });
 }
 
 }  // namespace Confab

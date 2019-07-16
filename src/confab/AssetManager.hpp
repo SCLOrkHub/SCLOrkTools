@@ -33,6 +33,16 @@ public:
      */
     void addAssetFile(Asset::Type type, const std::string& filePath, std::function<void(uint64_t)> callback);
 
+    /*! Add a new short asset in the supplied string to the database.
+     *
+     * Adds a new asset in the string to the database. The string must be shorter than the kSingleChunkDataSize maximum.
+     *
+     * \param type One of the enumerated types in Asset::Type.
+     * \param assetString The supplied Asset data. Must be shorter than kSingleChunkDataSize in length.
+     * \param callback A function to callback with the Asset key, once computed, or 0 if error.
+     */
+    void addAssetString(Asset::Type type, const std::string& assetString, std::function<void(uint64_t)> callback);
+
     /*! Computes the hash of a file in 4K increments.
      *
      * Note for large files this can take significant time. Single-chunk hashes should be computed with
