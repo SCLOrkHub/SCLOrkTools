@@ -72,7 +72,7 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
         uint64_t salt = distribution(randomDevice);
         asset.setSalt(salt);
 
-        key = computeHashMemory(reinterpret_cast<uint8_t*>(inlineData), fileSize, salt);
+        key = computeHashMemory(inlineData, fileSize, salt);
     } else {
         // Double-check size before computing hash of very large file.
         if (fileSize > kMaxAssetSize) {
@@ -97,7 +97,6 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
         callback(0);
         return;
     }
-
 
     // If this was a larger Asset, now need to process individual AssetData chunks and save them to database.
     if (!fitsInSingleChunk) {
@@ -185,6 +184,42 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
     }
 
     LOG(INFO) << "Asset " << keyToString(key) << " from file " << filePath << " successfully added to database.";
+    callback(key);
+}
+
+void AssetManager::addAssetString(Asset::Type type, const std::string& assetString,
+    std::function<void(uint64_t)> callback) {
+    CHECK(assetString.size() < kSingleChunkDataSize);
+
+    // TODO: can this and assetAddFile for smaller files be combined?
+
+    // TODO: determine if null terminator is needed?
+    Asset asset(type);
+    uint8_t* assetData = asset.setInlineData(assetString.size());
+    CHECK(assetData);
+    std::memcpy(assetData, assetString.c_str(), assetString.size());
+
+    std::random_device randomDevice;
+    std::uniform_int_distribution<uint64_t> distribution(0, std::numeric_limits<uint64_t>::max());
+    uint64_t salt = distribution(randomDevice);
+    asset.setSalt(salt);
+
+    uint64_t key = computeHashMemory(assetData, assetString.size(), salt);
+    std::array<uint8_t, kAssetDatabaseKeySize> assetDatabaseKey;
+    SizedPointer flatKey(assetDatabaseKey.data(), sizeof(assetDatabaseKey));
+    makeAssetDatabaseKey(key, flatKey);
+
+    SizedPointer flatAsset = asset.flatten();
+
+    bool result = m_database->store(flatKey, flatAsset);
+
+    if (!result) {
+        LOG(ERROR) << "Store of new Asset string " << assetString << " failed.";
+        callback(0);
+        return;
+    }
+
+    LOG(INFO) << "Asset " << keyToString(key) << " from string " << assetString << " successfully added to database.";
     callback(key);
 }
 

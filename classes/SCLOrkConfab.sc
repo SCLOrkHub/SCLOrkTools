@@ -21,20 +21,20 @@ SCLOrkConfab {
 	}
 
 	*addAssetFile { | type, filePath, addCallback |
-		if (SCLOrkConfab.isConfabRunning.not, {
-			"confab not running".postln;
-			^nil;
-		});
+//		if (SCLOrkConfab.isConfabRunning.not, {
+//			"confab not running".postln;
+//			^nil;
+//		});
 		addCallbackMap.put(addSerial, addCallback);
 		confab.sendMsg('/assetAddFile', type, addSerial, filePath);
 		addSerial = addSerial + 1;
 	}
 
 	*addAssetString { | type, assetString, addCallback |
-		if (SCLOrkConfab.isConfabRunning.not, {
-			"confab not running".postln;
-			^nil;
-		});
+//		if (SCLOrkConfab.isConfabRunning.not, {
+//			"confab not running".postln;
+//			^nil;
+//		});
 		addCallbackMap.put(addSerial, addCallback);
 		confab.sendMsg('/assetAddString', type, addSerial, assetString);
 		addSerial = addSerial + 1;
@@ -59,6 +59,7 @@ SCLOrkConfab {
 				"confab got add callback on missing serial %".format(serial).postln;
 			});
 		},
+		'/assetAdded',
 		recvPort: recvPort);
 	}
 
@@ -103,6 +104,7 @@ SCLOrkConfab {
 			"--chatty=true",
 			"--data_directory=" ++ pathToConfabDataDir
 		];
+		command.postln;
 		confabPid = command.unixCmd({ | exitCode, exitPid |
 			SCLOrkConfab.prOnConfabExit(exitCode, exitPid)
 		});

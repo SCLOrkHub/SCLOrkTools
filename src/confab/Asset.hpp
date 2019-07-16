@@ -101,6 +101,15 @@ public:
      */
     static const Asset LoadAsset(const Database::Record& record, uint64_t key);
 
+    /*! Constructs a read-only Asset based on a pointer backing store. The Asset is valid only as long as the backing
+     *  memory is valid.
+     *
+     * \param pointer A SizedPointer pointing to a FlatAsset.
+     * \param key The key associated with this asset, overridden by the key in the FlatAsset, if present.
+     * \return An Asset wrapping the provided SizedPointer.
+     */
+    static const Asset LoadAsset(const SizedPointer& pointer, uint64_t key);
+
     /*! The type of this Asset.
      *
      * \return The type of this Asset.
@@ -120,7 +129,7 @@ public:
      *
      * \return A pointer to a human-readable name.
      */
-    std::optional<const char*> name() const;
+    std::optional<std::string> name() const;
 
     /*! Extension of Asset file, e.g. ".yaml", ".scd", ".png". Null-terminated string if present.
      *
@@ -160,7 +169,7 @@ public:
      * \return The size of the inline data pointed to by inlineData().
      * \sa inlineData()
      */
-    std::optional<size_t> inlineDataSize() const;
+    size_t inlineDataSize() const;
 
     /*! Specifies a UNIX epoch after which this Asset should be re-checked for validity or deleted.
      *

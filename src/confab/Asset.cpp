@@ -74,6 +74,31 @@ const Asset Asset::LoadAsset(const Database::Record& record, uint64_t key) {
     return Asset(record, flatAsset, key);
 }
 
+// static
+const Asset Asset::LoadAsset(const SizedPointer& pointer, uint64_t key) {
+    auto flatAsset = Data::GetFlatAsset(pointer.data());
+    return Asset(Database::Record(), flatAsset, key);
+}
+
+std::optional<std::string> Asset::name() const {
+    if (m_flatAsset->name()) {
+        return std::optional<std::string>(m_flatAsset->name()->c_str());
+    }
+    return std::nullopt;
+}
+
+std::optional<const uint8_t*> Asset::inlineData() const {
+    if (m_flatAsset->inlineData()) {
+
+    }
+
+    return std::nullopt;
+}
+
+size_t Asset::inlineDataSize() const {
+    return 0;
+}
+
 Asset::Asset(const Database::Record& record, const Data::FlatAsset* flatAsset, uint64_t key) :
     m_record(record),
     m_flatAsset(flatAsset),
