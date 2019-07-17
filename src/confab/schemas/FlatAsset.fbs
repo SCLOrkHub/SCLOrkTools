@@ -12,15 +12,15 @@ enum Type : uint {
 table FlatAsset {
     type:Type = kInvalid;
 
-    key:ulong;
+    key:ulong = 0;
     name:string;
     fileExtension:string;
-    author:ulong;
-    deprecatedBy:ulong;
-    deprecates:ulong;
+    author:ulong = 0;
+    deprecatedBy:ulong = 0;
+    deprecates:ulong = 0;
     inlineData:[ubyte];
-    expiresOn:ulong;
-    salt:ulong;
+    expiresOn:ulong = 0;
+    salt:ulong = 0;
 }
 
 root_type FlatAsset;
