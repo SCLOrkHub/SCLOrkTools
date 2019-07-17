@@ -1,5 +1,6 @@
 #include "Database.hpp"
 
+
 #include <glog/logging.h>
 #include <leveldb/cache.h>
 #include <leveldb/db.h>
@@ -8,31 +9,58 @@
 
 namespace Confab {
 
-Database::Record::Record() :
-    m_iterator(nullptr) {
-}
+/*! The DatabaseRecord is a Database-specific implementation of the non-copying backing store.
+ *
+ * It maintains a leveldb::Iterator pointer, which is where the Database data is sourced from. It deletes this pointer
+ * in its own destructor.
+ */
+class DatabaseRecord : public Record {
+public:
 
-Database::Record::Record(std::shared_ptr<leveldb::Iterator> iterator) :
-    m_iterator(iterator) {
-}
+    /*! Default constructor makes an empty Record.
+     */
+    DatabaseRecord() : m_iterator(nullptr) {
+    }
 
-Database::Record::Record(nullptr_t nullPointer) {
-}
+    /*! Construct a record pointing at a Database load result.
+     *
+     * \param iterator The LevelDB data access iterator pointing at the desired results.
+     */
+    DatabaseRecord(leveldb::Iterator* iterator) : m_iterator(iterator) {
+    }
 
-bool Database::Record::empty() const {
-    return !m_iterator;
-}
+    /*! Deletes a DatabaseRecord.
+     */
+    ~DatabaseRecord() override {
+        delete m_iterator;
+        m_iterator = nullptr;
+    }
 
-const SizedPointer Database::Record::data() const {
-    CHECK(!empty());
-    return SizedPointer(m_iterator->value().data(), m_iterator->value().size());
-}
+    /*! True if this Record has no results.
+     *
+     * \return A boolean which is true if this Record is pointing at nothing.
+     */
+    bool empty() const override { return m_iterator == nullptr; }
 
+    /*! A pointer to the data associated with the key in the Database.
+     *
+     * \return A non-owning pointer to the data. Record will take care of the deletion of this pointer.
+     */
+    const SizedPointer data() const override {
+        return SizedPointer(m_iterator->value().data(), m_iterator->value().size());
+    }
 
-const SizedPointer Database::Record::key() const {
-    CHECK(!empty());
-    return SizedPointer(m_iterator->key().data(), m_iterator->key().size());
-}
+    /*! The key associated with this Record.
+     *
+     * \return A non-owning pointer to the key data.
+     */
+    const SizedPointer key() const override {
+        return SizedPointer(m_iterator->key().data(), m_iterator->key().size());
+    }
+
+private:
+    leveldb::Iterator* m_iterator;
+};
 
 Database::Database(leveldb::DB* database) :
     m_database(database) {
@@ -61,20 +89,20 @@ bool Database::open(const char* path, bool createNew, int cacheSize) {
     return true;
 }
 
-const Database::Record Database::load(const SizedPointer& key) {
+const RecordPtr Database::load(const SizedPointer& key) {
     CHECK(m_database) << "Database should already be open.";
 
-    std::shared_ptr<leveldb::Iterator> iterator(m_database->NewIterator(leveldb::ReadOptions()));
+    leveldb::Iterator* iterator(m_database->NewIterator(leveldb::ReadOptions()));
     auto keySlice = leveldb::Slice(key.dataChar(), key.size());
     iterator->Seek(keySlice);
 
     if (!iterator->Valid() ||
         iterator->key().size() != key.size() ||
         (std::memcmp(key.dataChar(), iterator->key().data(), key.size()) != 0)) {
-        return Record(nullptr);
+        return RecordPtr(new DatabaseRecord());
     }
 
-    return Record(iterator);
+    return RecordPtr(new DatabaseRecord(iterator));
 }
 
 bool Database::store(const SizedPointer& key, const SizedPointer& data) {

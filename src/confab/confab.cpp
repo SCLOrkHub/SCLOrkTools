@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     if (FLAGS_create_new_database) {
         // Verify that no existing configuration information is present.
         auto configRecord = database->load(Confab::Config::getConfigKey());
-        if (!configRecord.empty()) {
+        if (!configRecord->empty()) {
             LOG(ERROR) << "Create new database specified by database has an existing config key.";
             return -1;
         }
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
         }
     } else {
         auto configRecord = database->load(Confab::Config::getConfigKey());
-        if (configRecord.empty()) {
+        if (configRecord->empty()) {
             LOG(ERROR) << "Error reaading configuration information from database.";
             return -1;
         }

@@ -1,6 +1,7 @@
 #ifndef SRC_CONFAB_DATABASE_HPP_
 #define SRC_CONFAB_DATABASE_HPP_
 
+#include "Record.hpp"
 #include "SizedPointer.hpp"
 
 #include <memory>
@@ -22,57 +23,6 @@ namespace Confab {
  */
 class Database {
 public:
-    /*! Storage class for Database return results.
-     *
-     * Provides read-only access to underlying data store without copying the data to a separate buffer.
-     */
-    class Record {
-    public:
-        /*! Default constructor makes an empty Record.
-         */
-        Record();
-
-        /*! Construct a record pointing at a Database load result.
-         *
-         * \param iterator The LevelDB data access iterator pointing at the desired results.
-         */
-        explicit Record(std::shared_ptr<leveldb::Iterator> iterator);
-
-        /*! Construct an empty record.
-         *
-         * \param nullPointer The nullptr.
-         */
-        explicit Record(nullptr_t nullPointer);
-
-
-        /*! True if this Record has no results.
-         *
-         * \return A boolean which is true if this Record is pointing at nothing.
-         */
-        bool empty() const;
-
-        /*! A pointer to the data associated with the key in the Database.
-         *
-         * \return A non-owning pointer to the data. Record will take care of the deletion of this pointer.
-         */
-        const SizedPointer data() const;
-
-        /*! The key associated with this Record.
-         *
-         * \return A non-owning pointer to the key data.
-         */
-        const SizedPointer key() const;
-
-        /// @cond UNDOCUMENTED
-        Record(const Record&) = default;
-        Record& operator=(const Record&) = default;
-        ~Record() = default;
-        /// @endcond UNDOCUMENTED
-
-    private:
-        std::shared_ptr<leveldb::Iterator> m_iterator;
-    };
-
     /*! Constructs an empty Database object.
      *
      * \param database An pointer to an existing LevelDB database object (or a mock for testing), or nullptr. Note that
@@ -103,7 +53,7 @@ public:
      * \return A Record providing a non-owning pointer to the data associated with key, or an empty record if the key
      *         was not found in the database.
      */
-    virtual const Record load(const SizedPointer& key);
+    virtual const RecordPtr load(const SizedPointer& key);
 
     /*! Saves the provided data associated with the key. Overwrites old data that may have been present under that key.
      *

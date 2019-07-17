@@ -21,18 +21,18 @@ const SizedPointer Config::flatten() {
 }
 
 // static
-bool Config::Verify(const Database::Record& record) {
-    auto verifier = flatbuffers::Verifier(record.data().data(), record.data().size());
+bool Config::Verify(const RecordPtr record) {
+    auto verifier = flatbuffers::Verifier(record->data().data(), record->data().size());
     return Data::VerifyFlatConfigBuffer(verifier);
 }
 
 // static
-const Config Config::LoadConfig(const Database::Record& record) {
-    auto flatConfig = Data::GetFlatConfig(record.data().data());
+const Config Config::LoadConfig(const RecordPtr record) {
+    auto flatConfig = Data::GetFlatConfig(record->data().data());
     return Config(record, flatConfig);
 }
 
-Config::Config(const Database::Record& record, const Data::FlatConfig* flatConfig) :
+Config::Config(const RecordPtr record, const Data::FlatConfig* flatConfig) :
     m_record(record),
     m_flatConfig(flatConfig),
     m_version(m_flatConfig->versionMajor(), m_flatConfig->versionMinor(), m_flatConfig->versionPatch()) {
