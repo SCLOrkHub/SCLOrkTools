@@ -88,7 +88,9 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
     SizedPointer flatKey(assetDatabaseKey.data(), sizeof(assetDatabaseKey));
     makeAssetDatabaseKey(key, flatKey);
 
-    SizedPointer flatAsset = asset.flatten();
+    flatbuffers::FlatBufferBuilder builder(kDataChunkSize);
+    asset.flatten(builder);
+    SizedPointer flatAsset(builder.GetBufferPointer(), builder.GetSize());
 
     bool result = m_database->store(flatKey, flatAsset);
 
@@ -209,7 +211,9 @@ void AssetManager::addAssetString(Asset::Type type, const std::string& assetStri
     SizedPointer flatKey(assetDatabaseKey.data(), sizeof(assetDatabaseKey));
     makeAssetDatabaseKey(key, flatKey);
 
-    SizedPointer flatAsset = asset.flatten();
+    flatbuffers::FlatBufferBuilder builder(kDataChunkSize);
+    asset.flatten(builder);
+    SizedPointer flatAsset(builder.GetBufferPointer(), builder.GetSize());
 
     bool result = m_database->store(flatKey, flatAsset);
 
