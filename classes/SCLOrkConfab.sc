@@ -4,8 +4,12 @@ SCLOrkConfab {
 
 	classvar confab;
 	classvar assetAddedFunc;
+	classvar assetFoundFunc;
+	classvar assetErrorFunc;
 
 	classvar addCallbackMap;
+	classvar findCallbackMap;
+	classvar assetMap;
 
 	*start { |
 		confabBindPort = 4248,
@@ -14,30 +18,34 @@ SCLOrkConfab {
 		pathToConfabDataDir = nil |
 
 		confab = NetAddr.new("127.0.0.1", confabBindPort);
-		addCallbackMap = Dictionary.new;
+		addCallbackMap = IdentityDictionary.new;
+		findCallbackMap = IdentityDictionary.new;
+		assetMap = IdentityDictionary.new;
 
 		SCLOrkConfab.prBindResponseMessages(scBindPort);
 		SCLOrkConfab.prStartConfab;
 	}
 
-	*addAssetFile { | type, filePath, addCallback |
-//		if (SCLOrkConfab.isConfabRunning.not, {
-//			"confab not running".postln;
-//			^nil;
-//		});
+	*addAssetFile { |type, filePath, addCallback|
 		addCallbackMap.put(addSerial, addCallback);
 		confab.sendMsg('/assetAddFile', type, addSerial, filePath);
 		addSerial = addSerial + 1;
 	}
 
-	*addAssetString { | type, assetString, addCallback |
-//		if (SCLOrkConfab.isConfabRunning.not, {
-//			"confab not running".postln;
-//			^nil;
-//		});
+	*addAssetString { |type, assetString, addCallback|
 		addCallbackMap.put(addSerial, addCallback);
 		confab.sendMsg('/assetAddString', type, addSerial, assetString);
 		addSerial = addSerial + 1;
+	}
+
+	*findAssetById { |id, callback|
+		// Check local cache first
+		if (assetMap.at(id).notNil, {
+			callback.value(id, assetMap.at(id));
+		}, {
+			findCallbackMap.put(id, callback);
+			confab.sendMsg('/assetFind', id);
+		});
 	}
 
 	*isConfabRunning {
@@ -54,12 +62,58 @@ SCLOrkConfab {
 			var callback = addCallbackMap.at(serial);
 			if (callback.notNil, {
 				addCallbackMap.removeAt(serial);
-				callback.value(key);
+				callback.value(key.asSymbol);
 			}, {
 				"confab got add callback on missing serial %".format(serial).postln;
 			});
 		},
 		'/assetAdded',
+		recvPort: recvPort);
+
+		assetFoundFunc = OSCFunc.new({ |msg, time, addr|
+			var requestedKey = msg[1];
+			var returnedKey = msg[2];
+			var assetType = msg[3];
+			var name = msg[4];
+			var fileExtension = msg[5];
+			var author = msg[6];
+			var deprecatedBy = msg[7];
+			var deprecates = msg[8];
+			var inlineData = msg[9];
+
+			var asset = SCLOrkAsset.newFromArgs(returnedKey, assetType, name, fileExtension,
+				author, deprecatedBy, deprecates, inlineData);
+
+			var callback = findCallbackMap.at(requestedKey);
+
+			// TODO: check for dup? Cache asset at both original key and replaced key locations?
+			assetMap.put(returnedKey, asset);
+
+			if (callback.notNil, {
+				callback.value(requestedKey, asset);
+				findCallbackMap.removeAt(requestedKey);
+			}, {
+				"confab got found callback on missing Asset id %".format(requestedKey).postln;
+			});
+		},
+		'/assetFound',
+		recvPort: recvPort);
+
+		assetErrorFunc = OSCFunc.new({ |msg, time, addr|
+			var requestedKey = msg[1];
+			var errorMessage = msg[2];
+			var callback = findCallbackMap.at(requestedKey);
+
+			"asset error: %".format(errorMessage).postln;
+
+			if (callback.notNil, {
+				callback.value(requestedKey, nil);
+				findCallbackMap.removeAt(requestedKey);
+			}, {
+				"confab got error callback on missing Asset id %".format(requestedKey).postln;
+			});
+		},
+		'/assetError',
 		recvPort: recvPort);
 	}
 

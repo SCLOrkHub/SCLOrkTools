@@ -1,7 +1,7 @@
 #ifndef SRC_CONFAB_CONFIG_HPP_
 #define SRC_CONFAB_CONFIG_HPP_
 
-#include "Database.hpp"
+#include "Record.hpp"
 #include "SizedPointer.hpp"
 #include "common/Version.hpp"
 
@@ -56,14 +56,14 @@ public:
      * \param record The serialized Config record to verify.
      * \return True if verify succeeded, false otherwise.
      */
-    static bool Verify(const Database::Record& record);
+    static bool Verify(const RecordPtr record);
 
     /*! Construct a read-only Config wrapped around a Database Record.
      *
      * \param record The Database::Record containing a serialized Data::FlatConfig.
      * \return A const Config object deserialized from record without copy.
      */
-    static const Config LoadConfig(const Database::Record& record);
+    static const Config LoadConfig(const RecordPtr record);
 
     /*! Return the version stored in the Config database entry.
      *
@@ -73,9 +73,9 @@ public:
     ///@}
 
 private:
-    Config(const Database::Record& record, const Data::FlatConfig* flatConfig);
+    Config(const RecordPtr record, const Data::FlatConfig* flatConfig);
 
-    const Database::Record m_record;
+    const RecordPtr m_record;
     const Data::FlatConfig* m_flatConfig;
 
     const Common::Version m_version;

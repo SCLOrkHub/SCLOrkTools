@@ -1,7 +1,7 @@
 #ifndef SRC_CONFAB_ASSET_DATA_HPP_
 #define SRC_CONFAB_ASSET_DATA_HPP_
 
-#include "Database.hpp"
+#include "Record.hpp"
 #include "SizedPointer.hpp"
 
 #include <memory>
@@ -63,16 +63,16 @@ public:
     ///@{
     /*! Construct a read-only FlatAsset wrapped around a Database Record.
      *
-     * \param record The Database::Record containing a serialized Data::FlatAsset.
+     * \param record The Record containing a serialized Data::FlatAsset.
      * \return A const FlatAsset object deserialized from record without copy.
      */
-    static const AssetData LoadAssetData(const Database::Record& record);
+    static const AssetData LoadAssetData(const RecordPtr record);
     ///@}
 
 private:
-    AssetData(const Database::Record& record, const Data::FlatAssetData* flatAssetData);
+    AssetData(const RecordPtr record, const Data::FlatAssetData* flatAssetData);
 
-    const Database::Record m_record;
+    const RecordPtr m_record;
     const Data::FlatAssetData* m_flatAssetData;
 
     std::shared_ptr<flatbuffers::FlatBufferBuilder> m_builder;

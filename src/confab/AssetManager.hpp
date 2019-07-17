@@ -43,6 +43,18 @@ public:
      */
     void addAssetString(Asset::Type type, const std::string& assetString, std::function<void(uint64_t)> callback);
 
+    /*! Locates an asset associated with the provided Id and returns it by calling the provided callback function.
+     *
+     * If the asset retrieved is marked as deprecated, this function will iteratively retrieve assets until it discovers
+     * a non-deprecated Asset, and then will return that one. So it is possible that the returned Asset will have a
+     * different Id than the one requested.
+     *
+     * \param key The asset key associated with this asset.
+     * \param callback The function to call when the asset is located, with the key of the final retrieved Asset as
+     *                 well as a pointer to the FlatAsset or nullptr if no Asset found with this key.
+     */
+    void findAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback);
+
     /*! Computes the hash of a file in 4K increments.
      *
      * Note for large files this can take significant time. Single-chunk hashes should be computed with
@@ -108,6 +120,13 @@ public:
      * \return A hexadecimal string of key.
      */
     static std::string keyToString(uint64_t key);
+
+    /*! Converts a 64-bit hexadecimal string into a binary key.
+     *
+     * \param keyString A key in hexadecimal string form.
+     * \return The binary value of that string, or zero on error.
+     */
+    static uint64_t stringToKey(const std::string& keyString);
 
     /// @cond UNDOCUMENTED
     AssetManager() = delete;

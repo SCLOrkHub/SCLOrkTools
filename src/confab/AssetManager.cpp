@@ -195,11 +195,10 @@ void AssetManager::addAssetString(Asset::Type type, const std::string& assetStri
 
     // TODO: can this and assetAddFile for smaller files be combined?
 
-    // TODO: determine if null terminator is needed?
     Asset asset(type);
-    uint8_t* assetData = asset.setInlineData(assetString.size());
+    uint8_t* assetData = asset.setInlineData(assetString.size() + 1);
     CHECK(assetData);
-    std::memcpy(assetData, assetString.c_str(), assetString.size());
+    std::memcpy(assetData, assetString.c_str(), assetString.size() + 1);
 
     std::random_device randomDevice;
     std::uniform_int_distribution<uint64_t> distribution(0, std::numeric_limits<uint64_t>::max());
@@ -225,6 +224,37 @@ void AssetManager::addAssetString(Asset::Type type, const std::string& assetStri
 
     LOG(INFO) << "Asset " << keyToString(key) << " from string " << assetString << " successfully added to database.";
     callback(key);
+}
+
+void AssetManager::findAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback) {
+    std::array<char, kAssetDatabaseKeySize> assetDatabaseKey;
+    SizedPointer flatKey(assetDatabaseKey.data(), kAssetDatabaseKeySize);
+    makeAssetDatabaseKey(key, flatKey);
+
+    RecordPtr assetRecord = m_database->load(flatKey);
+    if (assetRecord->empty()) {
+        LOG(ERROR) << "Asset " << keyToString(key) << " not found in database.";
+        callback(key, assetRecord);
+    } else {
+        uint64_t loadedKey = key;
+        auto flatAsset = Data::GetFlatAsset(assetRecord->data().data());
+        while (flatAsset->deprecatedBy()) {
+            uint64_t deprecatedBy = flatAsset->deprecatedBy();
+            LOG(INFO) << "Asset " << keyToString(key) << " deprecated by " << keyToString(deprecatedBy) << ", loading.";
+            makeAssetDatabaseKey(deprecatedBy, flatKey);
+            assetRecord = m_database->load(flatKey);
+            if (assetRecord->empty()) {
+                LOG(ERROR) << "error loaded deprecating asset " << keyToString(deprecatedBy) << ".";
+                callback(deprecatedBy, assetRecord);
+                return;
+            }
+            flatAsset = Data::GetFlatAsset(assetRecord->data().data());
+            loadedKey = deprecatedBy;
+        }
+        LOG(INFO) << "Loaded Asset " << keyToString(loadedKey) << " upon request to load original asset "
+            << keyToString(key);
+        callback(loadedKey, assetRecord);
+    }
 }
 
 uint64_t AssetManager::computeHashFile(const std::string& filePath, size_t expectedSize, uint64_t salt) {
@@ -299,6 +329,11 @@ std::string AssetManager::keyToString(uint64_t key) {
     std::array<char, 17> buf;
     snprintf(buf.data(), 17, "%" PRIx64, key);
     return std::string(buf.data());
+}
+
+// static
+uint64_t AssetManager::stringToKey(const std::string& keyString) {
+    return strtoull(keyString.c_str(), nullptr, 16);
 }
 
 }  // namespace Confab

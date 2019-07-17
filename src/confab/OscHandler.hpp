@@ -40,6 +40,10 @@ public:
 private:
     class OscListener;
 
+    /*! Searches for an asset with provided id. Should run as a task.
+     */
+    void findAsset(uint64_t assetId);
+
     /*! Processes an asset addition request for a given file path. Should run as a task.
      */
     void addAssetFile(Asset::Type type, int serialNumber, std::string filePath);
@@ -47,7 +51,6 @@ private:
     /*! Processes an asset addition request for a short string. Should run as a task.
      */
     void addAssetString(Asset::Type type, int serialNumber, std::string assetString);
-
 
     int m_listenPort;
     int m_sendPort;

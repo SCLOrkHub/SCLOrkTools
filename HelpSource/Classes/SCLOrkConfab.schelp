@@ -19,6 +19,17 @@ An override path to the confab database directory. If not provided, SCLOrkConfab
 
 returns:: true on success, false on failure.
 
+
+method:: findAsset
+Looks up the Asset record associated with the provided id.
+
+argument:: id
+A symbol with the Asset id to find.
+
+argument:: callback
+A function to call back with the asset and status, when determined. Called with two arguments, the first is the asset id provided in the original call, and the second is either a SCLOrkAsset object or nil if no asset was found associated with that id. Note that the returned SCLOrkAsset object can have a different key than the one originally requested, usually in the case of deprecation of the original Asset.
+
+
 instancemethods::
 
 

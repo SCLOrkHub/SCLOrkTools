@@ -45,12 +45,12 @@ void AssetData::changeHash(uint64_t hash) {
 }
 
 // static
-const AssetData AssetData::LoadAssetData(const Database::Record& record) {
-    auto flatAssetData = Data::GetFlatAssetData(record.data().data());
+const AssetData AssetData::LoadAssetData(const RecordPtr record) {
+    auto flatAssetData = Data::GetFlatAssetData(record->data().data());
     return AssetData(record, flatAssetData);
 }
 
-AssetData::AssetData(const Database::Record& record, const Data::FlatAssetData* flatAssetData) :
+AssetData::AssetData(const RecordPtr record, const Data::FlatAssetData* flatAssetData) :
     m_record(record),
     m_flatAssetData(flatAssetData),
     m_mutableFlatAssetData(nullptr) {

@@ -1,6 +1,7 @@
 #include "OscHandler.hpp"
 
 #include "AssetManager.hpp"
+#include "Constants.hpp"
 
 #include <glog/logging.h>
 #include <ip/UdpSocket.h>
@@ -34,7 +35,22 @@ public:
     void ProcessMessage(const osc::ReceivedMessage& message, const IpEndpointName& endpoint) override {
         try {
             if (std::strcmp("/assetFind", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                std::string assetIdString((arguments++)->AsString());
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
 
+                LOG(INFO) << "processing [/assetFind " << assetIdString << "]";
+
+                uint64_t assetKey = AssetManager::stringToKey(assetIdString);
+                if (assetKey == 0) {
+                    LOG(ERROR) << "/assetFind got invalid key value: " << assetIdString;
+                } else {
+                    std::async(std::launch::async, [this, assetKey] {
+                        m_handler->findAsset(assetKey);
+                    });
+                }
             } else if (std::strcmp("/assetAddFile", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
                 std::string typeString((arguments++)->AsString());
@@ -106,6 +122,43 @@ void OscHandler::listenUntilSigInt() {
     m_listenSocket->RunUntilSigInt();
 }
 
+void OscHandler::findAsset(uint64_t assetId) {
+    CHECK(m_mainThreadID != std::this_thread::get_id()) << "Should run on a dedicated thread.";
+
+    m_assetManager->findAsset(assetId, [this, assetId](uint64_t loadedKey, RecordPtr record) {
+        char buffer[kDataChunkSize];
+        osc::OutboundPacketStream p(buffer, kDataChunkSize);
+
+        if (record->empty()) {
+            p << osc::BeginMessage("/assetError") << AssetManager::keyToString(assetId).c_str()
+                << "Failed to find asset associated with key." << osc::EndMessage;
+            m_transmitSocket->Send(p.Data(), p.Size());
+        } else {
+            const Data::FlatAsset* asset = Data::GetFlatAsset(record->data().data());
+            p << osc::BeginMessage("/assetFound");
+            p << AssetManager::keyToString(assetId).c_str();
+            p << AssetManager::keyToString(loadedKey).c_str();
+            p << "snippet";  // TODO: asset type to string.
+            p << asset->name();
+            p << asset->fileExtension();
+            p << AssetManager::keyToString(asset->author()).c_str();
+            p << AssetManager::keyToString(asset->deprecatedBy()).c_str();
+            p << AssetManager::keyToString(asset->deprecates()).c_str();
+            if (asset->inlineData()) {
+                osc::Blob blob(asset->inlineData()->data(), asset->inlineData()->size());
+                p << blob;
+            } else {
+                osc::Blob blob(nullptr, 0);
+                p << blob;
+            }
+            p << AssetManager::keyToString(asset->expiresOn()).c_str();
+            p << AssetManager::keyToString(asset->salt()).c_str();
+            p << osc::EndMessage;
+            m_transmitSocket->Send(p.Data(), p.Size());
+        }
+    });
+}
+
 void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string filePath) {
     CHECK(m_mainThreadID != std::this_thread::get_id()) << "Should run on a dedicated thread.";
 
@@ -129,6 +182,8 @@ void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string 
         m_transmitSocket->Send(p.Data(), p.Size());
     });
 }
+
+
 
 }  // namespace Confab
 
