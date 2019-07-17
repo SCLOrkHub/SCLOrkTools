@@ -1,0 +1,112 @@
+title:: SCLOrkAsset Design Document
+summary:: SCLOrkAsset Design Discussion
+categories:: Quarks>SCLOrkTools
+related:: Classes/SCLOrkAsset
+
+Details the SuperCollider side of the SCLOrkAsset system, for communication with the Confab Asset retreival program. All calls to Confab are asynchronous and Confab will not normally respond until the system has completed whatever task was asked of it. Furthermore, the Confab program is multithreaded, processing each command on a separate thread, so multiple commands can be issued at once and responses can occur in a different order than the original  commands were issued in.
+
+section:: Asset Records
+
+Many responses include an Asset Record, the structure of which is detailed here.
+
+subsection:: Asset Type Enumeration
+
+Many messages send along a code::type:: field, with currently supported values as below.
+
+table::
+## code::snippet:: || A code snippet, in SuperCollider format.
+## code::image::   || An image file.
+## code::yaml::    || A string in YAML format, for serialization into SuperCollider objects.
+## code::sample::  || An audio file.
+::
+
+subsection:: Asset Record Format
+
+The only required fields in an asset are the key and the type, so these are specified first without identifying labels. The remaining fields are specified as code::[ ..., key, value, ...]:: pairs, with no ordering requirements.
+
+table::
+## strong::label:: || key  || The asset key, typically a 16-digit hexadecimal string.
+## strong::label:: || type || One of the Asset Type Enumeration values.
+::
+
+table::
+## strong::key name:: || strong::value type:: || strong::notes::
+## code::filePath::   || string               || Path to the Asset file.
+## code::assetData::  || string               || For smaller string assets, the asset data may be included directly here.
+::
+
+section:: Confab Command Messages
+
+subsection:: /assetAddFile
+
+Adds a new asset to the shared asset pool. After the asset is added there will be an strong::assetAdded:: message in response. The code::serialNumber:: serves as a temporary identifier for the asset until a code::key:: can be computed, which will be returned in the strong::assetAdded:: response. Outside of returning the number in the response Confab ignores the value of this number.
+
+note::
+The file pointed to by code::filePath:: need only remain valid until the strong::assetAdded:: response is received. If the Asset is requested by a future call a separate copy of the Asset file will be made, in the manner consistent with all other Asset requests.
+::
+
+table::
+## strong::label::   || type         || One of the Asset Type Enumeration values.
+## strong::integer:: || serialNumber || A temporary client-side identifier of this asset.
+## strong::label::   || filePath     || Path to the filename to add to the database.
+::
+
+subsection:: /assetAddString
+
+Adds a new asset to the shared asset pool. For smaller assets like code snippets it is possible to send the asset directly in the OSC message. This should not be used on Assets larger than what is likely to fit into a single UDP message frame.
+
+table::
+## strong::label::   || type         || One of the Asset Type Enumeration values.
+## strong::integer:: || serialNumber || A temporary client-side identifier of this asset.
+## strong::string::  || assetString  || The included asset data.
+::
+
+subsection:: /assetFind
+
+Loads Asset metadata only and supplies it back to SuperCollider via an /assetFound message, or an /assetError message on issue. Note that for larger Assets this will start the Confab system loading the Asset from the network if it is not available locally, but Confab will not create a file for use by SuperCollider until /assetLoad is called. So this can be a way to "warm" assets that may have been deprecated or may not be available locally.
+
+table::
+## strong::label:: || key || An asset key string, typically at 16-digit hexadecimal number.
+::
+
+subsection:: /assetLoad
+
+Requests that Confab retrieve this Asset, which may require communicatation over the network, and make it available locally to SuperCollider.
+
+table::
+## strong::label:: || key || An asset key string, typically a 16-digit hexadecimal number.
+::
+
+section:: Confab Response Messages
+
+These are OSC messages passed back to the SuperCollider sclang process to inform the client code of any updates in Asset status.
+
+subsection:: /assetAdded
+
+table::
+## strong::integer:: || serialNumber || The unique identier provided in the strong::assetAdd:: command.
+## strong::label::   || key          || An asset key string, used to uniquely identify the newly created asset.
+::
+
+subsection:: /assetFound
+
+table::
+## strong::label:: || requestedKey || The key of the requested Asset.
+## strong::label:: || returnedKey || The key of the actually returned Asset.
+## strong::label:: || assetType || The type of the asset as one of the enumerated type labels.
+## strong::label:: || name || The name of the Asset, if any.
+## strong::label:: || fileExtension || The preferred file extension, if any.
+## strong::label:: || author || A key for an author Asset.
+## strong::label:: || deprecatedBy || A key for an Asset that deprecates this one.
+## strong::label:: || deprecates || A key for an Asset that this Asset deprecates, if there is one.
+## strong::Int8Array:: || inlineData || inlineData for the Asset, if any.
+## strong::
+
+subsection:: /assetLoaded
+
+subsection:: /assetError
+
+table::
+## strong::label:: || key || The Asset key associated with this error
+## strong::string:: || errorString || Some descriptive error message from the server.
+::

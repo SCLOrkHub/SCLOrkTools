@@ -1,0 +1,10 @@
+namespace Confab.Data;
+
+table FlatConfig {
+    versionMajor:int;
+    versionMinor:int;
+    versionPatch:int;
+}
+
+root_type FlatConfig;
+file_identifier "cnfb";
