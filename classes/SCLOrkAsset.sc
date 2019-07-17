@@ -16,7 +16,8 @@ SCLOrkAsset {
 		// Sort out inlineData dependent on Asset type.
 		if (inlineData.class === Int8Array, {
 			if (type === \snippet, {
-				inlineData = inlineData.asString;
+				var chars = Array.fill(inlineData.size, { |i| inlineData[i].asAscii });
+				inlineData = String.newFrom(chars);
 			});
 		});
 	}
