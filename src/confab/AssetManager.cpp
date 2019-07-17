@@ -208,7 +208,7 @@ void AssetManager::addAssetString(Asset::Type type, const std::string& assetStri
 
     uint64_t key = computeHashMemory(assetData, assetString.size(), salt);
     std::array<uint8_t, kAssetDatabaseKeySize> assetDatabaseKey;
-    SizedPointer flatKey(assetDatabaseKey.data(), sizeof(assetDatabaseKey));
+    SizedPointer flatKey(assetDatabaseKey.data(), kAssetDatabaseKeySize);
     makeAssetDatabaseKey(key, flatKey);
 
     flatbuffers::FlatBufferBuilder builder(kDataChunkSize);
@@ -283,15 +283,15 @@ void AssetManager::makeAssetDatabaseKey(uint64_t key, SizedPointer keyOut) {
     CHECK_LE(kAssetDatabaseKeySize, keyOut.size()) << "not enough room for an Asset database key.";
 
     keyOut.dataWritable()[0] = kAsset;
-    std::memcpy(keyOut.dataWritable() + 1, reinterpret_cast<const uint8_t*>(key), sizeof(uint64_t));
+    std::memcpy(keyOut.dataWritable() + 1, reinterpret_cast<const uint8_t*>(&key), sizeof(uint64_t));
 }
 
 void AssetManager::makeAssetDataDatabaseKey(uint64_t key, uint64_t chunkNumber, SizedPointer keyOut) {
     CHECK_LE(kAssetDataDatabaseKeySize, keyOut.size()) << "not enough room for an AssetData database key.";
 
     keyOut.dataWritable()[0] = kData;
-    std::memcpy(keyOut.dataWritable() + 1, reinterpret_cast<const uint8_t*>(key), sizeof(uint64_t));
-    std::memcpy(keyOut.dataWritable() + 9, reinterpret_cast<const uint8_t*>(chunkNumber), sizeof(uint64_t));
+    std::memcpy(keyOut.dataWritable() + 1, reinterpret_cast<const uint8_t*>(&key), sizeof(uint64_t));
+    std::memcpy(keyOut.dataWritable() + 9, reinterpret_cast<const uint8_t*>(&chunkNumber), sizeof(uint64_t));
 }
 
 // static
