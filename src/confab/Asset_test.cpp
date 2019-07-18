@@ -24,7 +24,6 @@ TEST(AssetTest, MinimalSerialization) {
     EXPECT_EQ(nullptr, testAsset.inlineData());
     EXPECT_EQ(0, testAsset.expiresOn());
     EXPECT_EQ(0, testAsset.salt());
-
 }
 
 TEST(AssetTest, AllFieldsSet) {

@@ -3,12 +3,6 @@
 
 #include <memory>
 
-namespace Pistache {
-namespace Http {
-    class Endpoint;
-}  // namespace Http
-}  // namespace Pistache
-
 namespace Confab {
 
 /*! Class for listening and responding to HTTP messages from multiple downstream Confab instances.
@@ -41,8 +35,7 @@ private:
 
     int m_listenPort;
     int m_numThreads;
-    std::unique_ptr<Pistache::Http::Endpoint> m_server;
-    std::shared_ptr<HttpHandler> m_handler;
+    std::unique_ptr<HttpHandler> m_handler;
 };
 
 }  // namespace Confab
