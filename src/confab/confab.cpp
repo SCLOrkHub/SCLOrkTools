@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<Confab::AssetManager> assetManager(new Confab::AssetManager(database));
 
     LOG(INFO) << "Starting HTTP on port " << FLAGS_http_listen_port << ".";
-    Confab::HttpEndpoint httpEndpoint(FLAGS_http_listen_port, FLAGS_http_listen_threads);
+    Confab::HttpEndpoint httpEndpoint(FLAGS_http_listen_port, FLAGS_http_listen_threads, assetManager);
     httpEndpoint.startServerThread();
 
     LOG(INFO) << "Opening up OSC ports for listen on " << FLAGS_osc_listen_port << " and respond on "

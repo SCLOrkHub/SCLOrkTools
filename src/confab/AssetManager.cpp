@@ -226,6 +226,20 @@ void AssetManager::addAssetString(Asset::Type type, const std::string& assetStri
     callback(key);
 }
 
+void AssetManager::storeAsset(uint64_t key, const SizedPointer& flatAsset, std::function<void(bool)> callback) {
+    std::array<char, kAssetDatabaseKeySize> assetDatabaseKey;
+    SizedPointer flatKey(assetDatabaseKey.data(), kAssetDatabaseKeySize);
+    makeAssetDatabaseKey(key, flatKey);
+
+    bool result = m_database->store(flatKey, flatAsset);
+    if (result) {
+        LOG(INFO) << "Asset store " << keyToString(key) << " success.";
+    } else {
+        LOG(ERROR) << "Failed to store Asset " << keyToString(key) << " in database.";
+    }
+    callback(result);
+}
+
 void AssetManager::findAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback) {
     std::array<char, kAssetDatabaseKeySize> assetDatabaseKey;
     SizedPointer flatKey(assetDatabaseKey.data(), kAssetDatabaseKeySize);

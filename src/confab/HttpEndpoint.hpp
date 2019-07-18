@@ -5,6 +5,8 @@
 
 namespace Confab {
 
+class AssetManager;
+
 /*! Class for listening and responding to HTTP messages from multiple downstream Confab instances.
  */
 class HttpEndpoint {
@@ -14,8 +16,9 @@ public:
      *
      * \param listenPort The TCP port to listen on for HTTP requests.
      * \param numThreads The number of threads to use to listen on the port.
+     * \param assetManager A pointer to the shared AssetManager instance.
      */
-    HttpEndpoint(int listenPort, int numThreads);
+    HttpEndpoint(int listenPort, int numThreads, std::shared_ptr<AssetManager> assetManager);
 
     /*! Destructs an HttpHandler. Declared here to let us use std::unique_ptr with forward-declared classes.
      */
@@ -33,8 +36,6 @@ public:
 private:
     class HttpHandler;
 
-    int m_listenPort;
-    int m_numThreads;
     std::unique_ptr<HttpHandler> m_handler;
 };
 

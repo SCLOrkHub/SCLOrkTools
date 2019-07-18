@@ -43,6 +43,14 @@ public:
      */
     void addAssetString(Asset::Type type, const std::string& assetString, std::function<void(uint64_t)> callback);
 
+    /*! Stores an asset with an already computed hash into the database.
+     *
+     * \param key The key to store the serialized asset under.
+     * \param flatAsset The serialized asset data.
+     * \param callback A function to callback with true on success or false on failure.
+     */
+    void storeAsset(uint64_t key, const SizedPointer& flatAsset, std::function<void(bool)> callback);
+
     /*! Locates an asset associated with the provided Id and returns it by calling the provided callback function.
      *
      * If the asset retrieved is marked as deprecated, this function will iteratively retrieve assets until it discovers
