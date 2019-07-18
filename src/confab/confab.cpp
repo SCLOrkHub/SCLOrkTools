@@ -2,16 +2,19 @@
 #include "Config.hpp"
 #include "Constants.hpp"
 #include "Database.hpp"
+#include "HttpEndpoint.hpp"
 #include "OscHandler.hpp"
 
 #include "common/Version.hpp"
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 
 #include <experimental/filesystem>
 #include <fstream>
 #include <memory>
+#include <pthread.h>
+#include <signal.h>
 
 namespace fs = std::experimental::filesystem;
 
@@ -20,6 +23,8 @@ DEFINE_bool(create_new_database, false, "If true confab will make a new database
     "database to already exist.");
 
 DEFINE_int32(database_cache_size_mb, 16, "Size in megabytes of the memory cache the database should use.");
+DEFINE_int32(http_listen_port, 9080, "HTTP port on localhost to listen to incoming HTTP requests from confab peers.");
+DEFINE_int32(http_listen_threads, 1, "Number of thread to use for listening to HTTP requests.");
 DEFINE_int32(osc_listen_port, 4248, "UDP port on localhost to listen for incoming OSC commands from SuperCollider.");
 DEFINE_int32(osc_respond_port, 4249, "UDP port on localhost to send response messages to SuperCollider.");
 
@@ -104,7 +109,21 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Create thread masks for ignoring SIGINT signals here, as the OSC handler will catch the SIGINT and terminate the
+    // program itself on that.
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGTERM);
+    if (pthread_sigmask(SIG_BLOCK, &set, nullptr) != 0) {
+        LOG(ERROR) << "error setting pthread thread mask to ignore SIGINT.";
+        return -1;
+    }
+
     std::shared_ptr<Confab::AssetManager> assetManager(new Confab::AssetManager(database));
+
+    LOG(INFO) << "Starting HTTP on port " << FLAGS_http_listen_port << ".";
+    Confab::HttpEndpoint httpEndpoint(FLAGS_http_listen_port, FLAGS_http_listen_threads);
+    httpEndpoint.startServerThread();
 
     LOG(INFO) << "Opening up OSC ports for listen on " << FLAGS_osc_listen_port << " and respond on "
         << FLAGS_osc_respond_port;
@@ -120,9 +139,8 @@ int main(int argc, char* argv[]) {
     osc.listenUntilSigInt();
 
     LOG(INFO) << "Termination signal caught, stopping confab normally.";
-
+    httpEndpoint.shutdown();
     database->close();
-
     // Delete pid sentinel file.
     fs::remove(pidPath);
 

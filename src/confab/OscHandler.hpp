@@ -27,7 +27,7 @@ public:
      */
     OscHandler(int listenPort, int sendPort, std::shared_ptr<Confab::AssetManager> assetManager);
 
-    /*! Destructs an OSCHandler.
+    /*! Destructs an OSCHandler. Declared here to let us use std::unique_ptr with forward-declared classes.
      */
     ~OscHandler();
 

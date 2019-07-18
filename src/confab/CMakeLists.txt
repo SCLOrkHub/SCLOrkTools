@@ -42,6 +42,8 @@ set(confab_src_files
     Config.hpp
     Database.cpp
     Database.hpp
+    HttpEndpoint.cpp
+    HttpEndpoint.hpp
     OscHandler.cpp
     OscHandler.hpp
     SizedPointer.hpp
@@ -62,6 +64,7 @@ target_link_libraries(confab_lib PUBLIC
     glog::glog
     leveldb
     oscpack
+    pistache
     pistache_static
     sclorktools_common
     stdc++fs

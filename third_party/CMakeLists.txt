@@ -34,8 +34,6 @@ set(PISTACHE_BUILD_EXAMPLES OFF CACHE BOOL "build Pistache examples")
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "build Pistache tests")
 set(PISTACHE_ENABLE_NETWORK_TESTS OFF CACHE BOOL "enable Pistache network tests")
 set(PISTACHE_USE_SSL OFF CACHE BOOL "enable ssl in Pistache")
-# Pistache still seems to get confused if it fails to find cppcheck.
-set(CMAKE_CXX_CPPCHECK "" CACHE STRING "" FORCE)
 add_subdirectory(pistache)
 
 #### xxhash
