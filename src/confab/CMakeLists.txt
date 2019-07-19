@@ -42,6 +42,8 @@ set(confab_src_files
     Config.hpp
     Database.cpp
     Database.hpp
+    HttpClient.cpp
+    HttpClient.hpp
     HttpEndpoint.cpp
     HttpEndpoint.hpp
     OscHandler.cpp

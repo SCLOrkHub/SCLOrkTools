@@ -144,7 +144,6 @@ public:
     /// @endcond UNDOCUMENTED
 
 private:
-
     std::shared_ptr<Database> m_database;
 };
 

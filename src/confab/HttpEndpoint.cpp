@@ -81,6 +81,7 @@ private:
         uint64_t key = AssetManager::stringToKey(keyString);
         SizedPointer postedData(reinterpret_cast<const uint8_t*>(response.body().c_str()), response.body().size());
         m_assetManager->storeAsset(key, postedData, [&keyString, &response](bool status) {
+            response.headers().add<Pistache::Http::Header::Server>("confab");
             if (status) {
                 LOG(INFO) << "sending OK response after storing asset " << keyString;
                 response.send(Pistache::Http::Code::Ok);
