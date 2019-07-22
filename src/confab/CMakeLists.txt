@@ -31,41 +31,33 @@ configure_file(
 # To pick up the pre-processed ConfabVersion.hpp.
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
-set(confab_src_files
+###
+# confab common files
+set(confab_common_src_files
     Asset.cpp
     Asset.hpp
     AssetData.cpp
     AssetData.hpp
     AssetManager.cpp
     AssetManager.hpp
+    ConfabCommon.hpp
+    ConfabCommon.cpp
     Config.cpp
     Config.hpp
     Database.cpp
     Database.hpp
-    HttpClient.cpp
-    HttpClient.hpp
-    HttpEndpoint.cpp
-    HttpEndpoint.hpp
-    OscHandler.cpp
-    OscHandler.hpp
     SizedPointer.hpp
 )
 
-set(confab_test_files
-    Asset_test.cpp
-    Database_test.cpp
-)
+add_library(confab_common ${confab_common_src_files})
 
-add_library(confab_lib ${confab_src_files})
+add_dependencies(confab_common confab_schemas)
 
-add_dependencies(confab_lib confab_schemas)
-
-target_link_libraries(confab_lib PUBLIC
+target_link_libraries(confab_common PUBLIC
     flatbuffers
     gflags::gflags
     glog::glog
     leveldb
-    oscpack
     pistache
     pistache_static
     sclorktools_common
@@ -74,16 +66,44 @@ target_link_libraries(confab_lib PUBLIC
     yaml-cpp
 )
 
-add_executable(confab confab.cpp)
+###
+# confab client
+add_executable(confab
+    confab.cpp
+    HttpClient.cpp
+    HttpClient.hpp
+    OscHandler.cpp
+    OscHandler.hpp
+)
 
 target_link_libraries(confab
-    confab_lib
+    confab_common
+    oscpack
+)
+
+###
+# confab server
+add_executable(confab-server
+    confab-server.cpp
+    HttpEndpoint.cpp
+    HttpEndpoint.hpp
+)
+
+target_link_libraries(confab-server
+    confab_common
+)
+
+##
+# confab test
+set(confab_test_files
+    Asset_test.cpp
+    Database_test.cpp
 )
 
 add_executable(test_confab test_confab.cpp ${confab_test_files})
 
 target_link_libraries(test_confab
-    confab_lib
+    confab_common
     gtest
 )
 
