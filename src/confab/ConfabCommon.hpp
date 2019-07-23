@@ -1,7 +1,9 @@
 #ifndef SRC_CONFAB_CONFAB_COMMON_HPP_
 #define SRC_CONFAB_CONFAB_COMMON_HPP_
 
+#include <experimental/filesystem>
 #include <memory>
+
 
 namespace Confab {
 
@@ -49,20 +51,13 @@ private:
      */
     bool checkSentinelFile();
 
-    /*! Open (and possibly create) the Confab database.
-     *
-     * \return true on success, false on error.
-     */
-    bool initializeDatabase();
-
     /*! Sets the interrupt mask on threads to ignore SIGINT, allowing it to be caught by a handler to shutdown.
      *
      * \return true on success, false on error.
      */
     bool setThreadMask();
 
-    std::shared_ptr<Database> m_database;
-    std::shared_ptr<AssetManager> m_assetManager;
+    std::experimental::filesystem::path m_pidPath;
 };
 
 

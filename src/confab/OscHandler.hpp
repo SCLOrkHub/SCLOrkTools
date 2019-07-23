@@ -54,7 +54,6 @@ private:
 
     int m_listenPort;
     int m_sendPort;
-    std::shared_ptr<Confab::AssetManager> m_assetManager;
 
     std::thread::id m_mainThreadID;
     std::unique_ptr<UdpTransmitSocket> m_transmitSocket;

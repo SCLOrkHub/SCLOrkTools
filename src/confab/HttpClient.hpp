@@ -1,6 +1,8 @@
 #ifndef SRC_CONFAB_HTTP_CLIENT_HPP_
 #define SRC_CONFAB_HTTP_CLIENT_HPP_
 
+#include "Record.hpp"
+
 #include <functional>
 #include <memory>
 #include <string>

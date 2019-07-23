@@ -38,14 +38,9 @@ set(confab_common_src_files
     Asset.hpp
     AssetData.cpp
     AssetData.hpp
-    AssetManager.cpp
-    AssetManager.hpp
     ConfabCommon.hpp
     ConfabCommon.cpp
-    Config.cpp
-    Config.hpp
-    Database.cpp
-    Database.hpp
+    Record.hpp
     SizedPointer.hpp
 )
 
@@ -57,19 +52,20 @@ target_link_libraries(confab_common PUBLIC
     flatbuffers
     gflags::gflags
     glog::glog
-    leveldb
     pistache
     pistache_static
     sclorktools_common
     stdc++fs
     xxhash
-    yaml-cpp
+    yaml-cpp # TODO: we still need?
 )
 
 ###
 # confab client
 add_executable(confab
     confab.cpp
+    CacheManager.cpp
+    CacheManager.hpp
     HttpClient.cpp
     HttpClient.hpp
     OscHandler.cpp
@@ -85,12 +81,19 @@ target_link_libraries(confab
 # confab server
 add_executable(confab-server
     confab-server.cpp
+    AssetManager.cpp
+    AssetManager.hpp
+    Config.cpp
+    Config.hpp
+    Database.cpp
+    Database.hpp
     HttpEndpoint.cpp
     HttpEndpoint.hpp
 )
 
 target_link_libraries(confab-server
     confab_common
+    leveldb
 )
 
 ##
