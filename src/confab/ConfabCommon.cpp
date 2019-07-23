@@ -17,8 +17,10 @@
 
 namespace fs = std::experimental::filesystem;
 
+// Command line flags for logging.
 DEFINE_bool(chatty, false, "If true confab will log everything to stderr as well as to log files.");
 
+// Command line flags for the database.
 DEFINE_bool(create_new_database, false, "If true confab will make a new database, if false confab will expect the "
     "database to already exist.");
 DEFINE_int32(database_cache_size_mb, 16, "Size in megabytes of the memory cache the database should use.");

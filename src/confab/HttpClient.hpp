@@ -1,6 +1,7 @@
 #ifndef SRC_CONFAB_HTTP_CLIENT_HPP_
 #define SRC_CONFAB_HTTP_CLIENT_HPP_
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -26,6 +27,14 @@ public:
     /*! Destructs an HttpClient.
      */
     ~HttpClient();
+
+    /*! Requests an asset from the server.
+     *
+     * \param key The asset key associated with this asset.
+     * \param callback The function to call when the asset is downloaded, with the key of the provided asset along with
+     *                 a pointer to the Asset or nullptr on error.
+     */
+    void getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback);
 
     /*! Closes any pending requests and shuts down.
      */

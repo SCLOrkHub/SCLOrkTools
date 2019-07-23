@@ -1,5 +1,7 @@
 #include "HttpClient.hpp"
 
+#include "AssetManager.hpp"
+
 #include "pistache/net.h"
 #include "pistache/http.h"
 #include "pistache/client.h"
@@ -17,6 +19,11 @@ HttpClient::HttpClient(const std::string& serverAddress) :
 }
 
 HttpClient::~HttpClient() {
+}
+
+void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback) {
+    std::string request = m_serverAddress + "/asset/" + AssetManager::keyToString(key);
+
 }
 
 void HttpClient::shutdown() {
