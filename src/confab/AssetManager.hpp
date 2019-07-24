@@ -122,20 +122,6 @@ public:
      */
     void makeAssetDataDatabaseKey(uint64_t key, uint64_t chunkNumber, SizedPointer keyOut);
 
-    /*! Converts a 64-bit binary key into a human-readable hexadecimal string.
-     *
-     * \param key A binary key.
-     * \return A hexadecimal string of key.
-     */
-    static std::string keyToString(uint64_t key);
-
-    /*! Converts a 64-bit hexadecimal string into a binary key.
-     *
-     * \param keyString A key in hexadecimal string form.
-     * \return The binary value of that string, or zero on error.
-     */
-    static uint64_t stringToKey(const std::string& keyString);
-
     /// @cond UNDOCUMENTED
     AssetManager() = delete;
     AssetManager(const AssetManager&) = delete;

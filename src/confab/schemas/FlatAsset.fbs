@@ -18,9 +18,12 @@ table FlatAsset {
     author:ulong = 0;
     deprecatedBy:ulong = 0;
     deprecates:ulong = 0;
-    inlineData:[ubyte];
     expiresOn:ulong = 0;
     salt:ulong = 0;
+    size:uint = 0;
+    chunks:uint = 0;
+
+    inlineData:[ubyte];
 }
 
 root_type FlatAsset;

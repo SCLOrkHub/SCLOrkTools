@@ -38,6 +38,35 @@ public:
 
 using RecordPtr = std::shared_ptr<Record>;
 
+/*! Simple override of Record class to provide an empty Record entry.
+ */
+class EmptyRecord : public Record {
+public:
+    ~EmptyRecord() override = default;
+
+    /*! Always reports an empty Record.
+     * \return Always true.
+     */
+    bool empty() const override { return true; }
+
+    /*! Returns an empty data pointer.
+     * \return Always empty pointer.
+     */
+    const SizedPointer data() const override { return SizedPointer(); }
+
+    /*! Returns an empty key pointer.
+     * \return Always empty key pointer.
+     */
+    const SizedPointer key() const override { return SizedPointer(); }
+};
+
+/*! Convenience routine to quickly construct an always empty RecordPtr.
+ * \return A new EmptyRecord.
+ */
+RecordPtr makeEmptyRecord() {
+    return std::shared_ptr<new EmptyRecord()>;
+}
+
 }  // namespace Confab
 
 #endif  // SRC_CONFAB_RECORD_HPP_

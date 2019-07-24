@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <utility>
 
+namespace fs = std::experimental::filesystem;
+
 namespace Confab {
 
 class HttpClient;
@@ -24,8 +26,7 @@ public:
      * \param maxSize The size in bytes at which to start evicting least recently used cache entries.
      * \param httpClient A pointer to the HttpClient object, for downloaded resources not in cache.
      */
-    CacheManager(const std::experimental::filesystem::path& cachePath, size_t maxSize, std::shared_ptr<HttpClient>
-            httpClient);
+    CacheManager(const fs::path& cachePath, size_t maxSize, std::shared_ptr<HttpClient> httpClient);
 
     /*! Enumerates any existing files, and computes the total size of the cache so far. Can take significant time
      *  depending on the number of files in the cache and their size, particularly with validation enabled.
@@ -39,11 +40,28 @@ public:
      * or an empty path if no such record exists.
      *
      * \param key The Asset key associated with this cache entry.
+     * \return The path of the existing entry, or an empty path if entry does not exist.
      */
-    std::experimental::filesystem::path checkCache(uint64_t key);
+    fs::path checkCache(uint64_t key);
+
+    /*! If needed, makes room by evicting old entries first, then downloads AssetData chunks of the provided Asset
+     * until complete, then returns a path to the newly created cache entry, or an empty path on error.
+     *
+     * \param key The Asset key to download AssetData chunks for.
+     * \param fileSize The size of the Asset in bytes.
+     * \param fileExtension The extension to append to the filename when complete, including the dot.
+     */
+    fs::path download(uint64_t key, size_t fileSize, const std::string& fileExtension);
 
 private:
-    std::experimental::filesystem::path m_cachePath;
+    /*! Evict items from the cache until the size of the cache is smaller than the maximum size plus the addedBytes.
+     *
+     * \param addedBytes The number of bytes to ensure the cache will have room for without exceeding the maximum size
+     *                   parameter.
+     */
+    void makeRoomFor(size_t addedBytes);
+
+    fs::path m_cachePath;
     size_t m_maxSize;
     std::shared_ptr<HttpClient> m_httpClient;
 
@@ -51,7 +69,7 @@ private:
 
     // We monitor access time of cache entries by updating the modified time for each request for a cache asset. This
     // queue allows for quick extraction of the oldest entry by access time for efficient cache eviction.
-    using TimePath = std::pair<std::chrono::time_point, std::experimental::filesystem::path>;
+    using TimePath = std::pair<std::chrono::time_point, fs::path>;
     std::priority_queue<TimePath> m_timeQueue;
 
     // The asset files are stored with extensions, so this map keeps the extension, if any, associated with the asset

@@ -5,7 +5,6 @@
 
 #include "glog/logging.h"
 
-namespace fs = std::experimental::filesystem;
 
 namespace Confab {
 
@@ -21,7 +20,7 @@ void CacheManager::checkExistingEntries(bool validate) {
 
     // Reset current state to empty.
     m_currentSize = 0;
-    while (!m_queue.empty()) {
+    while (!m_timeQueue.empty()) {
         m_timeQueue.pop();
     }
     m_extensionMap.clear();
@@ -38,7 +37,7 @@ void CacheManager::checkExistingEntries(bool validate) {
             if (valid) {
                 LOG(INFO) << "adding " << path << " to cache record, " << fileSize << " bytes.";
                 m_currentSize += fileSize;
-                m_queue.emplace(std::make_pair(writeTime, path));
+                m_timeQueue.insert(std::make_pair(writeTime, path));
                 fs::path extension = path.extension();
                 m_extensionMap.insert(std::make_pair(key, extension);
             }
@@ -47,13 +46,54 @@ void CacheManager::checkExistingEntries(bool validate) {
         }
     }
 
-    LOG(INFO) << "CacheManager found " << m_extensionMap.size() << " entries, total " << m_currentSize << " bytes.";
+    LOG(INFO) << "CacheManager found " << m_extensionMap.size() << " entries, total " << m_currentSize << " bytes,"
+        " starting eviction process.";
+
+    makeRoomFor(0);
 }
 
-void CacheManager::checkCache(uint64_t key) {
+fs::path CacheManager::checkCache(uint64_t key) {
+    auto extensionPair = m_extensionMap.find(key);
+    if (extensionPair == m_extensionMap.end()) {
+        return fs::path();
+    }
+
+    fs::path cachePath = m_cachePath + "/" + Asset::keyToString(key) + extensionPair.second();
+    LOG(INFO) << "cache hit for Asset " << Asset::keyToString(key) << " at " << cachePath;
+
+    // Update file write time to reflect the access of this cached asset. NOTE that this means the data in m_timeQueue
+    // is now invalid, leading to a need for re-verification of write times in the queue when identifying eviction
+    // candidates.
+    fs::last_write_time(cachePath, extensionPairstd::system_clock::now());
+    return cachePath;
 }
 
+fs::path CacheManager::download(uint64_t key, size_t fileSize, const fs::path& fileExtension) {
+    // TODO
+}
 
+void CacheManager::makeRoomFor(size_t addedBytes) {
+    while (m_currentSize + addedBytes > m_maxSize) {
+        auto oldest = m_timeQueue.top();
+        m_timeQueue.pop();
+        // Validate access time against reality, as this entry may have been accessed since queue insertion.
+        auto realWriteTime = fs::last_write_time(oldest.second());
+        if (realWriteTime == oldest.first()) {
+            size_t oldestSize = fs::file_size(oldest.second());
+            LOG(INFO) << "evicting " << oldest.second() << " from cache, " << oldestSize << " bytes.";
+            m_currentSize = m_currentSize - oldestSize;
+            fs::remove(oldest.second());
+            // Also remove this cached asset from the map.
+            m_extensionMap.erase(Asset::stringToKey(oldest.second().stem()));
+        } else {
+            LOG(INFO) << "updating access time in queue on asset " << oldest.second();
+            m_timeQueue.insert(std::make_pair(realWriteTime, oldest.second()));
+        }
+    }
+
+    LOG(INFO) << "eviction process complete, totals now " << m_extensionMap.size() << " entries, total " << 
+        m_currentSize << " bytes.";
+}
 
 }  // namespace Confab
 

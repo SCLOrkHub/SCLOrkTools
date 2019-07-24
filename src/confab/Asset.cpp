@@ -2,6 +2,9 @@
 
 #include "Constants.hpp"
 
+#include <array>
+#include <cstring>
+
 namespace Confab {
 
 // static
@@ -16,6 +19,18 @@ Asset::Type Asset::typeStringToEnum(const std::string& assetType) {
         return kSample;
     }
     return kInvalid;
+}
+
+// static
+std::string Asset::keyToString(uint64_t key) {
+    std::array<char, 17> buf;
+    snprintf(buf.data(), 17, "%" PRIx64, key);
+    return std::string(buf.data());
+}
+
+// static
+uint64_t Asset::stringToKey(const std::string& keyString) {
+    return strtoull(keyString.c_str(), nullptr, 16);
 }
 
 Asset::Asset(Asset::Type type) :

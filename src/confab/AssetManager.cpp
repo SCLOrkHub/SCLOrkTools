@@ -8,7 +8,6 @@
 #include <xxhash.h>
 
 #include <array>
-#include <cstring>
 #include <experimental/filesystem>
 #include <fstream>
 #include <limits>
@@ -118,7 +117,8 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
         inFile.read(data, chunkSize);
         size_t bytesRead = inFile.gcount();
         if (bytesRead != chunkSize) {
-            LOG(ERROR) << "error reading first chunk of Asset " << keyToString(key) << " file at " << filePath << ".";
+            LOG(ERROR) << "error reading first chunk of Asset " << Asset::keyToString(key) << " file at " << filePath
+                << ".";
             callback(0);
             return;
         }
@@ -130,7 +130,7 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
         makeAssetDataDatabaseKey(key, chunkNumber, assetDataKey);
 
         if (!m_database->store(assetDataKey, assetDataValue)) {
-            LOG(ERROR) << "error writing first chunk of Asset " << keyToString(key) << " to database.";
+            LOG(ERROR) << "error writing first chunk of Asset " << Asset::keyToString(key) << " to database.";
             callback(0);
             return;
         }
@@ -142,7 +142,8 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
             inFile.read(data, kDataChunkSize);
             bytesRead = inFile.gcount();
             if (bytesRead != kDataChunkSize) {
-                LOG(ERROR) << "error reading chunk of Asset " << keyToString(key) << " file at " << filePath << ".";
+                LOG(ERROR) << "error reading chunk of Asset " << Asset::keyToString(key) << " file at " << filePath
+                    << ".";
                 callback(0);
                 return;
             }
@@ -151,7 +152,7 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
             makeAssetDataDatabaseKey(key, chunkNumber, assetDataKey);
 
             if (!m_database->store(assetDataKey, assetDataValue)) {
-                LOG(ERROR) << "error writing chunk of Asset " << keyToString(key) << " to database.";
+                LOG(ERROR) << "error writing chunk of Asset " << Asset::keyToString(key) << " to database.";
                 callback(0);
                 return;
             }
@@ -167,8 +168,8 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
             bytesRead = inFile.gcount();
 
             if (bytesRead != bytesRemaining) {
-                LOG(ERROR) << "error reading final chunk of Asset " << keyToString(key) << " file at " << filePath
-                    << ".";
+                LOG(ERROR) << "error reading final chunk of Asset " << Asset::keyToString(key) << " file at "
+                    << filePath << ".";
                 callback(0);
                 return;
             }
@@ -178,14 +179,14 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
 
             const SizedPointer lastDataValue = lastChunkData.flatten();
             if (!m_database->store(assetDataKey, lastDataValue)) {
-                LOG(ERROR) << "error writing final chunk of Asset " << keyToString(key) << " to database.";
+                LOG(ERROR) << "error writing final chunk of Asset " << Asset::keyToString(key) << " to database.";
                 callback(0);
                 return;
             }
         }
     }
 
-    LOG(INFO) << "Asset " << keyToString(key) << " from file " << filePath << " successfully added to database.";
+    LOG(INFO) << "Asset " << Asset::keyToString(key) << " from file " << filePath << " successfully added to database.";
     callback(key);
 }
 
@@ -222,7 +223,8 @@ void AssetManager::addAssetString(Asset::Type type, const std::string& assetStri
         return;
     }
 
-    LOG(INFO) << "Asset " << keyToString(key) << " from string " << assetString << " successfully added to database.";
+    LOG(INFO) << "Asset " << Asset::keyToString(key) << " from string " << assetString
+        << " successfully added to database.";
     callback(key);
 }
 
@@ -233,9 +235,9 @@ void AssetManager::storeAsset(uint64_t key, const SizedPointer& flatAsset, std::
 
     bool result = m_database->store(flatKey, flatAsset);
     if (result) {
-        LOG(INFO) << "Asset store " << keyToString(key) << " success.";
+        LOG(INFO) << "Asset store " << Asset::keyToString(key) << " success.";
     } else {
-        LOG(ERROR) << "Failed to store Asset " << keyToString(key) << " in database.";
+        LOG(ERROR) << "Failed to store Asset " << Asset::keyToString(key) << " in database.";
     }
     callback(result);
 }
@@ -247,26 +249,27 @@ void AssetManager::findAsset(uint64_t key, std::function<void(uint64_t, RecordPt
 
     RecordPtr assetRecord = m_database->load(flatKey);
     if (assetRecord->empty()) {
-        LOG(ERROR) << "Asset " << keyToString(key) << " not found in database.";
+        LOG(ERROR) << "Asset " << Asset::keyToString(key) << " not found in database.";
         callback(key, assetRecord);
     } else {
         uint64_t loadedKey = key;
         auto flatAsset = Data::GetFlatAsset(assetRecord->data().data());
         while (flatAsset->deprecatedBy()) {
             uint64_t deprecatedBy = flatAsset->deprecatedBy();
-            LOG(INFO) << "Asset " << keyToString(key) << " deprecated by " << keyToString(deprecatedBy) << ", loading.";
+            LOG(INFO) << "Asset " << Asset::keyToString(key) << " deprecated by " << Asset::keyToString(deprecatedBy)
+                << ", loading.";
             makeAssetDatabaseKey(deprecatedBy, flatKey);
             assetRecord = m_database->load(flatKey);
             if (assetRecord->empty()) {
-                LOG(ERROR) << "error loaded deprecating asset " << keyToString(deprecatedBy) << ".";
+                LOG(ERROR) << "error loaded deprecating asset " << Asset::keyToString(deprecatedBy) << ".";
                 callback(deprecatedBy, assetRecord);
                 return;
             }
             flatAsset = Data::GetFlatAsset(assetRecord->data().data());
             loadedKey = deprecatedBy;
         }
-        LOG(INFO) << "Loaded Asset " << keyToString(loadedKey) << " upon request to load original asset "
-            << keyToString(key);
+        LOG(INFO) << "Loaded Asset " << Asset::keyToString(loadedKey) << " upon request to load original asset "
+            << Asset::keyToString(key);
         callback(loadedKey, assetRecord);
     }
 }
@@ -336,18 +339,6 @@ void AssetManager::makeAssetDataDatabaseKey(uint64_t key, uint64_t chunkNumber, 
     keyOut.dataWritable()[0] = kData;
     std::memcpy(keyOut.dataWritable() + 1, reinterpret_cast<const uint8_t*>(&key), sizeof(uint64_t));
     std::memcpy(keyOut.dataWritable() + 9, reinterpret_cast<const uint8_t*>(&chunkNumber), sizeof(uint64_t));
-}
-
-// static
-std::string AssetManager::keyToString(uint64_t key) {
-    std::array<char, 17> buf;
-    snprintf(buf.data(), 17, "%" PRIx64, key);
-    return std::string(buf.data());
-}
-
-// static
-uint64_t AssetManager::stringToKey(const std::string& keyString) {
-    return strtoull(keyString.c_str(), nullptr, 16);
 }
 
 }  // namespace Confab

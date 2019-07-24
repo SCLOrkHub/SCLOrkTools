@@ -1,5 +1,6 @@
 #include "HttpEndpoint.hpp"
 
+#include "Asset.hpp"
 #include "AssetManager.hpp"
 
 #include "glog/logging.h"
@@ -8,7 +9,8 @@
 
 namespace Confab {
 
-/*! Handler class for processing incoming HTTP requests. Uses the Pistache Router to connect specific 
+/*! Handler class for processing incoming HTTP requests. Uses the Pistache Router to connect specific REST-style API
+ * queries from clients to private method calls within this class.
  */
 class HttpEndpoint::HttpHandler {
 public:
@@ -55,7 +57,7 @@ private:
     void getAsset(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto keyString = request.param(":key").as<std::string>();
         LOG(INFO) << "processing HTTP GET request for /asset/" << keyString;
-        uint64_t key = AssetManager::stringToKey(keyString);
+        uint64_t key = Asset::stringToKey(keyString);
         m_assetManager->findAsset(key, [&keyString, &response](uint64_t loadedKey, RecordPtr record) {
             if (record->empty()) {
                 LOG(INFO) << "HTTP get request for Asset " << keyString << "not found, returning 404.";
@@ -78,7 +80,7 @@ private:
         auto keyString = request.param(":key").as<std::string>();
         LOG(INFO) << "processing HTTP POST request for /asset/" << keyString;
 
-        uint64_t key = AssetManager::stringToKey(keyString);
+        uint64_t key = Asset::stringToKey(keyString);
         SizedPointer postedData(reinterpret_cast<const uint8_t*>(response.body().c_str()), response.body().size());
         m_assetManager->storeAsset(key, postedData, [&keyString, &response](bool status) {
             response.headers().add<Pistache::Http::Header::Server>("confab");

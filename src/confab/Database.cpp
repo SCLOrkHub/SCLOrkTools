@@ -17,10 +17,9 @@ namespace Confab {
 class DatabaseRecord : public Record {
 public:
 
-    /*! Default constructor makes an empty Record.
+    /*! Default constructor not supported, use makeEmptyRecord().
      */
-    DatabaseRecord() : m_iterator(nullptr) {
-    }
+    DatabaseRecord() = delete;
 
     /*! Construct a record pointing at a Database load result.
      *
@@ -99,7 +98,7 @@ const RecordPtr Database::load(const SizedPointer& key) {
     if (!iterator->Valid() ||
         iterator->key().size() != key.size() ||
         (std::memcmp(key.dataChar(), iterator->key().data(), key.size()) != 0)) {
-        return RecordPtr(new DatabaseRecord());
+        return makeEmptyRecord();
     }
 
     return RecordPtr(new DatabaseRecord(iterator));

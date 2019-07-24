@@ -1,6 +1,6 @@
 #include "OscHandler.hpp"
 
-#include "AssetManager.hpp"
+#include "Asset.hpp"
 #include "Constants.hpp"
 
 #include <glog/logging.h>
@@ -43,7 +43,7 @@ public:
 
                 LOG(INFO) << "processing [/assetFind " << assetIdString << "]";
 
-                uint64_t assetKey = AssetManager::stringToKey(assetIdString);
+                uint64_t assetKey = Asset::stringToKey(assetIdString);
                 if (assetKey == 0) {
                     LOG(ERROR) << "/assetFind got invalid key value: " << assetIdString;
                 } else {
@@ -130,20 +130,20 @@ void OscHandler::findAsset(uint64_t assetId) {
         osc::OutboundPacketStream p(buffer, kDataChunkSize);
 
         if (record->empty()) {
-            p << osc::BeginMessage("/assetError") << AssetManager::keyToString(assetId).c_str()
+            p << osc::BeginMessage("/assetError") << Asset:keyToString(assetId).c_str()
                 << "Failed to find asset associated with key." << osc::EndMessage;
             m_transmitSocket->Send(p.Data(), p.Size());
         } else {
             const Data::FlatAsset* asset = Data::GetFlatAsset(record->data().data());
             p << osc::BeginMessage("/assetFound");
-            p << AssetManager::keyToString(assetId).c_str();
-            p << AssetManager::keyToString(loadedKey).c_str();
+            p << Asset:keyToString(assetId).c_str();
+            p << Asset:keyToString(loadedKey).c_str();
             p << "snippet";  // TODO: asset type to string.
             p << asset->name();
             p << asset->fileExtension();
-            p << AssetManager::keyToString(asset->author()).c_str();
-            p << AssetManager::keyToString(asset->deprecatedBy()).c_str();
-            p << AssetManager::keyToString(asset->deprecates()).c_str();
+            p << Asset:keyToString(asset->author()).c_str();
+            p << Asset:keyToString(asset->deprecatedBy()).c_str();
+            p << Asset:keyToString(asset->deprecates()).c_str();
             if (asset->inlineData()) {
                 osc::Blob blob(asset->inlineData()->data(), asset->inlineData()->size());
                 p << blob;
@@ -151,8 +151,8 @@ void OscHandler::findAsset(uint64_t assetId) {
                 osc::Blob blob(nullptr, 0);
                 p << blob;
             }
-            p << AssetManager::keyToString(asset->expiresOn()).c_str();
-            p << AssetManager::keyToString(asset->salt()).c_str();
+            p << Asset:keyToString(asset->expiresOn()).c_str();
+            p << Asset:keyToString(asset->salt()).c_str();
             p << osc::EndMessage;
             m_transmitSocket->Send(p.Data(), p.Size());
         }
@@ -165,7 +165,7 @@ void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string fi
     m_assetManager->addAssetFile(type, filePath, [this, serialNumber](uint64_t assetId) {
         char buffer[1024];
         osc::OutboundPacketStream p(buffer, 1024);
-        p << osc::BeginMessage("/assetAdded") << serialNumber << AssetManager::keyToString(assetId).c_str()
+        p << osc::BeginMessage("/assetAdded") << serialNumber << Asset:keyToString(assetId).c_str()
             << osc::EndMessage;
         m_transmitSocket->Send(p.Data(), p.Size());
     });
@@ -177,7 +177,7 @@ void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string 
     m_assetManager->addAssetString(type, assetString, [this, serialNumber](uint64_t assetId) {
         char buffer[1024];
         osc::OutboundPacketStream p(buffer, 1024);
-        p << osc::BeginMessage("/assetAdded") << serialNumber << AssetManager::keyToString(assetId).c_str()
+        p << osc::BeginMessage("/assetAdded") << serialNumber << Asset:keyToString(assetId).c_str()
             << osc::EndMessage;
         m_transmitSocket->Send(p.Data(), p.Size());
     });

@@ -3,9 +3,12 @@
 
 #include "Record.hpp"
 
+#include <experimental/filesystem>
 #include <functional>
 #include <memory>
 #include <string>
+
+namespace fs = std::experimental::filesystem;
 
 namespace Pistache {
 namespace Http {
@@ -30,13 +33,22 @@ public:
      */
     ~HttpClient();
 
-    /*! Requests an asset from the server.
+    /*! Requests an asset metadata entry from the server. Blocks until an outcome is reached.
      *
      * \param key The asset key associated with this asset.
      * \param callback The function to call when the asset is downloaded, with the key of the provided asset along with
      *                 a pointer to the Asset or nullptr on error.
      */
     void getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback);
+
+    /*! Downloads, verifies, and concatendates AssetData records into the provided file path.
+     *
+     * \param key The asset key associated with these AssetData records.
+     * \param fileSize Size of target file in bytes.
+     * \param path The file path to save the asset data to.
+     * \return true on success, false on error.
+     */
+    bool getAssetData(uint64_t key, size_t fileSize, const fs::path& path)
 
     /*! Closes any pending requests and shuts down.
      */
