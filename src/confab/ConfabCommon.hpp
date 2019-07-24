@@ -26,18 +26,6 @@ public:
      */
     void shutdown();
 
-    /*! Access the shared database object.
-     *
-     * \return A shared pointer to the database object.
-     */
-    std::shared_ptr<Database> database() { return m_database; }
-
-    /*! Access the shared AssetManager object.
-     *
-     * \return A shared pointer to the AssetManager object.
-     */
-    std::shared_ptr<AssetManager> assetManager() { return m_assetManager; }
-
 private:
     /*! Initialize the logging subsystem. Because all other systems depend on logging initialize this first.
      *
