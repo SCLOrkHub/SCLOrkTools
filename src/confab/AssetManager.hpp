@@ -63,6 +63,14 @@ public:
      */
     void findAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback);
 
+    /*! Returns the associated FlatAssetData record, or an empty Record if not found.
+     *
+     * \param key The asset key for this asset.
+     * \param chunkId Which chunk of AssetData to retreive.
+     * \return A pointer to the FlatAssetData record, or an empty Record on error.
+     */
+    RecordPtr getAssetDataChunk(uint64_t key, uint64_t chunkId);
+
     /*! Computes the hash of a file in 4K increments.
      *
      * Note for large files this can take significant time. Single-chunk hashes should be computed with

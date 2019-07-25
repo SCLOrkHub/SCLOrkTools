@@ -37,6 +37,9 @@ public:
             &HttpEndpoint::HttpHandler::getAsset, this));
         Pistache::Rest::Routes::Post(m_router, "/asset/:key", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::postAsset, this));
+
+        Pistache::Rest::Routes::Get(m_router, "/asset_data/:key/:chunk", Pistache::Rest::Routes::bind(
+            &HttpEndpoint::HttpHandler::getAssetData, this));
     }
 
     /*! Starts a thread that will listen on the provided TCP port and process incoming requests for storage and
@@ -60,9 +63,8 @@ private:
         uint64_t key = Asset::stringToKey(keyString);
         m_assetManager->findAsset(key, [&keyString, &response](uint64_t loadedKey, RecordPtr record) {
             if (record->empty()) {
-                LOG(INFO) << "HTTP get request for Asset " << keyString << "not found, returning 404.";
-                response.headers()
-                    .add<Pistache::Http::Header::Server>("confab");
+                LOG(ERROR) << "HTTP get request for Asset " << keyString << " not found, returning 404.";
+                response.headers().add<Pistache::Http::Header::Server>("confab");
                 response.send(Pistache::Http::Code::Not_Found);
             } else {
                 LOG(INFO) << "HTTP get request returning Asset data for " << keyString;
@@ -92,6 +94,29 @@ private:
                 response.send(Pistache::Http::Code::Internal_Server_Error);
             }
         });
+    }
+
+    void getAssetData(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto keyString = request.param(":key").as<std::string>();
+        auto chunkString = request.param(":chunk").as<uint64_t>();
+        LOG(INFO) << "processing HTTP GET request for /asset_data/" << keyString << "/" << chunkId;
+        uint64_t key = Asset::stringToKey(keyString);
+        RecordPtr assetData = m_assetManager->getAssetDataChunk(key, chunkId);
+        if (assetData->empty()) {
+            LOG(ERROR) << "HTTP get request for Asset Data " << keyString << " chunk " << chunkId
+                << " not found, returning 404.";
+            response.headers().add<Pistache::Http::Header::Server>("confab");
+            response.send(Pistache::Http::Code::Not_Found);
+        } else {
+            LOG(INFO) << "HTTP get request for Asset Data " << keyString << " chunk " << chunkId
+                << " returning Asset Data.";
+            response.headers()
+                    .add<Pistache::Http::Header::Server>("confab")
+                    .add<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream));
+            auto stream = response.stream(Pistache::Http::Code::Ok);
+            stream.write(reinterpret_cast<const char*>(assetData->data().data()), assetData->data().size());
+            stream.ends();
+        };
     }
 
     int m_listenPort;

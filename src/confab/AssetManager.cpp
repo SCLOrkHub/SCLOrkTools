@@ -4,8 +4,8 @@
 #include "Constants.hpp"
 #include "Database.hpp"
 
-#include <glog/logging.h>
-#include <xxhash.h>
+#include "glog/logging.h"
+#include "xxhash.h"
 
 #include <array>
 #include <experimental/filesystem>
@@ -122,6 +122,7 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
             callback(0);
             return;
         }
+        // TODO: FIXME - this should be an incremental hash!
         assetData.setHash(computeHashMemory(reinterpret_cast<uint8_t*>(data), chunkSize));
         const SizedPointer assetDataValue = assetData.flatten();
 
@@ -162,7 +163,7 @@ void AssetManager::addAssetFile(Asset::Type type, const std::string& filePath, s
         }
 
         if (bytesRemaining > 0) {
-            AssetData lastChunkData;
+            DAssetData lastChunkData;
             data = reinterpret_cast<char*>(lastChunkData.setData(bytesRemaining));
             inFile.read(data, bytesRemaining);
             bytesRead = inFile.gcount();
@@ -272,6 +273,20 @@ void AssetManager::findAsset(uint64_t key, std::function<void(uint64_t, RecordPt
             << Asset::keyToString(key);
         callback(loadedKey, assetRecord);
     }
+}
+
+RecordPtr AssetManager::getAssetDataChunk(uint64_t key, uint64_t chunkId) {
+    std::array<uint8_t, kAssetDataDatabaseKeySize> assetDataKeyArray;
+    SizedPointer assetDataKey(assetDataKeyArray.data(), kAssetDataDatabaseKeySize);
+    makeAssetDataDatabaseKey(key, chunkId, assetDataKey);
+    RecordPtr assetDataRecord = m_database->load(assetDataKey);
+    if (assetDataRecord->empty()) {
+        LOG(ERROR) << "asset Data " << Asset::keyToString(key) << " chunk: " << chunkId << " not found.";
+    } else {
+        LOG(INFO) << "Loaded Asset " << Asset::keyToString(key) << " chunk: " << chunkId << ".";
+    }
+
+    return assetDataRecord;
 }
 
 uint64_t AssetManager::computeHashFile(const std::string& filePath, size_t expectedSize, uint64_t salt) {

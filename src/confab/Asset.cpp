@@ -39,10 +39,11 @@ Asset::Asset(Asset::Type type) :
     m_author(0),
     m_deprecatedBy(0),
     m_deprecates(0),
+    m_size(0),
+    m_chunks(0),
+    m_salt(0),
     m_inlineData(nullptr),
-    m_inlineDataSize(0),
-    m_expiresOn(0),
-    m_salt(0) {
+    m_inlineDataSize(0) {
 }
 
 Asset::Asset(const Data::FlatAsset* flatAsset, uint64_t key)  :
@@ -76,7 +77,11 @@ Asset::Asset(const Data::FlatAsset* flatAsset, uint64_t key)  :
     }
 }
 
-void Asset::flatten(flatbuffers::FlatBufferBuilder& builder) {
+// TODO: FIXME m_inlineDataSize is deprecated in favor of the more general m_size. Could provide a second argument
+// here which is the inlineData, allowing us to skip a copy to the Asset record and just have the flatbuffer builder
+// copy the data directly from the source buffer.
+
+void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8* inlineData) {
     // Create leaf objects first.
     auto name = m_name != "" ? builder.CreateString(m_name.c_str()) : 0;
     auto fileExtension = m_fileExtension != "" ? builder.CreateString(m_fileExtension.c_str()) : 0;

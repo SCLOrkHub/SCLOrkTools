@@ -107,9 +107,9 @@ public:
 
     /*! Add the file extension string.
      *
-     * \note The . is normally not stored.
+     * \note The . is normally included.
      *
-     * \param fileExtension The extension of the file, e.g. "yaml", "png", "wav".
+     * \param fileExtension The extension of the file, e.g. ".yaml", ".png", ".wav".
      */
     void setFileExtension(const std::string& fileExtension) { m_fileExtension = fileExtension; }
 
@@ -155,46 +155,29 @@ public:
      */
     uint64_t deprecates() const { return m_deprecates; }
 
-    /*! Reserves space in the backing store for an inline buffer, returning the pointer to that space for writing.
+    /*! Sets the size in bytes of the data associated with this Asset.
      *
-     * \param size How many bytes to reserve. Should be less than or equal to kSingleChunkDataSize.
-     * \return A non-owning pointer to the area reserved.
+     * \param size The size in bytes of the Asset.
      */
-    uint8_t* setInlineData(size_t size) {
-        m_inlineData.reset(new uint8_t[size]);
-        m_inlineDataSize = size;
-        return m_inlineData.get();
-    }
+    void setSize(uint64_t size) { m_size = size; }
 
-    /*! Attached Asset data, if present.
+    /*! The size in bytes of the Asset.
      *
-     * Some Assets are small enough it makes sense to serialize the data directly with the Asset metadata. If so this
-     * will point to a buffer of inlineDataSize() containing the Asset data.
-     *
-     * \return A pointer to the inline data, or nullptr if not present.
+     * \return Size in bytes of the Asset.
      */
-    const uint8_t* inlineData() const { return m_inlineData.get(); }
+    uint64_t size() const { return m_size; }
 
-    /*! Size of Asset data, if present.
+    /*! The number of AssetData chunks associated with this Asset. If inlineData is present, this should be zero.
      *
-     * \return The size of the inline data pointed to by inlineData().
-     * \sa inlineData()
+     * \param chunks The number of chunks to store separately.
      */
-    size_t inlineDataSize() const { return m_inlineDataSize; }
+    void setChunks(uint64_t chunks) { m_chunks = chunks; }
 
-    /*! Sets a UNIX epoch after which this Asset should be re-checked for validity or deleted.
+    /*! The number of AssetData chunks stored for this Asset.
      *
-     * \param expiresOnEpoch The UNIX epoch to check this Asset on.
+     * \return The number of chunks to expect stored with this Asset.
      */
-    void setExpiresOn(uint64_t expiresOnEpoch) { m_expiresOn = expiresOnEpoch; }
-
-    /*! Specifies a UNIX epoch after which this Asset should be re-checked for validity or deleted.
-     *
-     * For cached Assets, or Assets likely to be deprecated, can store a timeout here.
-     *
-     * \return A UNIX epoch for when this Asset should be refreshed, or 0 if not present.
-     */
-    uint64_t expiresOn() const { return m_expiresOn; }
+    uint64_t chunks() const { return m_chunks; }
 
     /*! Adds a salt value to the Asset.
      *
@@ -207,6 +190,26 @@ public:
      * \return A salt value.
      */
     uint64_t salt() const { return m_salt; }
+
+    /*! Reserves space in the backing store for an inline buffer, returning the pointer to that space for writing.
+     *
+     * \param size How many bytes to reserve. Should be less than or equal to kSingleChunkDataSize.
+     * \return A non-owning pointer to the area reserved.
+     */
+    uint8_t* setInlineData(size_t size) {
+        m_inlineData.reset(new uint8_t[size]);
+        m_size = size;
+        return m_inlineData.get();
+    }
+
+    /*! Attached Asset data, if present.
+     *
+     * Some Assets are small enough it makes sense to serialize the data directly with the Asset metadata. If so this
+     * will point to a buffer of inlineDataSize() containing the Asset data.
+     *
+     * \return A pointer to the inline data, or nullptr if not present.
+     */
+    const uint8_t* inlineData() const { return m_inlineData.get(); }
 
     /// @cond UNDOCUMENTED
     Asset() = delete;
@@ -223,10 +226,10 @@ private:
     uint64_t m_author;
     uint64_t m_deprecatedBy;
     uint64_t m_deprecates;
-    std::unique_ptr<uint8_t[]> m_inlineData;
-    size_t m_inlineDataSize;
-    uint64_t m_expiresOn;
     uint64_t m_salt;
+    uint64_t m_size;
+    uint64_t m_chunks;
+    std::unique_ptr<uint8_t[]> m_inlineData;
 };
 
 }  // namespace Confab
