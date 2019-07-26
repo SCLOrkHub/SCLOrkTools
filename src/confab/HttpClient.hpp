@@ -56,15 +56,14 @@ public:
      *
      * \param type The Asset type.
      * \param name The Asset name, can be "".
-     * \param fileExtension The desired file extension, including the ".", such as ".yaml" or ".scd"
      * \param author An optional Asset key.
      * \param deprecates An optional Asset key.
      * \param size The size of the data pointed to by inlineData, should be smaller than kDataChunkSize
      * \param inlineData The inline Asset data to serialize.
      * \return The computed key for this Asset, or zero on error.
      */
-    uint64_t postInlineAsset(Asset::Type type, const std::string& name, const std::string& fileExtension,
-            uint64_t author, uint64_t deprecates, uint64_t size, const uint8_t* inlineData);
+    uint64_t postInlineAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
+            uint64_t size, const uint8_t* inlineData);
 
     /*! Uploads a new Asset along with all AssetData chunks in the file to the server.
      *

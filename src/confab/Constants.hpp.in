@@ -17,9 +17,10 @@ static const Common::Version confabVersion(kConfabVersionMajor, kConfabVersionMi
 // uncompressed will help the system manipulate small chunks efficiently. Because we also store a hash of each data
 // chunk along with the chunk data itself, and there may be additional overhead in leveldb, flatbuffers, etc, we
 // reserve a few bytes within the 4K to make sure we are actually fitting into that 4K limit.
-const size_t kDataChunkSize = 4096 - 256;
-const size_t kSingleChunkDataSize = 3 * 1024;
-const size_t kMaxAssetSize = 4ull * 1024ull * 1024ull * 1024ull;
+constexpr size_t kPageSize = 4096;
+constexpr size_t kDataChunkSize = kPageSize - 32;
+constexpr size_t kSingleChunkDataSize = 3 * 1024;
+constexpr size_t kMaxAssetSize = 4ull * 1024ull * 1024ull * 1024ull;
 
 }  // namespace Confab
 

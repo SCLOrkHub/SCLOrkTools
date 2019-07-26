@@ -186,6 +186,7 @@ public:
     void setSalt(uint64_t salt) { m_salt = salt; }
 
     /*! Provides an initial state for the hashing function, to reduce the chance of hash collision on small data sizes.
+     *  Only nonzero when inlineData is present.
      *
      * \return A salt value.
      */
@@ -226,9 +227,10 @@ private:
     uint64_t m_author;
     uint64_t m_deprecatedBy;
     uint64_t m_deprecates;
-    uint64_t m_salt;
     uint64_t m_size;
     uint64_t m_chunks;
+
+    uint64_t m_salt;
     std::unique_ptr<uint8_t[]> m_inlineData;
 };
 
