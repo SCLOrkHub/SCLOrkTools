@@ -4,6 +4,7 @@
 #include <chrono>
 #include <experimental/filesystem>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <unordered_map>
@@ -45,14 +46,16 @@ public:
     fs::path checkCache(uint64_t key);
 
     /*! If needed, makes room by evicting old entries first, then downloads AssetData chunks of the provided Asset
-     * until complete, then returns a path to the newly created cache entry, or an empty path on error.
+     * until complete, then returns a path to the newly created cache entry, or an empty path on error. Note that it
+     * does not checkCache first, meaning it will clobber any existing file and re-download.
      *
      * \param key The Asset key to download AssetData chunks for.
      * \param fileSize The size of the Asset in bytes.
+     * \param chunks The number of chunks to download.
      * \param fileExtension The extension to append to the filename when complete, including the dot.
      * \return The path to the file, or an empty path on error.
      */
-    fs::path download(uint64_t key, size_t fileSize, const std::string& fileExtension);
+    fs::path download(uint64_t key, size_t fileSize, uint64_t chunks, const std::string& fileExtension);
 
 private:
     /*! Evict items from the cache until the size of the cache is smaller than the maximum size plus the addedBytes.
@@ -67,6 +70,9 @@ private:
     std::shared_ptr<HttpClient> m_httpClient;
 
     size_t m_currentSize;
+
+    // Protects both priority queue and map.
+    std::mutex m_mutex;
 
     // We monitor access time of cache entries by updating the modified time for each request for a cache asset. This
     // queue allows for quick extraction of the oldest entry by access time for efficient cache eviction.

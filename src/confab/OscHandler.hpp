@@ -59,7 +59,7 @@ private:
 
     int m_listenPort;
     int m_sendPort;
-    std::shared_ptr<HttpClient> m_client;
+    std::shared_ptr<HttpClient> m_httpClient;
     std::shared_ptr<CacheManager> m_cache;
 
     std::unique_ptr<UdpTransmitSocket> m_transmitSocket;

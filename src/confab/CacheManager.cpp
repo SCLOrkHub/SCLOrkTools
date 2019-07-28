@@ -2,9 +2,14 @@
 
 #include "Asset.hpp"
 #include "HttpClient.hpp"
+#include "schemas/FlatAsset_generated.h"
+#include "schemas/FlatAssetData_generated.h"
 
 #include "glog/logging.h"
+#include "xxhash.h"
 
+#include <array>
+#include <fstream>
 
 namespace Confab {
 
@@ -32,17 +37,45 @@ void CacheManager::checkExistingEntries(bool validate) {
             uint64_t key = Asset::stringToKey(path.stem());
             bool valid = true;
             if (validate) {
-                // TODO: compute hash of file when requested, delete file on failure.
+                XXH64_state_t* hashState = XXH64_createState();
+                XXH64_reset(hashState, 0);
+                std::array<char, kDataChunkSize> fileChunk;
+                std::ifstream inFile(path);
+                if (!inFile) {
+                    LOG(ERROR) << "error opening cache file: " << path << " for hash validation.";
+                    valid = false;
+                } else {
+                    size_t bytesRemaining = fileSize;
+                    while (inFile && bytesRemaining > 0) {
+                        inFile.read(fileChunk.data(), kDataChunkSize);
+                        size_t bytesRead = inFile.gcount();
+                        bytesRemaining -= bytesRead;
+                        XXH64_update(hashState, fileChunk.data(), bytesRead);
+                    }
+                    uint64_t hash = XX64_digest(hashState);
+                    if (hash != key || bytesRemaining > 0) {
+                        LOG(ERROR) << "error validating cache file: " << path << " computed hash of "
+                            << Asset::keyToString(hash) << " with " << bytesRemaining << " bytes unread.";
+                        valid = false;
+                    } else {
+                        LOG(INFO) << "validated cache file " << path << ".";
+                    }
+                }
+                XXH64_freeState(hashState);
             }
             if (valid) {
+                std::lock_guard<std::mutex> lock(m_mutex);
                 LOG(INFO) << "adding " << path << " to cache record, " << fileSize << " bytes.";
                 m_currentSize += fileSize;
                 m_timeQueue.insert(std::make_pair(writeTime, path));
                 fs::path extension = path.extension();
                 m_extensionMap.insert(std::make_pair(key, extension);
+            } else {
+                LOG(WARNING) << "removing invalid cache file " << path;
+                fs::remove(path);
             }
         } else {
-            LOG(INFO) << "CacheManager finds non-file entry: " << path << " in cache.";
+            LOG(INFO) << "found non-file entry: " << path << " in cache.";
         }
     }
 
@@ -53,23 +86,100 @@ void CacheManager::checkExistingEntries(bool validate) {
 }
 
 fs::path CacheManager::checkCache(uint64_t key) {
-    auto extensionPair = m_extensionMap.find(key);
-    if (extensionPair == m_extensionMap.end()) {
-        return fs::path();
+    fs::path cachePath;
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto extensionPair = m_extensionMap.find(key);
+        if (extensionPair == m_extensionMap.end()) {
+            LOG(INFO) << "cache miss for Asset " << asset::keyToString(key);
+            return fs::path();
+        }
+        cachePath = m_cachePath + "/" + Asset::keyToString(key) + extensionPair.second();
     }
 
-    fs::path cachePath = m_cachePath + "/" + Asset::keyToString(key) + extensionPair.second();
     LOG(INFO) << "cache hit for Asset " << Asset::keyToString(key) << " at " << cachePath;
 
     // Update file write time to reflect the access of this cached asset. NOTE that this means the data in m_timeQueue
     // is now invalid, leading to a need for re-verification of write times in the queue when identifying eviction
     // candidates.
-    fs::last_write_time(cachePath, extensionPairstd::system_clock::now());
+    fs::last_write_time(cachePath, std::system_clock::now());
     return cachePath;
 }
 
-fs::path CacheManager::download(uint64_t key, size_t fileSize, const fs::path& fileExtension) {
-    // TODO
+fs::path CacheManager::download(uint64_t key, size_t fileSize, uint64_t chunks, const fs::path& fileExtension) {
+    fs::path filePath = m_cachePath + "/" + Asset::keyToString(key) + fileExtension;
+    LOG(INFO) << "downloading Asset data for " << Asset::keyToString(key) << ", " << chunks << " chunks "
+        << fileSize << " bytes, into file " << filePath;
+
+    std::ofstream outFile(path, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!outFile) {
+        LOG(ERROR) << "error opening file " << path << " for writing.";
+        return fs::path();
+    }
+
+    size_t downloadedSize = 0;
+    uint64_t digest = 0;
+    XXH64_state_t* hashState = XXH64_createState();
+    XXH64_reset(hashState, 0);
+    bool ok = true;
+
+    // Download AssetData chunk-by-chunk sequentially, validate each chunk, then write to file.
+    for (auto i = 0; i < chunks; ++i) {
+        m_httpClient->getAssetData(key, i, [&filePath, &ok](uint64_t chunkKey, uint64_t chunkNumber,
+            RecordPtr assetDataRecord) {
+            if (assetDataRecord->empty()) {
+                LOG(ERROR) << "error downloading chunk " << chunkNumber << " for file " << filePath;
+                ok = false;
+            } else {
+                // Validate incremental hash of incoming data.
+                const Data::FlatAssetData* flatAssetData = Data::GetFlatAssetData(assetDataRecord->data().data());
+                const uint8_t* chunkData = flatAssetData->data()->data();
+                size_t chunkDataSize = flatAssetData->data()->size();
+                XXH64_update(hashState, chunkData, chunkDataSize);
+                digest = XXH64_digest(hashState);
+                if (digest != flatAssetData->hash()) {
+                    LOG(ERROR) << "incremental hash validation for asset download " << filePath << " chunk number "
+                        << chunkNumber << " failed, computed " << Asset::keyToString(digest) << ", expected "
+                        << Asset::keyToString(flatAssetData->hash());
+                    ok = false;
+                } else {
+                    downloadedSize += chunkDataSize;
+                    outFile.write(chunkData, chunkDataSize);
+                }
+            }
+        });
+        if (!ok) break;
+    }
+
+    XXH64_freeState(hashState);
+    outFile.close();
+
+    if (ok && (key != digest || fileSize != downloadedSize)) {
+        LOG(ERROR) << "asset Data mismatch, key: " << Asset::keyToString(key) << " computed hash: "
+            << Asset::keyToString(digest) << " recorded size: " << fileSize << " downloaded bytes: " << downloadedSize;
+        ok = false;
+    }
+
+    if (!ok) {
+        LOG(WARNING) << "failed to download " << filePath << " removing file.";
+        fs::remove(filePath);
+        return fs::path();
+    }
+
+    std::chrono::time_point writeTime = fas::last_write_time(filePath);
+
+    // Add filePath to cache tracking data structures.
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_currentSize += fileSize;
+        LOG(INFO) << "adding " << filePath << " to cache record, " << fileSize << " bytes, cache now " << m_currentSize
+            << " bytes.";
+        m_timeQueue.insert(std::make_pair(writeTime, filePath));
+        m_extensionMap.insert(std::make_pair(key, fileExtension));
+    }
+
+    return filePath;
 }
 
 void CacheManager::makeRoomFor(size_t addedBytes) {

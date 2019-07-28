@@ -7,7 +7,11 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
+#include <future>
 #include <memory>
+
+DEFINE_bool(validate_file_cache, true, "If true confab will check the hash of every file in the cache, removing any "
+        "files that are detected corrupt.");
 
 DEFINE_int32(osc_listen_port, 4248, "UDP port on localhost to listen for incoming OSC commands from SuperCollider.");
 DEFINE_int32(osc_respond_port, 4249, "UDP port on localhost to send response messages to SuperCollider.");
@@ -24,12 +28,13 @@ int main(int argc, char* argv[]) {
 
     std::shared_ptr<Confab::HttpClient> httpClient(new Confab::HttpClient(FLAGS_server_url));
     std::shared_ptr<Confab::CacheManager> cacheManager(new Confab::CacheManager(FLAGS_data_dir + "/cache"), httpClient);
+    std::async(std::launch::async, [&cacheManager, &FLAGS_validate_file_cache] {
+        cacheManager->checkExistingEntries(FLAGS_validate_file_cache);
+    });
 
     LOG(INFO) << "Opening up OSC ports for listen on " << FLAGS_osc_listen_port << " and respond on "
         << FLAGS_osc_respond_port;
     Confab::OscHandler osc(FLAGS_osc_listen_port, FLAGS_osc_respond_port, httpClient, cacheManager);
-
-    // Kickoff cache validation/cleanup as task? Maybe behind runtime flag?
 
     // It is possible to install signal handlers for SIGINT and SIGTERM using std::signal, but putting a condition
     // variable call, or any thread synchronization primitives, in an asynchronous system event handler is considered

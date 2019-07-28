@@ -37,21 +37,25 @@ public:
 
     /*! Requests an asset metadata entry from the server. Blocks until an outcome is reached.
      *
+     * This function and getAssetData rely on callbacks to return their data, both to allow the returning of multiple
+     * arguments in a convenient fashion, but also more importantly to avoid a copy of the record out of the internal
+     * HTTP data structures, that go out of scope when these functions return. By calling a callback, we are able to
+     * expose the raw pointers inside of these data structures while they are still in scope.
+     *
      * \param key The asset key associated with this asset.
      * \param callback The function to call when the asset is downloaded, with the key of the provided asset along with
-     *                 a pointer to the Asset or nullptr on error.
+     *                 a non-owning pointer to the FlatAsset or an empty Record on error.
      */
     void getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback);
 
-    /*! Downloads, verifies, and concatendates AssetData records into the provided file path.
+    /*! Retrieves an asset data chunk from the server. Blocks until an outcome is resolved.
      *
      * \param key The asset key associated with these AssetData records.
-     * \param fileSize Size of target file in bytes.
-     * \param numChunks Number of chunks to download.
-     * \param path The file path to save the asset data to.
-     * \return true on success, false on error.
+     * \param chunk The chunk number to download.
+     * \param callback The function to call when the FlatAssetData record is downloaded, with the key of the asset, the
+     *                 chunk number, and the FlatAssetData record, or an empty Record on error.
      */
-    bool getAssetData(uint64_t key, uint64_t fileSize, uint64_t numChunks, const fs::path& path);
+    void getAssetData(uint64_t key, uint64_t chunk, std::function<void(uint64_t, uint64_t, RecordPtr)> callback);
 
     /*! Uploads a new Asset with inline data to the server.
      *
@@ -83,10 +87,10 @@ public:
     void shutdown();
 
 private:
-    std::string m_serverAddress;
+    const std::string m_serverAddress;
     std::unique_ptr<Pistache::Http::Client> m_client;
     std::random_device m_randomDevice;
-    std::uniform_int_distribution m_distribution;
+    std::uniform_int_distribution<uint64_t> m_distribution;
 };
 
 }  // namespace Confab

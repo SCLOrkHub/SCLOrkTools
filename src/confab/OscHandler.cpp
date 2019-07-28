@@ -2,7 +2,7 @@
 
 #include "Asset.hpp"
 #include "Constants.hpp"
-#include "HttpEndpoint.hpp"
+#include "HttpClient.hpp"
 
 #include <glog/logging.h>
 #include <ip/UdpSocket.h>
@@ -130,7 +130,7 @@ OscHandler::OscHandler(int listenPort, int sendPort, std::shared_ptr<HttpClient>
     std::shared_ptr<CacheManager> cacheManager) :
     m_listenPort(listenPort),
     m_sendPort(sendPort),
-    m_client(httpClient),
+    m_httpClient(httpClient),
     m_cache(cacheManager) {
 }
 
@@ -147,25 +147,25 @@ void OscHandler::listenUntilSigInt() {
 }
 
 void OscHandler::findAsset(uint64_t assetId) {
-    m_assetManager->findAsset(assetId, [this, assetId](uint64_t loadedKey, RecordPtr record) {
+    m_httpClient->getAsset(assetId, [this, assetId](uint64_t loadedKey, RecordPtr record) {
         char buffer[kDataChunkSize];
         osc::OutboundPacketStream p(buffer, kDataChunkSize);
-
         if (record->empty()) {
-            p << osc::BeginMessage("/assetError") << Asset:keyToString(assetId).c_str()
+            LOG(ERROR) << "failed to retrieve Asset " << Asset::keyToString(assetId) << ".";
+            p << osc::BeginMessage("/assetError") << Asset::keyToString(assetId).c_str()
                 << "Failed to find asset associated with key." << osc::EndMessage;
             m_transmitSocket->Send(p.Data(), p.Size());
         } else {
             const Data::FlatAsset* asset = Data::GetFlatAsset(record->data().data());
             p << osc::BeginMessage("/assetFound");
-            p << Asset:keyToString(assetId).c_str();
-            p << Asset:keyToString(loadedKey).c_str();
+            p << Asset::keyToString(assetId).c_str();
+            p << Asset::keyToString(loadedKey).c_str();
             p << "snippet";  // TODO: asset type to string.
             p << asset->name();
             p << asset->fileExtension();
-            p << Asset:keyToString(asset->author()).c_str();
-            p << Asset:keyToString(asset->deprecatedBy()).c_str();
-            p << Asset:keyToString(asset->deprecates()).c_str();
+            p << Asset::keyToString(asset->author()).c_str();
+            p << Asset::keyToString(asset->deprecatedBy()).c_str();
+            p << Asset::keyToString(asset->deprecates()).c_str();
             if (asset->inlineData()) {
                 osc::Blob blob(asset->inlineData()->data(), asset->inlineData()->size());
                 p << blob;
@@ -173,8 +173,8 @@ void OscHandler::findAsset(uint64_t assetId) {
                 osc::Blob blob(nullptr, 0);
                 p << blob;
             }
-            p << Asset:keyToString(asset->expiresOn()).c_str();
-            p << Asset:keyToString(asset->salt()).c_str();
+            p << Asset::keyToString(asset->expiresOn()).c_str();
+            p << Asset::keyToString(asset->salt()).c_str();
             p << osc::EndMessage;
             m_transmitSocket->Send(p.Data(), p.Size());
         }
@@ -183,7 +183,7 @@ void OscHandler::findAsset(uint64_t assetId) {
 
 void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string name, uint64_t author,
     uint64_t deprecates, std::string filePath) {
-    uint64_t key = m_client->postFileAsset(type, name, author, deprecates, filePath);
+    uint64_t key = m_httpClient->postFileAsset(type, name, author, deprecates, filePath);
     char buffer[1024];
     osc::OutboundPacketStream p(buffer, 1024);
     p << osc::BeginMessage("/assetAdded") << serialNumber << Asset:keyToString(key).c_str()
@@ -193,7 +193,8 @@ void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string na
 
 void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string name, uint64_t author,
     uint64_t deprecates, std::string assetString) {
-    uint64_t key = m_client->postInlineAsset(type, name, author, deprecates, assetString.size(), assetString.c_str());
+    uint64_t key = m_httpClient->postInlineAsset(type, name, author, deprecates, assetString.size(),
+        assetString.c_str());
 
     // Regardless of success or failure of Asset add we return the key and serial number.
     char buffer[1024];

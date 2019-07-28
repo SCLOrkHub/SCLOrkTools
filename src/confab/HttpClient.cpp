@@ -93,7 +93,7 @@ void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)>
             LOG(INFO) << "received Ok response for Asset request " << request;
             callback(key, RecordPtr(new ClientRecord(response.body()));
         } else {
-            LOG(ERROR) << "error code " << response.code() << "on Asset request " << request;
+            LOG(ERROR) << "error code " << response.code() << " on Asset request " << request;
             callback(key, makeEmptyRecord());
         }
     });
@@ -101,73 +101,25 @@ void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)>
     response.wait();
 }
 
-bool HttpClient::getAssetData(uint64_t key, uint64_t fileSize, uint64_t numChunks, const fs::path& path) {
-    auto keyString = Asset::keyToString(key);
-    LOG(INFO) << "downloading Asset data for " << keyString << ", " << numChunks << " chunks "
-        << fileSize << " bytes, into file " << path;
+void HttpClient::getAssetData(uint64_t key, uint64_t chunk,
+    std::function<void(uint64_t, uint64_t, RecordPtr)> callback) {
+    char numBuf[32];
+    snprintf(numBuf, 32, "%" PRIu64, chunk);
+    std::string request = m_serverAddress + "/asset_data/" + Asset::keyToString(key) + "/" + std::string(numbuf);
+    LOG(INFO) << "issuing AssetData request to " << request;
 
-    std::ofstream outFile(path, std::ios::out | std::ios::binary | std::ios::trunc);
-    if (!outFile) {
-        LOG(ERROR) << "error opening file " << path << " for writing.";
-        return false;
-    }
+    auto response = m_client->get(request).send();
+    response.then([&key, &chunk, &callback, &request](Pistache::Http::Response response) {
+        if (response.code() == Pistache::Http::Code::Ok) {
+            LOG(INFO) << "received Ok response for AssetData request " << request;
+            callback(key, chunk, RecordPtr(new ClientRecord(response.body()));
+        } else {
+            LOG(ERROR) << "error code " << response.code() << " on AssetData request " << request;
+            callback(key, chunk, makeEmptyRecord());
+        }
+    });
 
-    uint64_t totalSize = 0;
-    uint64_t digest = 0;
-    std::string requestBase = m_serverAddress + "/asset_data/" + keyString + "/";
-    XXH64_state_t* hashState = XXH64_createState();
-    XXH64_reset(hashState, 0);
-    bool ok = true;
-
-    for (uint64_t i = 0; i < numChunks; ++i) {
-        char numBuf[32];
-        snprintf(numBuf, 32, "%" PRIu64, i);
-        LOG(INFO) << "issuing AssetData request for " << keyString << " chunk " << i;
-
-        std::string request = requestBase + std::string(numBuf);
-        auto response = m_client->get(request).send();
-        response.then([&keyString, &totalSize, &digest, &hashState, &i, &request](Pistache::Http::Response response) {
-            if (response.code() == Pistache::Http::Code::Ok) {
-                LOG(INFO) << "received chunk " << i << " for Asset " << keyString;
-                const Data::FlatAssetData* flatAssetData = Data::GetFlatAssetData(response.body().c_str());
-                const uint8_t* chunkData = flatAssetData->data()->data();
-                size_t chunkDataSize = flatAssetData->data()->size();
-                // Update hash digest.
-                XXH64_update(hashState, chunkData, chunkDataSize);
-                digest = XXH64_digest(hashState);
-                if (digest != flatAssetData->hash()) {
-                    LOG(ERROR) << "Asset download " << keyString << " chunk " << i << " failed validation".
-                    ok = false;
-                } else {
-                    totalSize += chunkDataSize;
-                    outFile.write(chunkData, chunkDataSize);
-                }
-            } else {
-                LOG(ERROR) << "error code " << response.code() << "on Asset request " << request;
-                ok = false;
-            }
-        });
-
-        response.wait();
-        if (!ok) break;
-    }
-
-    XXH64_freeState(hashState);
-    outFile.close();
-
-    // Final digest should match key, and total file size should also match.
-    if (key != digest || fileSize != totalSize) {
-        LOG(ERROR) << "asset Data mismatch, key: " << keyString << " computed hash: " << Asset::keyToString(digest)
-            << " recorded size: " << fileSize << " downloaded bytes: " << totalSize;
-        ok = false;
-    }
-
-    if (!ok) {
-        LOG(ERROR) << "asset Data retrieval failed for Asset " << keyString << ", removing file at " << path;
-        fs::remove(path);
-    }
-
-    return ok;
+    response.wait();
 }
 
 uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
