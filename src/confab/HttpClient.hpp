@@ -47,10 +47,11 @@ public:
      *
      * \param key The asset key associated with these AssetData records.
      * \param fileSize Size of target file in bytes.
+     * \param numChunks Number of chunks to download.
      * \param path The file path to save the asset data to.
      * \return true on success, false on error.
      */
-    bool getAssetData(uint64_t key, uint64_t fileSize, uint64_t numChunks, const fs::path& path)
+    bool getAssetData(uint64_t key, uint64_t fileSize, uint64_t numChunks, const fs::path& path);
 
     /*! Uploads a new Asset with inline data to the server.
      *

@@ -1,13 +1,18 @@
 #include "ConfabCommon.hpp"
 #include "Constants.hpp"
+#include "HttpClient.hpp"
 #include "OscHandler.hpp"
 #include "common/Version.hpp"
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
+#include <memory>
+
 DEFINE_int32(osc_listen_port, 4248, "UDP port on localhost to listen for incoming OSC commands from SuperCollider.");
 DEFINE_int32(osc_respond_port, 4249, "UDP port on localhost to send response messages to SuperCollider.");
+
+DEFINE_string(server_url, "http://sclork-s01.local:9080", "Address for HTTP communication with Confab server.");
 
 int main(int argc, char* argv[]) {
     Confab::ConfabCommon common;
@@ -17,9 +22,12 @@ int main(int argc, char* argv[]) {
 
     LOG(INFO) << "Starting confab v" << Confab::confabVersion.toString() << " on pid " << getpid();
 
+    std::shared_ptr<Confab::HttpClient> httpClient(new Confab::HttpClient(FLAGS_server_url));
+    std::shared_ptr<Confab::CacheManager> cacheManager(new Confab::CacheManager(FLAGS_data_dir + "/cache"), httpClient);
+
     LOG(INFO) << "Opening up OSC ports for listen on " << FLAGS_osc_listen_port << " and respond on "
         << FLAGS_osc_respond_port;
-    Confab::OscHandler osc(FLAGS_osc_listen_port, FLAGS_osc_respond_port, common.assetManager());
+    Confab::OscHandler osc(FLAGS_osc_listen_port, FLAGS_osc_respond_port, httpClient, cacheManager);
 
     // Kickoff cache validation/cleanup as task? Maybe behind runtime flag?
 
@@ -32,6 +40,7 @@ int main(int argc, char* argv[]) {
     osc.listenUntilSigInt();
 
     LOG(INFO) << "Termination signal caught, stopping confab normally.";
+    client->shutdown();
     common.shutdown();
     return 0;
 }

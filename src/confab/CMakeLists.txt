@@ -81,8 +81,8 @@ target_link_libraries(confab
 # confab server
 add_executable(confab-server
     confab-server.cpp
-    AssetManager.cpp
-    AssetManager.hpp
+    AssetDatabase.cpp
+    AssetDatabase.hpp
     Config.cpp
     Config.hpp
     Database.cpp
@@ -100,7 +100,6 @@ target_link_libraries(confab-server
 # confab test
 set(confab_test_files
     Asset_test.cpp
-    Database_test.cpp
 )
 
 add_executable(test_confab test_confab.cpp ${confab_test_files})

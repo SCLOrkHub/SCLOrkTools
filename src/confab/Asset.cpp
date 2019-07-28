@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstring>
+#include <inttypes.h>
 
 namespace Confab {
 
@@ -45,21 +46,15 @@ Asset::Asset(Asset::Type type) :
     m_inlineData(nullptr) {
 }
 
-Asset::Asset(const Data::FlatAsset* flatAsset, uint64_t key)  :
+Asset::Asset(const Data::FlatAsset* flatAsset)  :
     m_type(static_cast<Asset::Type>(flatAsset->type())),
+    m_key(flatAsset->key()),
     m_author(flatAsset->author()),
     m_deprecatedBy(flatAsset->deprecatedBy()),
     m_deprecates(flatAsset->deprecates()),
-    m_expiresOn(flatAsset->expiresOn()),
     m_size(flatAsset->size()),
     m_chunks(flatAsset->chunks()),
     m_salt(flatAsset->salt()) {
-
-    if (flatAsset->key() != 0) {
-        m_key = flatAsset->key();
-    } else {
-        m_key = key;
-    }
 
     if (flatAsset->name()) {
         m_name = std::string(flatAsset->name()->c_str());
@@ -75,11 +70,11 @@ Asset::Asset(const Data::FlatAsset* flatAsset, uint64_t key)  :
     }
 }
 
-void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8* inlineData) {
+void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inlineData) {
     // Create leaf objects first.
     auto name = m_name != "" ? builder.CreateString(m_name.c_str()) : 0;
     auto fileExtension = m_fileExtension != "" ? builder.CreateString(m_fileExtension.c_str()) : 0;
-    const uint8* serialInline = inlineData ? inlineData : m_inlineData.get();
+    const uint8_t* serialInline = inlineData ? inlineData : m_inlineData.get();
     // These builder Create* calls do a byte-by-byte copy in a for loop of the source data into the builder. sp O(n).
     auto builderInline = serialInline != nullptr ? builder.CreateVector(serialInline, m_size) : 0;
 

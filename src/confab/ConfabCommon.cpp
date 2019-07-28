@@ -1,12 +1,9 @@
 #include "ConfabCommon.hpp"
 
-#include "AssetManager.hpp"
-#include "Config.hpp"
 #include "Constants.hpp"
 #include "Database.hpp"
 #include "common/Version.hpp"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 #include <fstream>
@@ -18,6 +15,8 @@ namespace fs = std::experimental::filesystem;
 
 // Command line flags for logging.
 DEFINE_bool(chatty, false, "If true confab will log everything to stderr as well as to log files.");
+DEFINE_string(data_directory, "../data/confab", "Path where confab will store the database and log files. A zero or "
+    "negative size will disable the cache");
 
 namespace Confab {
 
@@ -49,7 +48,7 @@ bool ConfabCommon::checkSentinelFile() {
     // Check for existing pid sentinel file, meaning a version of confab is already running on this data directory.
     m_pidPath = FLAGS_data_directory + "/pid";
     if (fs::exists(m_pidPath)) {
-        LOG(ERROR) << "Pid sentinel file " << pidPath << " already exists, exiting.";
+        LOG(ERROR) << "Pid sentinel file " << m_pidPath << " already exists, exiting.";
         return false;
     } else {
         // Write sentinel file.

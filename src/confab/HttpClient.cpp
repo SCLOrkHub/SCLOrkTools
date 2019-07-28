@@ -1,7 +1,7 @@
 #include "HttpClient.hpp"
 
 #include "Asset.hpp"
-#include "Constants.h"
+#include "Constants.hpp"
 #include "schemas/FlatAsset_generated.h"
 #include "schemas/FlatAssetData_generated.h"
 
@@ -22,6 +22,9 @@ namespace fs = std::experimental::filesystem;
 
 namespace Confab {
 
+/*! Record class to hold the string values returned by Pistache and allow us to deserialize records from them
+ * without additional copies.
+ */
 class ClientRecord : public Record {
 public:
     /*! Default constructor not supported, use makeEmptyRecord().
@@ -29,6 +32,8 @@ public:
     ClientRecord() = delete;
 
     /*! Construct a record that wraps a Pistache response string.
+     *
+     * \param responseString The string to wrap.
      */
     ClientRecord(const std::string& responseString) :
         m_data(reinterpret_cast<const uint8_t*>(responseString.c_str()), responseString.size()) {
@@ -247,7 +252,6 @@ uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uin
         XXH64_update(hashState, fileChunk.data(), bytesRead);
     }
 
-
     uint64_t key = XXH64_digest(hashState);
     // Free this now, we can re-allocate later, just to avoid potentially leaking it on the various exit paths from this
     // function.
@@ -300,6 +304,7 @@ uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uin
     inFile.seekg(0, ios::beg);
     bytesRemaining = fileSize;
     size_t chunk = 0;
+    uint64_t chunkHash = 0;
 
     while (ok && inFile && bytesRemaining > 0) {
         builder.Clear();
@@ -316,7 +321,8 @@ uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uin
             Data::FlatAssetDataBuilder assetDataBuilder(builder);
             assetDataBuilder.set_data(flatAssetData);
             XXH64_update(hashState, flatData, bytesRead);
-            assetDataBuilder.set_hash(XX64_digest(hashState));
+            chunkHash = XXH64_digest(hashState);
+            assetDataBuilder.set_hash(chunkHash);
             auto assetData = assetDataBuilder.Finish();
             builder.Finish(assetData);
 
@@ -341,7 +347,15 @@ uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uin
         }
     }
 
-    // TODO:  there may be some remnants of in the buffers here, some error checking, return the key.
+    XXH64_freeState(hashState);
+
+    // Digest hash of final chunk should match the overall hash of the file.
+    if (!ok || bytesRemaining > 0 || chunkHash != key) {
+        LOG(ERROR) << "error uploading file " << assetFile << " to server.";
+        return 0;
+    }
+
+    return key;
 }
 
 void HttpClient::shutdown() {

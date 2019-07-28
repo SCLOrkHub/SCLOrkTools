@@ -1,5 +1,6 @@
-#include "AssetManager.hpp"
+#include "AssetDatabase.hpp"
 #include "ConfabCommon.hpp"
+#include "Config.hpp"
 #include "Constants.hpp"
 #include "Database.hpp"
 #include "HttpEndpoint.hpp"
@@ -13,11 +14,9 @@ DEFINE_int32(http_listen_port, 9080, "HTTP port on localhost to listen to incomi
 DEFINE_int32(http_listen_threads, 1, "Number of thread to use for listening to HTTP requests.");
 
 // Command line flags for the database.
-DEFINE_bool(create_new_database, -1, "If true confab will make a new database, if -1 confab will expect the "
+DEFINE_bool(create_new_database, false, "If true confab will make a new database, if -1 confab will expect the "
     "database to already exist.");
 DEFINE_int32(database_cache_size_mb, 16, "Size in megabytes of the memory cache the database should use.");
-DEFINE_string(data_directory, "../data/confab", "Path where confab will store the database and log files. A zero or "
-    "negative size will disable the cache");
 
 const char* kConfigKey = "confab-db-config";
 
@@ -29,7 +28,7 @@ int main(int argc, char* argv[]) {
 
     LOG(INFO) << "Starting confab-server v" << Confab::confabVersion.toString() << " on pid " << getpid();
 
-    std::shared_ptr<Database> database;
+    std::shared_ptr<Confab::Database> database;
 
     if (!database->open((FLAGS_data_directory + "/db").c_str(), FLAGS_create_new_database,
         FLAGS_database_cache_size_mb * 1024 * 1024)) {
@@ -79,10 +78,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::shared_ptr<Confab::AssetManager> assetManager(new Confab::AssetManager(database));
+    std::shared_ptr<Confab::AssetDatabase> assetDatabase(new Confab::AssetDatabase(database));
 
     LOG(INFO) << "Starting HTTP on port " << FLAGS_http_listen_port << ".";
-    Confab::HttpEndpoint httpEndpoint(FLAGS_http_listen_port, FLAGS_http_listen_threads, common.assetManager());
+    Confab::HttpEndpoint httpEndpoint(FLAGS_http_listen_port, FLAGS_http_listen_threads, assetDatabase);
     httpEndpoint.startServerThread();
 
     // BLOCK UNTIL SIGINT

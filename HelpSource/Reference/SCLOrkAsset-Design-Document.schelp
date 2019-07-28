@@ -48,6 +48,9 @@ The file pointed to by code::filePath:: need only remain valid until the strong:
 table::
 ## strong::label::   || type         || One of the Asset Type Enumeration values.
 ## strong::integer:: || serialNumber || A temporary client-side identifier of this asset.
+## strong::label::   || name         || An optional name for the Asset.
+## strong::label::   || author       || An optional Asset key identifying a record for an Author.
+## strong::label::   || deprecates   || An optional Asset key that this Asset deprecates.
 ## strong::label::   || filePath     || Path to the filename to add to the database.
 ::
 
@@ -58,7 +61,10 @@ Adds a new asset to the shared asset pool. For smaller assets like code snippets
 table::
 ## strong::label::   || type         || One of the Asset Type Enumeration values.
 ## strong::integer:: || serialNumber || A temporary client-side identifier of this asset.
-## strong::string::  || assetString  || The included asset data.
+## strong::label::   || name         || An optional name for the Asset.
+## strong::label::   || author       || An optional Asset key identifying a record for an Author.
+## strong::label::   || deprecates   || An optional Asset key that this Asset deprecates.
+## strong::label::   || assetString  || The included asset data.
 ::
 
 subsection:: /assetFind

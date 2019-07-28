@@ -50,6 +50,7 @@ public:
      * \param key The Asset key to download AssetData chunks for.
      * \param fileSize The size of the Asset in bytes.
      * \param fileExtension The extension to append to the filename when complete, including the dot.
+     * \return The path to the file, or an empty path on error.
      */
     fs::path download(uint64_t key, size_t fileSize, const std::string& fileExtension);
 
@@ -69,12 +70,12 @@ private:
 
     // We monitor access time of cache entries by updating the modified time for each request for a cache asset. This
     // queue allows for quick extraction of the oldest entry by access time for efficient cache eviction.
-    using TimePath = std::pair<std::chrono::time_point, fs::path>;
+    using TimePath = std::pair<std::chrono::system_clock::time_point, fs::path>;
     std::priority_queue<TimePath> m_timeQueue;
 
     // The asset files are stored with extensions, so this map keeps the extension, if any, associated with the asset
     // key. Even with no extension, presence in this map indicates presence in the cache.
-    using ExtensionMap = std::unordered_map<uint64_t, std::filesystem::path>;
+    using ExtensionMap = std::unordered_map<uint64_t, fs::path>;
     ExtensionMap m_extensionMap;
 };
 

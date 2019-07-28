@@ -1,9 +1,12 @@
 #ifndef SRC_CONFAB_CONFAB_COMMON_HPP_
 #define SRC_CONFAB_CONFAB_COMMON_HPP_
 
+#include "gflags/gflags.h"
+
 #include <experimental/filesystem>
 #include <memory>
 
+DECLARE_string(data_directory);
 
 namespace Confab {
 

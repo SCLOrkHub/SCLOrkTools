@@ -64,7 +64,7 @@ public:
  * \return A new EmptyRecord.
  */
 RecordPtr makeEmptyRecord() {
-    return std::shared_ptr<new EmptyRecord()>;
+    return RecordPtr(new EmptyRecord());
 }
 
 }  // namespace Confab

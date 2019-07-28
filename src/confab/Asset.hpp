@@ -62,18 +62,18 @@ public:
     /*! Constructs a new Asset based on a backing FlatAsset store.
      *
      * \param Asset The serialized FlatAsset object.
-     * \param key The key associated with this asset. If the serialized asset in data has a key the serialized key will
-     *            override this value and it will be ignored. But if the key is absent from those data it can be
-     *            provided here.
      * \return An Asset object created by copying the FlatAsset inside of record.
      */
-    explicit Asset(const Data::FlatAsset* Asset, uint64_t key = 0);
+    explicit Asset(const Data::FlatAsset* Asset);
 
     /*! Serialize and return a pointer to the flattened Asset.
      *
      * \param builder A FlatBufferBuilder object to serialize the Asset in to.
+     * \param inlineData An optional buffer of data to serialize along with the Asset. Assumed to be of size of the
+     *                   already-set size parameter. Will override any inlineData already copied in to this Asset.
+     *                   Added here to allow saving an additional copy of the data into the Asset before serializing.
      */
-    void flatten(flatbuffers::FlatBufferBuilder& builder);
+    void flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inlineData = nullptr);
 
     /*! The type of this Asset.
      *
