@@ -10,7 +10,7 @@ DECLARE_string(data_directory);
 
 namespace Confab {
 
-class AssetManager;
+class AssetDatabase;
 class Database;
 
 /*! Utility class for initalization of subsystems common between confab and confab-server.
@@ -28,6 +28,12 @@ public:
     /*! Shuts down the common subsystems.
      */
     void shutdown();
+
+    /*! Returns the shared AssetDatabase object.
+     *
+     * \return The AssetDatabase object.
+     */
+    std::shared_ptr<AssetDatabase> assetDatabase() { return m_assetDatabase; }
 
 private:
     /*! Initialize the logging subsystem. Because all other systems depend on logging initialize this first.
@@ -48,7 +54,15 @@ private:
      */
     bool setThreadMask();
 
+    /*! Sets up the file database.
+     *
+     * \return true on success, false on error.
+     */
+    bool openDatabase();
+
     std::experimental::filesystem::path m_pidPath;
+    std::shared_ptr<Database> m_database;
+    std::shared_ptr<AssetDatabase> m_assetDatabase;
 };
 
 

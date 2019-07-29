@@ -39,7 +39,8 @@ int main(int argc, char* argv[]) {
 
     LOG(INFO) << "Opening up OSC ports for listen on " << FLAGS_osc_listen_port << " and respond on "
         << FLAGS_osc_respond_port;
-    Confab::OscHandler osc(FLAGS_osc_listen_port, FLAGS_osc_respond_port, httpClient, cacheManager);
+    Confab::OscHandler osc(FLAGS_osc_listen_port, FLAGS_osc_respond_port, common.assetDatabase(), httpClient,
+        cacheManager);
 
     // It is possible to install signal handlers for SIGINT and SIGTERM using std::signal, but putting a condition
     // variable call, or any thread synchronization primitives, in an asynchronous system event handler is considered

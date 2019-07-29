@@ -1,6 +1,8 @@
 #include "OscHandler.hpp"
 
 #include "Asset.hpp"
+#include "AssetDatabase.hpp"
+#include "CacheManager.hpp"
 #include "Constants.hpp"
 #include "HttpClient.hpp"
 
@@ -126,12 +128,13 @@ private:
     OscHandler* m_handler;
 };
 
-OscHandler::OscHandler(int listenPort, int sendPort, std::shared_ptr<HttpClient> httpClient,
-    std::shared_ptr<CacheManager> cacheManager) :
+OscHandler::OscHandler(int listenPort, int sendPort, std::shared_ptr<AssetDatabase> assetDatabase,
+    std::shared_ptr<HttpClient> httpClient, std::shared_ptr<CacheManager> cacheManager) :
     m_listenPort(listenPort),
     m_sendPort(sendPort),
+    m_assetDatabase(assetDatabase),
     m_httpClient(httpClient),
-    m_cache(cacheManager) {
+    m_cacheManager(cacheManager) {
 }
 
 OscHandler::~OscHandler() {
@@ -147,6 +150,12 @@ void OscHandler::listenUntilSigInt() {
 }
 
 void OscHandler::findAsset(uint64_t assetId) {
+    // First check database cache.
+    RecordPtr databaseAsset = m_assetDatabase->findAsset(assetId);
+    if (!databaseAsset->empty()) {
+        // TODO
+    }
+
     m_httpClient->getAsset(assetId, [this, assetId](uint64_t loadedKey, RecordPtr record) {
         char buffer[kDataChunkSize];
         osc::OutboundPacketStream p(buffer, kDataChunkSize);
