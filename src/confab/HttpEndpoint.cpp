@@ -2,6 +2,8 @@
 
 #include "Asset.hpp"
 #include "AssetDatabase.hpp"
+#include "schemas/FlatAsset_generated.h"
+#include "schemas/FlatAssetData_generated.h"
 
 #include "glog/logging.h"
 #include "pistache/endpoint.h"
@@ -52,6 +54,13 @@ public:
         m_server->serveThreaded();
     }
 
+    /*! Starts the server on this thread, blocking the thread. Call one of this method or startServerThread().
+     */
+    void startServer() {
+        m_server->setHandler(m_router.handler());
+        m_server->serve();
+    }
+
     /*! Stops serving threads, closes ports.
      */
     void shutdown() {
@@ -81,11 +90,20 @@ private:
 
     void postAsset(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto keyString = request.param(":key").as<std::string>();
-        LOG(INFO) << "processing HTTP POST request for /asset/" << keyString;
-
         uint64_t key = Asset::stringToKey(keyString);
         SizedPointer postedData(reinterpret_cast<const uint8_t*>(request.body().c_str()), request.body().size());
-        bool status = m_assetDatabase->storeAsset(key, postedData);
+        LOG(INFO) << "processing HTTP POST request for /asset/" << keyString << ", " << postedData.size() << " bytes.";
+
+        // Sanity-check the provided serialized FlatAsset data.
+        auto verifier = flatbuffers::Verifier(postedData.data(), postedData.size());
+        bool status = Data::VerifyFlatAssetBuffer(verifier);
+        if (status) {
+            LOG(INFO) << "verified FlatAsset " << keyString;
+            status = m_assetDatabase->storeAsset(key, postedData);
+        } else {
+            LOG(ERROR) << "posted data did not verify for asset " << keyString;
+        }
+
         response.headers().add<Pistache::Http::Header::Server>("confab");
         if (status) {
             LOG(INFO) << "sending OK response after storing asset " << keyString;
@@ -154,6 +172,11 @@ HttpEndpoint::~HttpEndpoint() {
 void HttpEndpoint::startServerThread() {
     m_handler->setupRoutes();
     m_handler->startServerThread();
+}
+
+void HttpEndpoint::startServer() {
+    m_handler->setupRoutes();
+    m_handler->startServer();
 }
 
 void HttpEndpoint::shutdown() {

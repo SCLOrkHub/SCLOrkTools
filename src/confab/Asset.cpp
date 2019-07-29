@@ -23,6 +23,22 @@ Asset::Type Asset::typeStringToEnum(const std::string& assetType) {
 }
 
 // static
+std::string Asset::enumToTypeString(Asset::Type type) {
+    switch (type) {
+        case kSnippet:
+            return std::string("snippet");
+        case kImage:
+            return std::string("image");
+        case kYAML:
+            return std::string("yaml");
+        case kSample:
+            return std::string("sample");
+    }
+
+    return "invalid";
+}
+
+// static
 std::string Asset::keyToString(uint64_t key) {
     std::array<char, 17> buf;
     snprintf(buf.data(), 17, "%" PRIx64, key);
@@ -75,7 +91,7 @@ void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inli
     auto name = m_name != "" ? builder.CreateString(m_name.c_str()) : 0;
     auto fileExtension = m_fileExtension != "" ? builder.CreateString(m_fileExtension.c_str()) : 0;
     const uint8_t* serialInline = inlineData ? inlineData : m_inlineData.get();
-    // These builder Create* calls do a byte-by-byte copy in a for loop of the source data into the builder. sp O(n).
+    // These builder Create* calls do a byte-by-byte copy in a for loop of the source data into the builder.
     auto builderInline = serialInline != nullptr ? builder.CreateVector(serialInline, m_size) : 0;
 
     // Can now create FlatAsset, because all leaf objects are built.

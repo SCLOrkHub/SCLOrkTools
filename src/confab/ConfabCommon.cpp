@@ -17,13 +17,12 @@ namespace fs = std::experimental::filesystem;
 
 // Command line flags for logging.
 DEFINE_bool(chatty, false, "If true confab will log everything to stderr as well as to log files.");
-DEFINE_string(data_directory, "../data/confab", "Path where confab will store the m_database and log files. A zero or "
-    "negative size will disable the cache");
+DEFINE_string(data_directory, "../data/confab", "Path where confab will store the database and log files");
 
-// Command line flags for the m_database.
-DEFINE_bool(create_new_m_database, false, "If true confab will make a new m_database, if -1 confab will expect the "
-    "m_database to already exist.");
-DEFINE_int32(m_database_cache_size_mb, 16, "Size in megabytes of the memory cache the m_database should use.");
+// Command line flags for the database.
+DEFINE_bool(create_new_database, false, "If true confab will make a new database, if false confab will expect the "
+    "database to already exist.");
+DEFINE_int32(database_cache_size_mb, 4, "Size in megabytes of the memory cache the database should use.");
 
 const char* kConfigKey = "confab-db-config";
 
@@ -91,55 +90,56 @@ bool ConfabCommon::setThreadMask() {
 bool ConfabCommon::openDatabase() {
     m_database.reset(new Confab::Database);
 
-    if (!m_database->open((FLAGS_data_directory + "/db").c_str(), FLAGS_create_new_m_database,
-        FLAGS_m_database_cache_size_mb * 1024 * 1024)) {
-        return -1;
+    if (!m_database->open((FLAGS_data_directory + "/db").c_str(), FLAGS_create_new_database,
+        FLAGS_database_cache_size_mb * 1024 * 1024)) {
+        return false;
     }
 
-    // If a new m_database we write the configuration information for the first time. If an existing m_database we validate
+    // If a new database we write the configuration information for the first time. If an existing database we validate
     // that the version written is equal to or older than our current version.
-    if (FLAGS_create_new_m_database) {
+    if (FLAGS_create_new_database) {
         // Verify that no existing configuration information is present.
         auto configRecord = m_database->load(Confab::Config::getConfigKey());
         if (!configRecord->empty()) {
-            LOG(ERROR) << "Create new m_database specified by m_database has an existing config key.";
-            return -1;
+            LOG(ERROR) << "Create new database specified by database has an existing config key.";
+            return false;
         }
 
         Confab::Config config(Confab::confabVersion);
 
         if (!m_database->store(Confab::Config::getConfigKey(), config.flatten())) {
-            LOG(ERROR) << "Error writing config information to m_database.";
-            return -1;
+            LOG(ERROR) << "Error writing config information to database.";
+            return false;
         } else {
-            LOG(INFO) << "Wrote new config record to m_database.";
+            LOG(INFO) << "Wrote new config record to database.";
         }
     } else {
         auto configRecord = m_database->load(Confab::Config::getConfigKey());
         if (configRecord->empty()) {
-            LOG(ERROR) << "Error reaading configuration information from m_database.";
-            return -1;
+            LOG(ERROR) << "Error reaading configuration information from database.";
+            return false;
         }
         auto config = Confab::Config::LoadConfig(configRecord);
 
         if (config.version() > Confab::confabVersion) {
             LOG(ERROR) << "Database records confab version " << config.version().toString() << " which is newer than "
                 << "confab version " << Confab::confabVersion.toString();
-            return -1;
+            return false;
         }
 
         if (config.version() < Confab::confabVersion) {
-            LOG(INFO) << "Updating confab version in m_database " << config.version().toString() << " to confab version "
-                << Confab::confabVersion.toString();
+            LOG(INFO) << "Updating confab version in database " << config.version().toString()
+                << " to confab version " << Confab::confabVersion.toString();
             Confab::Config currentConfig(Confab::confabVersion);
             if (!m_database->store(Confab::Config::getConfigKey(), currentConfig.flatten())) {
-                LOG(ERROR) << "Error writing updated Config record to m_database.";
-                return -1;
+                LOG(ERROR) << "Error writing updated Config record to database.";
+                return false;
             }
         }
     }
 
-    std::shared_ptr<Confab::AssetDatabase> assetDatabase(new Confab::AssetDatabase(m_database));
+    m_assetDatabase.reset(new Confab::AssetDatabase(m_database));
+    return true;
 }
 
 }  // namespace Confab

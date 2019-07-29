@@ -91,7 +91,15 @@ void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)>
     promise.then([&key, &callback, &request](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
             LOG(INFO) << "received Ok response for Asset request " << request;
-            callback(key, RecordPtr(new ClientRecord(response.body())));
+            // Verify the Asset record as returned by the server.
+            RecordPtr flatAsset(new ClientRecord(response.body()));
+            auto verifier = flatbuffers::Verifier(flatAsset->data().data(), flatAsset->data().size());
+            if (Data::VerifyFlatAssetBuffer(verifier)) {
+                callback(key, flatAsset);
+            } else {
+                LOG(ERROR) << "failed to verify server-provided data for Asset request " << request;
+                callback(key, makeEmptyRecord());
+            }
         } else {
             LOG(ERROR) << "error code " << response.code() << " on Asset request " << request;
             callback(key, makeEmptyRecord());
@@ -140,11 +148,12 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     asset.setSalt(m_distribution(m_randomDevice));
     uint64_t key = XXH64(inlineData, size, asset.salt());
     asset.setKey(key);
+    asset.setSize(size);
     flatbuffers::FlatBufferBuilder builder(kPageSize);
     asset.flatten(builder, inlineData);
 
     std::string request = m_serverAddress + "/asset/" + Asset::keyToString(key);
-    LOG(INFO) << "sending POST for new inline asset " << request;
+    LOG(INFO) << "sending POST for new inline asset " << request << ", " << builder.GetSize() << " bytes";
 
     bool ok = true;
     auto promise = m_client->post(request)

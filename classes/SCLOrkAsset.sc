@@ -2,14 +2,13 @@ SCLOrkAsset {
 	var <key;
 	var <type;
 	var <name;
-	var <fileExtension;
 	var <author;
 	var <deprecatedBy;
 	var <deprecates;
 	var <inlineData;
 
-	*newFromArgs { |key, type, name, fileExtension, author, deprecatedBy, deprecates, inlineData|
-		^super.newCopyArgs(key, type, name, fileExtension, author, deprecatedBy, deprecates, inlineData).init;
+	*newFromArgs { |key, type, name, author, deprecatedBy, deprecates, inlineData|
+		^super.newCopyArgs(key, type, name, author, deprecatedBy, deprecates, inlineData).init;
 	}
 
 	init {

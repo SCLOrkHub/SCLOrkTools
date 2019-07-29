@@ -39,6 +39,13 @@ public:
      */
     static Type typeStringToEnum(const std::string& assetType);
 
+    /*! Utility to convert an Asset::type enumeration back into a descriptive string.
+     *
+     * \param type The Asset enumerated type.
+     * \return The string of that type, "invalid" on error.
+     */
+    static std::string enumToTypeString(Asset::Type type);
+
     /*! Converts a 64-bit binary key into a human-readable hexadecimal string.
      *
      * \param key A binary key.

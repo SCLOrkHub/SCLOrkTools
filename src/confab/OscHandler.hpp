@@ -59,6 +59,10 @@ private:
     void addAssetString(Asset::Type type, int serialNumber, std::string name, uint64_t author, uint64_t deprecates,
         std::string assetString);
 
+    /*! Utility method, sends an Asset back to SuperCollider via OSC.
+     */
+    void sendAsset(uint64_t requstedKey, RecordPtr record);
+
     int m_listenPort;
     int m_sendPort;
     std::shared_ptr<AssetDatabase> m_assetDatabase;

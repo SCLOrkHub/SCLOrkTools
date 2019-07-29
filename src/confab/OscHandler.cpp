@@ -56,8 +56,8 @@ public:
                 }
             } else if (std::strcmp("/assetAddFile", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
-                std::string typeString((arguments++)->AsString());
                 int serialNumber = (arguments++)->AsInt32();
+                std::string typeString((arguments++)->AsString());
                 std::string name((arguments++)->AsString());
                 std::string authorString((arguments++)->AsString());
                 uint64_t author = 0;
@@ -87,8 +87,8 @@ public:
                 }
             } else if (std::strcmp("/assetAddString", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
-                std::string typeString((arguments++)->AsString());
                 int serialNumber = (arguments++)->AsInt32();
+                std::string typeString((arguments++)->AsString());
                 std::string name((arguments++)->AsString());
                 std::string authorString((arguments++)->AsString());
                 uint64_t author = 0;
@@ -153,9 +153,12 @@ void OscHandler::findAsset(uint64_t assetId) {
     // First check database cache.
     RecordPtr databaseAsset = m_assetDatabase->findAsset(assetId);
     if (!databaseAsset->empty()) {
-        // TODO
+        LOG(INFO) << "database cache hit for asset " << Asset::keyToString(assetId) << " sending to SC.";
+        sendAsset(assetId, databaseAsset);
+        return;
     }
 
+    // Failing database cache, request from upstream server.
     m_httpClient->getAsset(assetId, [this, assetId](uint64_t loadedKey, RecordPtr record) {
         char buffer[kDataChunkSize];
         osc::OutboundPacketStream p(buffer, kDataChunkSize);
@@ -165,24 +168,11 @@ void OscHandler::findAsset(uint64_t assetId) {
                 << "Failed to find asset associated with key." << osc::EndMessage;
             m_transmitSocket->Send(p.Data(), p.Size());
         } else {
-            const Data::FlatAsset* asset = Data::GetFlatAsset(record->data().data());
-            p << osc::BeginMessage("/assetFound");
-            p << Asset::keyToString(assetId).c_str();
-            p << Asset::keyToString(loadedKey).c_str();
-            p << "snippet";  // TODO: asset type to string.
-            p << asset->name();
-            p << Asset::keyToString(asset->author()).c_str();
-            p << Asset::keyToString(asset->deprecatedBy()).c_str();
-            p << Asset::keyToString(asset->deprecates()).c_str();
-            if (asset->inlineData()) {
-                osc::Blob blob(asset->inlineData()->data(), asset->inlineData()->size());
-                p << blob;
-            } else {
-                osc::Blob blob(nullptr, 0);
-                p << blob;
-            }
-            p << osc::EndMessage;
-            m_transmitSocket->Send(p.Data(), p.Size());
+            // Store in database cache for future use.
+            m_assetDatabase->storeAsset(assetId, record->data());
+            // Send to client.
+            LOG(INFO) << "downloaded asset " << Asset::keyToString(assetId) << " cached and sending to SC.";
+            sendAsset(assetId, record);
         }
     });
 }
@@ -207,6 +197,29 @@ void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string 
     osc::OutboundPacketStream p(buffer, 1024);
     p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
         << osc::EndMessage;
+    m_transmitSocket->Send(p.Data(), p.Size());
+}
+
+void OscHandler::sendAsset(uint64_t requestedKey, RecordPtr record) {
+    char buffer[kDataChunkSize];
+    osc::OutboundPacketStream p(buffer, kDataChunkSize);
+    const Data::FlatAsset* asset = Data::GetFlatAsset(record->data().data());
+    p << osc::BeginMessage("/assetFound");
+    p << Asset::keyToString(requestedKey).c_str();
+    p << Asset::keyToString(asset->key()).c_str();
+    p << Asset::enumToTypeString(static_cast<Asset::Type>(asset->type())).c_str();
+    p << asset->name();
+    p << Asset::keyToString(asset->author()).c_str();
+    p << Asset::keyToString(asset->deprecatedBy()).c_str();
+    p << Asset::keyToString(asset->deprecates()).c_str();
+    if (asset->inlineData()) {
+        osc::Blob blob(asset->inlineData()->data(), asset->inlineData()->size());
+        p << blob;
+    } else {
+        osc::Blob blob(nullptr, 0);
+        p << blob;
+    }
+    p << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
 }
 

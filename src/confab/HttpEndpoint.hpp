@@ -33,6 +33,10 @@ public:
      */
     void shutdown();
 
+    /*! Blocks this thread with serving. Call one of this method or startServerThread().
+     */
+    void startServer();
+
 private:
     class HttpHandler;
 

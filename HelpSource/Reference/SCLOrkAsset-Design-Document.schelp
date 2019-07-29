@@ -22,8 +22,6 @@ table::
 
 subsection:: Asset Record Format
 
-The only required fields in an asset are the key and the type, so these are specified first without identifying labels. The remaining fields are specified as code::[ ..., key, value, ...]:: pairs, with no ordering requirements.
-
 table::
 ## strong::label:: || key  || The asset key, typically a 16-digit hexadecimal string.
 ## strong::label:: || type || One of the Asset Type Enumeration values.
@@ -46,8 +44,8 @@ The file pointed to by code::filePath:: need only remain valid until the strong:
 ::
 
 table::
-## strong::label::   || type         || One of the Asset Type Enumeration values.
 ## strong::integer:: || serialNumber || A temporary client-side identifier of this asset.
+## strong::label::   || type         || One of the Asset Type Enumeration values.
 ## strong::label::   || name         || An optional name for the Asset.
 ## strong::label::   || author       || An optional Asset key identifying a record for an Author.
 ## strong::label::   || deprecates   || An optional Asset key that this Asset deprecates.
@@ -59,8 +57,8 @@ subsection:: /assetAddString
 Adds a new asset to the shared asset pool. For smaller assets like code snippets it is possible to send the asset directly in the OSC message. This should not be used on Assets larger than what is likely to fit into a single UDP message frame.
 
 table::
-## strong::label::   || type         || One of the Asset Type Enumeration values.
 ## strong::integer:: || serialNumber || A temporary client-side identifier of this asset.
+## strong::label::   || type         || One of the Asset Type Enumeration values.
 ## strong::label::   || name         || An optional name for the Asset.
 ## strong::label::   || author       || An optional Asset key identifying a record for an Author.
 ## strong::label::   || deprecates   || An optional Asset key that this Asset deprecates.
@@ -101,7 +99,6 @@ table::
 ## strong::label:: || returnedKey || The key of the actually returned Asset.
 ## strong::label:: || assetType || The type of the asset as one of the enumerated type labels.
 ## strong::label:: || name || The name of the Asset, if any.
-## strong::label:: || fileExtension || The preferred file extension, if any.
 ## strong::label:: || author || A key for an author Asset.
 ## strong::label:: || deprecatedBy || A key for an Asset that deprecates this one.
 ## strong::label:: || deprecates || A key for an Asset that this Asset deprecates, if there is one.

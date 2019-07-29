@@ -9,6 +9,9 @@ TEST(AssetTest, MinimalSerialization) {
     flatbuffers::FlatBufferBuilder builder;
     asset.flatten(builder);
 
+    auto verifier = flatbuffers::Verifier(builder.GetBufferPointer(), builder.GetSize());
+    ASSERT_TRUE(Confab::Data::VerifyFlatAssetBuffer(verifier));
+
     auto flatAsset = Confab::Data::GetFlatAsset(builder.GetBufferPointer());
 
     Confab::Asset testAsset(flatAsset);
@@ -44,6 +47,9 @@ TEST(AssetTest, AllFieldsSet) {
     flatbuffers::FlatBufferBuilder builder;
     asset.flatten(builder);
 
+    auto verifier = flatbuffers::Verifier(builder.GetBufferPointer(), builder.GetSize());
+    ASSERT_TRUE(Confab::Data::VerifyFlatAssetBuffer(verifier));
+
     auto flatAsset = Confab::Data::GetFlatAsset(builder.GetBufferPointer());
 
     Confab::Asset testAsset(flatAsset);
@@ -59,4 +65,23 @@ TEST(AssetTest, AllFieldsSet) {
     EXPECT_EQ(asset.chunks(), testAsset.chunks());
     ASSERT_EQ(asset.size(), testAsset.size());
     EXPECT_EQ(std::memcmp(asset.inlineData(), testAsset.inlineData(), asset.size()), 0);
+}
+
+TEST(AssetTest, InlineDataOverride) {
+    std::string testInline = "blah blah blah";
+    Confab::Asset asset(Confab::Asset::kSnippet);
+    asset.setKey(1);
+    asset.setSize(testInline.size());
+
+    flatbuffers::FlatBufferBuilder builder;
+    asset.flatten(builder, reinterpret_cast<const uint8_t*>(testInline.c_str()));
+
+    auto verifier = flatbuffers::Verifier(builder.GetBufferPointer(), builder.GetSize());
+    ASSERT_TRUE(Confab::Data::VerifyFlatAssetBuffer(verifier));
+
+    auto flatAsset = Confab::Data::GetFlatAsset(builder.GetBufferPointer());
+
+    Confab::Asset testAsset(flatAsset);
+
+    EXPECT_EQ(std::memcmp(testInline.c_str(), testAsset.inlineData(), asset.size()), 0);
 }
