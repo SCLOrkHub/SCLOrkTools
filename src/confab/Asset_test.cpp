@@ -20,10 +20,10 @@ TEST(AssetTest, MinimalSerialization) {
     EXPECT_EQ(0, testAsset.author());
     EXPECT_EQ(0, testAsset.deprecatedBy());
     EXPECT_EQ(0, testAsset.deprecates());
-    EXPECT_EQ(0, testAsset.inlineDataSize());
-    EXPECT_EQ(nullptr, testAsset.inlineData());
-    EXPECT_EQ(0, testAsset.expiresOn());
+    EXPECT_EQ(0, testAsset.size());
+    EXPECT_EQ(0, testAsset.chunks());
     EXPECT_EQ(0, testAsset.salt());
+    EXPECT_EQ(nullptr, testAsset.inlineData());
 }
 
 TEST(AssetTest, AllFieldsSet) {
@@ -34,12 +34,12 @@ TEST(AssetTest, AllFieldsSet) {
     asset.setAuthor(1);
     asset.setDeprecatedBy(2);
     asset.setDeprecates(3);
+    asset.setSalt(12345678);
     uint8_t* inlineData = asset.setInlineData(100);
     for (auto i = 0; i < 100; ++i) {
         inlineData[i] = 99 - i;
     }
-    asset.setExpiresOn(25);
-    asset.setSalt(12345678);
+    asset.setChunks(25);
 
     flatbuffers::FlatBufferBuilder builder;
     asset.flatten(builder);
@@ -55,8 +55,8 @@ TEST(AssetTest, AllFieldsSet) {
     EXPECT_EQ(asset.author(), testAsset.author());
     EXPECT_EQ(asset.deprecatedBy(), testAsset.deprecatedBy());
     EXPECT_EQ(asset.deprecates(), testAsset.deprecates());
-    ASSERT_EQ(asset.inlineDataSize(), testAsset.inlineDataSize());
-    EXPECT_EQ(std::memcmp(asset.inlineData(), testAsset.inlineData(), asset.inlineDataSize()), 0);
-    EXPECT_EQ(asset.expiresOn(), testAsset.expiresOn());
     EXPECT_EQ(asset.salt(), testAsset.salt());
+    EXPECT_EQ(asset.chunks(), testAsset.chunks());
+    ASSERT_EQ(asset.size(), testAsset.size());
+    EXPECT_EQ(std::memcmp(asset.inlineData(), testAsset.inlineData(), asset.size()), 0);
 }

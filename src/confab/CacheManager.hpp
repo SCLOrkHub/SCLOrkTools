@@ -65,7 +65,7 @@ private:
      */
     void makeRoomFor(size_t addedBytes);
 
-    fs::path m_cachePath;
+    const fs::path m_cachePath;
     size_t m_maxSize;
     std::shared_ptr<HttpClient> m_httpClient;
 
@@ -81,7 +81,7 @@ private:
 
     // The asset files are stored with extensions, so this map keeps the extension, if any, associated with the asset
     // key. Even with no extension, presence in this map indicates presence in the cache.
-    using ExtensionMap = std::unordered_map<uint64_t, fs::path>;
+    using ExtensionMap = std::unordered_map<uint64_t, std::string>;
     ExtensionMap m_extensionMap;
 };
 

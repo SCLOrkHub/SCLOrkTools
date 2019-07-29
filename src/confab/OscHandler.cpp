@@ -162,7 +162,6 @@ void OscHandler::findAsset(uint64_t assetId) {
             p << Asset::keyToString(loadedKey).c_str();
             p << "snippet";  // TODO: asset type to string.
             p << asset->name();
-            p << asset->fileExtension();
             p << Asset::keyToString(asset->author()).c_str();
             p << Asset::keyToString(asset->deprecatedBy()).c_str();
             p << Asset::keyToString(asset->deprecates()).c_str();
@@ -173,8 +172,6 @@ void OscHandler::findAsset(uint64_t assetId) {
                 osc::Blob blob(nullptr, 0);
                 p << blob;
             }
-            p << Asset::keyToString(asset->expiresOn()).c_str();
-            p << Asset::keyToString(asset->salt()).c_str();
             p << osc::EndMessage;
             m_transmitSocket->Send(p.Data(), p.Size());
         }
@@ -186,7 +183,7 @@ void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string na
     uint64_t key = m_httpClient->postFileAsset(type, name, author, deprecates, filePath);
     char buffer[1024];
     osc::OutboundPacketStream p(buffer, 1024);
-    p << osc::BeginMessage("/assetAdded") << serialNumber << Asset:keyToString(key).c_str()
+    p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
         << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
 }
@@ -194,17 +191,15 @@ void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string na
 void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string name, uint64_t author,
     uint64_t deprecates, std::string assetString) {
     uint64_t key = m_httpClient->postInlineAsset(type, name, author, deprecates, assetString.size(),
-        assetString.c_str());
+        reinterpret_cast<const uint8_t*>(assetString.c_str()));
 
     // Regardless of success or failure of Asset add we return the key and serial number.
     char buffer[1024];
     osc::OutboundPacketStream p(buffer, 1024);
-    p << osc::BeginMessage("/assetAdded") << serialNumber << Asset:keyToString(assetId).c_str()
+    p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
         << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
 }
-
-
 
 }  // namespace Confab
 

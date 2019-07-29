@@ -101,7 +101,7 @@ private:
         auto chunk = request.param(":chunk").as<uint64_t>();
         LOG(INFO) << "processing HTTP GET request for /asset_data/" << keyString << "/" << chunk;
         uint64_t key = Asset::stringToKey(keyString);
-        RecordPtr assetData = m_assetDatabase->loadAssetDataChunk(key, chunkId);
+        RecordPtr assetData = m_assetDatabase->loadAssetDataChunk(key, chunk);
         if (assetData->empty()) {
             LOG(ERROR) << "HTTP get request for Asset Data " << keyString << " chunk " << chunk
                 << " not found, returning 404.";
@@ -122,14 +122,14 @@ private:
     void postAssetData(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto keyString = request.param(":key").as<std::string>();
         auto chunk = request.param(":chunk").as<uint64_t>();
-        LOG(INFO) << "processing HTTP POST request for /asset_data/" << keyString << "/" << chunkId;
+        LOG(INFO) << "processing HTTP POST request for /asset_data/" << keyString << "/" << chunk;
         uint64_t key = Asset::stringToKey(keyString);
         SizedPointer postedData(reinterpret_cast<const uint8_t*>(request.body().c_str()), request.body().size());
         bool status = m_assetDatabase->storeAssetDataChunk(key, chunk, postedData);
         response.headers().add<Pistache::Http::Header::Server>("confab");
         if (status) {
             LOG(INFO) << "sending OK response after storing asset " << keyString << " data chunk " << chunk;
-            response.send(Pisache::Http::Code::Ok);
+            response.send(Pistache::Http::Code::Ok);
         } else {
             LOG(ERROR) << "sending error response after failure to store asset " << keyString << " data chunk "
                 << chunk;

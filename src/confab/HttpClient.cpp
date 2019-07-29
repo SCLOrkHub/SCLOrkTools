@@ -2,6 +2,7 @@
 
 #include "Asset.hpp"
 #include "Constants.hpp"
+#include "Record.hpp"
 #include "schemas/FlatAsset_generated.h"
 #include "schemas/FlatAssetData_generated.h"
 
@@ -16,7 +17,6 @@
 #include <inttypes.h>
 #include <fstream>
 #include <limits>
-#include <string_view>
 
 namespace fs = std::experimental::filesystem;
 
@@ -47,7 +47,7 @@ public:
      *
      * \return true if this Record is empty, false if it has content.
      */
-    bool empty() const override { return m_data.empty() }
+    bool empty() const override { return m_data.data() == nullptr; }
 
     /*! A pointer to the data contents of this Record.
      *
@@ -67,7 +67,7 @@ public:
 
 private:
     const SizedPointer m_data;
-}
+};
 
 HttpClient::HttpClient(const std::string& serverAddress) :
     m_serverAddress(serverAddress),
@@ -87,39 +87,41 @@ void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)>
     std::string request = m_serverAddress + "/asset/" + Asset::keyToString(key);
     LOG(INFO) << "issuing Asset request to " << request;
 
-    auto response = m_client->get(request).send();
-    response.then([&key, &callback, &request](Pistache::Http::Response response) {
+    auto promise = m_client->get(request).send();
+    promise.then([&key, &callback, &request](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
             LOG(INFO) << "received Ok response for Asset request " << request;
-            callback(key, RecordPtr(new ClientRecord(response.body()));
+            callback(key, RecordPtr(new ClientRecord(response.body())));
         } else {
             LOG(ERROR) << "error code " << response.code() << " on Asset request " << request;
             callback(key, makeEmptyRecord());
         }
-    });
+    }, Pistache::Async::IgnoreException);
 
-    response.wait();
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
 }
 
 void HttpClient::getAssetData(uint64_t key, uint64_t chunk,
     std::function<void(uint64_t, uint64_t, RecordPtr)> callback) {
     char numBuf[32];
     snprintf(numBuf, 32, "%" PRIu64, chunk);
-    std::string request = m_serverAddress + "/asset_data/" + Asset::keyToString(key) + "/" + std::string(numbuf);
+    std::string request = m_serverAddress + "/asset_data/" + Asset::keyToString(key) + "/" + std::string(numBuf);
     LOG(INFO) << "issuing AssetData request to " << request;
 
-    auto response = m_client->get(request).send();
-    response.then([&key, &chunk, &callback, &request](Pistache::Http::Response response) {
+    auto promise = m_client->get(request).send();
+    promise.then([&key, &chunk, &callback, &request](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
             LOG(INFO) << "received Ok response for AssetData request " << request;
-            callback(key, chunk, RecordPtr(new ClientRecord(response.body()));
+            callback(key, chunk, RecordPtr(new ClientRecord(response.body())));
         } else {
             LOG(ERROR) << "error code " << response.code() << " on AssetData request " << request;
             callback(key, chunk, makeEmptyRecord());
         }
-    });
+    }, Pistache::Async::IgnoreException);
 
-    response.wait();
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
 }
 
 uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
@@ -145,19 +147,21 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     LOG(INFO) << "sending POST for new inline asset " << request;
 
     bool ok = true;
-    auto response = m_client->post(request)
-        .body(std::string_view(builder.GetBufferPointer(), builder.GetSize()))
+    auto promise = m_client->post(request)
+        .body(std::string(reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize()))
         .send();
-    response.then([&request, &ok](Pistache::Http::Response response) {
+    promise.then([&request, &ok](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
             LOG(INFO) << "received ok response for inline asset post " << request;
         } else {
             LOG(ERROR) << "error code " << response.code() << " on inline Asset post " << request;
             ok = false;
-        });
-    });
+        }
+    }, Pistache::Async::IgnoreException);
 
-    response.wait();
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
+
     if (!ok) {
         return 0;
     }
@@ -165,7 +169,7 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     return key;
 }
 
-uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uint64_t author, uint64_t deprecates,
+uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
         const fs::path& assetFile) {
     // Some Assets like images make sense to serialize to a file, regardless of size, because SuperCollider has no
     // concept of loading an image from a binary blob of memory.
@@ -230,19 +234,20 @@ uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uin
 
     std::string request = m_serverAddress + "/asset/" + keyString;
     bool ok = true;
-    auto response = m_client->post(request)
-        .body(std::string_view(builder.GetBufferPointer(), builder.GetSize()))
+    auto promise = m_client->post(request)
+        .body(std::string(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize()))
         .send();
-    response.then([&request, &ok](Pistache::Http::Response response) {
+    promise.then([&request, &ok](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
             LOG(INFO) << "received ok response on file asset post " << request;
         } else {
             LOG(ERROR) << "error code " << response.code() << " on file Asset post " << request;
             ok = false;
         }
-    });
+    }, Pistache::Async::IgnoreException);
 
-    response.wait();
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
 
     if (!ok) {
         LOG(INFO) << "error posting new file asset " << assetFile << " with key " << keyString;
@@ -253,17 +258,17 @@ uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uin
     // FlatBufferBuilder object, to skip a copy.
     hashState = XXH64_createState();
     XXH64_reset(hashState, 0);
-    inFile.seekg(0, ios::beg);
+    inFile.seekg(0, std::ios::beg);
     bytesRemaining = fileSize;
     size_t chunk = 0;
     uint64_t chunkHash = 0;
 
     while (ok && inFile && bytesRemaining > 0) {
         builder.Clear();
-        uint8* flatData = nullptr;
+        uint8_t* flatData = nullptr;
         size_t flatDataSize = std::min(kDataChunkSize, bytesRemaining);
         auto flatAssetData = builder.CreateUninitializedVector(flatDataSize, &flatData);
-        inFile.read(flatData, flatDataSize);
+        inFile.read(reinterpret_cast<char*>(flatData), flatDataSize);
         bytesRead = inFile.gcount();
         if (bytesRead != flatDataSize) {
             LOG(ERROR) << "error re-reading asset file " << assetFile << " expected " << flatDataSize << " bytes, got "
@@ -271,10 +276,10 @@ uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uin
             ok = false;
         } else {
             Data::FlatAssetDataBuilder assetDataBuilder(builder);
-            assetDataBuilder.set_data(flatAssetData);
+            assetDataBuilder.add_data(flatAssetData);
             XXH64_update(hashState, flatData, bytesRead);
             chunkHash = XXH64_digest(hashState);
-            assetDataBuilder.set_hash(chunkHash);
+            assetDataBuilder.add_hash(chunkHash);
             auto assetData = assetDataBuilder.Finish();
             builder.Finish(assetData);
 
@@ -282,19 +287,20 @@ uint64_t HttpClient::postFileAsset(Asset:Type type, const std::string& name, uin
             char numBuf[32];
             snprintf(numBuf, 32, "%" PRIu64, chunk);
             request = m_serverAddress + "/asset_data/" + keyString + "/" + std::string(numBuf);
-            auto response = m_client->post(request)
-                .body(std::string_view(builder.GetBufferPointer(), builder.GetSize()))
+            promise = m_client->post(request)
+                .body(std::string(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize()))
                 .send();
-            response.then([&request, &ok](Pistache::Http::Response response) {
+            promise.then([&request, &ok](Pistache::Http::Response response) {
                 if (response.code() == Pistache::Http::Code::Ok) {
                     LOG(INFO) << "recived ok response on file asset chunk post " << request;
                 } else {
                     LOG(ERROR) << "error code " << response.code() << " on file asset chunk post " << request;
                     ok = false;
                 }
-            });
+            }, Pistache::Async::IgnoreException);
 
-            response.wait();
+            Pistache::Async::Barrier chunkBarrier(promise);
+            chunkBarrier.wait();
             ++chunk;
         }
     }

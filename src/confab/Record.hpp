@@ -63,7 +63,7 @@ public:
 /*! Convenience routine to quickly construct an always empty RecordPtr.
  * \return A new EmptyRecord.
  */
-RecordPtr makeEmptyRecord() {
+inline RecordPtr makeEmptyRecord() {
     return RecordPtr(new EmptyRecord());
 }
 
