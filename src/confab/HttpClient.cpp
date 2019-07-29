@@ -157,6 +157,8 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
 
     bool ok = true;
     auto promise = m_client->post(request)
+        .header<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream))
+        .header<Pistache::Http::Header::ContentLength>(builder.GetSize())
         .body(std::string(reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize()))
         .send();
     promise.then([&request, &ok](Pistache::Http::Response response) {
