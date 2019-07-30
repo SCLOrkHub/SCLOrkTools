@@ -85,6 +85,7 @@ private:
             size_t encodedSize = 0;
             base64_encode(reinterpret_cast<const char*>(record->data().data()), record->data().size(), base64,
                 &encodedSize, 0);
+            CHECK_LT(encodedSize, kPageSize) << "encoded asset larger than page size";
             response.headers()
                 .add<Pistache::Http::Header::Server>("confab")
                 .add<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream));
@@ -141,6 +142,7 @@ private:
             size_t encodedSize = 0;
             base64_encode(reinterpret_cast<const char*>(assetData->data().data()), assetData->data().size(), base64,
                 &encodedSize, 0);
+            CHECK_LT(encodedSize, kPageSize) << "encoded asset data larger than page size.";
             response.headers()
                     .add<Pistache::Http::Header::Server>("confab")
                     .add<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream));

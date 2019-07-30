@@ -176,6 +176,7 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     size_t encodedSize = 0;
     base64_encode(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize(), base64, &encodedSize,
         0);
+    CHECK_LT(encodedSize, kPageSize) << "encoded inline asset larger than page size";
 
     bool ok = true;
     auto promise = m_client->post(request)
@@ -268,6 +269,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     char base64[kPageSize];
     size_t encodedSize = 0;
     base64_encode(reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize(), base64, &encodedSize, 0);
+    CHECK_LT(encodedSize, kPageSize) << "encoded file asset record larger than page.";
     LOG(INFO) << "sending POST of file asset " << keyString << ", " << encodedSize << " bytes.";
 
     std::string request = m_serverAddress + "/asset/" + keyString;
