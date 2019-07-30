@@ -2,10 +2,12 @@
 
 #include "Asset.hpp"
 #include "AssetDatabase.hpp"
+#include "Constants.hpp"
 #include "schemas/FlatAsset_generated.h"
 #include "schemas/FlatAssetData_generated.h"
 
 #include "glog/logging.h"
+#include "libbase64.h"
 #include "pistache/endpoint.h"
 #include "pistache/router.h"
 
@@ -79,11 +81,15 @@ private:
             response.send(Pistache::Http::Code::Not_Found);
         } else {
             LOG(INFO) << "HTTP get request returning Asset data for " << keyString;
+            char base64[kPageSize];
+            size_t encodedSize = 0;
+            base64_encode(reinterpret_cast<const char*>(record->data().data()), record->data().size(), base64,
+                &encodedSize, 0);
             response.headers()
                 .add<Pistache::Http::Header::Server>("confab")
                 .add<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream));
             auto stream = response.stream(Pistache::Http::Code::Ok);
-            stream.write(reinterpret_cast<const char*>(record->data().data()), record->data().size());
+            stream.write(base64, encodedSize);
             stream.ends();
         }
     }
@@ -91,16 +97,11 @@ private:
     void postAsset(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto keyString = request.param(":key").as<std::string>();
         uint64_t key = Asset::stringToKey(keyString);
-        SizedPointer postedData(reinterpret_cast<const uint8_t*>(request.body().c_str()), request.body().size());
+        uint8_t decoded[kPageSize];
+        size_t decodedSize;
+        base64_decode(request.body().c_str(), request.body().size(), reinterpret_cast<char*>(decoded), &decodedSize, 0);
+        SizedPointer postedData(decoded, decodedSize);
         LOG(INFO) << "processing HTTP POST request for /asset/" << keyString << ", " << postedData.size() << " bytes.";
-
-        {
-            char buf[1024];
-            for (size_t i = 0; i < postedData.size(); ++i) {
-                snprintf(buf + (i * 3), 4, "%02x ", postedData.data()[i]);
-            }
-            LOG(INFO) << "received bytes: " << std::string(buf);
-        }
 
         // Sanity-check the provided serialized FlatAsset data.
         auto verifier = flatbuffers::Verifier(postedData.data(), postedData.size());
@@ -136,11 +137,15 @@ private:
         } else {
             LOG(INFO) << "HTTP get request for Asset Data " << keyString << " chunk " << chunk
                 << " returning Asset Data.";
+            char base64[kPageSize];
+            size_t encodedSize = 0;
+            base64_encode(reinterpret_cast<const char*>(assetData->data().data()), assetData->data().size(), base64,
+                &encodedSize, 0);
             response.headers()
                     .add<Pistache::Http::Header::Server>("confab")
                     .add<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream));
             auto stream = response.stream(Pistache::Http::Code::Ok);
-            stream.write(reinterpret_cast<const char*>(assetData->data().data()), assetData->data().size());
+            stream.write(base64, encodedSize);
             stream.ends();
         };
     }
@@ -150,8 +155,18 @@ private:
         auto chunk = request.param(":chunk").as<uint64_t>();
         LOG(INFO) << "processing HTTP POST request for /asset_data/" << keyString << "/" << chunk;
         uint64_t key = Asset::stringToKey(keyString);
-        SizedPointer postedData(reinterpret_cast<const uint8_t*>(request.body().c_str()), request.body().size());
-        bool status = m_assetDatabase->storeAssetDataChunk(key, chunk, postedData);
+        uint8_t decoded[kPageSize];
+        size_t decodedSize;
+        base64_decode(request.body().c_str(), request.body().size(), reinterpret_cast<char*>(decoded), &decodedSize, 0);
+        auto verifier = flatbuffers::Verifier(decoded, decodedSize);
+        bool status = Data::VerifyFlatAssetDataBuffer(verifier);
+        if (status) {
+            LOG(INFO) << "verified FlatAssetData " << keyString << " chunk " << chunk;
+            SizedPointer postedData(decoded, decodedSize);
+            status = m_assetDatabase->storeAssetDataChunk(key, chunk, postedData);
+        } else {
+            LOG(ERROR) << "posted data did not verify for asset data " << keyString << " chunk " << chunk;
+        }
         response.headers().add<Pistache::Http::Header::Server>("confab");
         if (status) {
             LOG(INFO) << "sending OK response after storing asset " << keyString << " data chunk " << chunk;

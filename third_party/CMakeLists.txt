@@ -8,11 +8,15 @@ ExternalProject_Add(base64
     GIT_TAG "master"
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND AVX2_CFLAGS=-mavx2 SSSE3_CFLAGS=-mssse3 SSE41_CFLAGS=-msse4.1 SSE42_CFLAGS=-msse4.2 AVX_CFLAGS=-mavx make -j1 lib/libbase64.o
+    BUILD_COMMAND AVX2_CFLAGS=-mavx2 SSSE3_CFLAGS=-mssse3 SSE41_CFLAGS=-msse4.1 SSE42_CFLAGS=-msse4.2 AVX_CFLAGS=-mavx make lib/libbase64.o
     INSTALL_COMMAND ""
 )
 set(BASE64_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}/base64-git/src/base64/include" CACHE STRING "base64 include directory")
-set(BASE64_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/base64-git/src/base64/lib/libbase64.o")
+set(BASE64_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/base64-git/src/base64/lib/libbase64.o" CACHE STRING "base64 object file")
+add_library(base64_lib OBJECT IMPORTED GLOBAL)
+set_property(TARGET base64_lib PROPERTY IMPORTED_OBJECT ${BASE64_OBJECT})
+target_include_directories(base64_lib INTERFACE ${BASE64_INCLUDE})
+add_dependencies(base64_lib base64)
 
 ### flatbuffers
 add_subdirectory(flatbuffers)

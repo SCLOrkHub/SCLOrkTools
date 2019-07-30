@@ -30,7 +30,6 @@ configure_file(
 
 # To pick up the pre-processed ConfabVersion.hpp.
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-include_directories("${BASE64_INCLUDE}")
 
 ###
 # confab common files
@@ -49,14 +48,16 @@ set(confab_common_src_files
     Database.hpp
     Record.hpp
     SizedPointer.hpp
-    ${BASE64_OBJECT}
 )
 
-add_library(confab_common ${confab_common_src_files})
+# Ugly hack to include the base64 object file but this seems to be the only
+# way to get this thing to link.
+add_library(confab_common ${confab_common_src_files} ${BASE64_OBJECT})
 
-add_dependencies(confab_common confab_schemas base64)
+add_dependencies(confab_common confab_schemas)
 
 target_link_libraries(confab_common PUBLIC
+    base64_lib
     flatbuffers
     gflags::gflags
     glog::glog
@@ -66,7 +67,6 @@ target_link_libraries(confab_common PUBLIC
     sclorktools_common
     stdc++fs
     xxhash
-    yaml-cpp # TODO: we still need?
 )
 
 ###

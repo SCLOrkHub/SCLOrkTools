@@ -34,10 +34,11 @@ public:
 
     /*! Construct a record that wraps a Pistache response string.
      *
-     * \param responseString The string to wrap.
+     * \param bytes The decoded buffer to wrap.
+     * \param size The size of the buffer in bytes.
      */
-    ClientRecord(const std::string& responseString) :
-        m_data(reinterpret_cast<const uint8_t*>(responseString.c_str()), responseString.size()) {
+    ClientRecord(const uint8_t* bytes, size_t size) :
+        m_data(bytes, size) {
     }
 
     /*! Deletes a ClientRecord, does nothing because the underlying string is not owned by this class.
@@ -92,9 +93,13 @@ void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)>
     promise.then([&key, &callback, &request](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
             LOG(INFO) << "received Ok response for Asset request " << request;
+            uint8_t decoded[kPageSize];
+            size_t decodedSize;
+            base64_decode(response.body().c_str(), response.body().size(), reinterpret_cast<char*>(decoded),
+                &decodedSize, 0);
             // Verify the Asset record as returned by the server.
-            RecordPtr flatAsset(new ClientRecord(response.body()));
-            auto verifier = flatbuffers::Verifier(flatAsset->data().data(), flatAsset->data().size());
+            RecordPtr flatAsset(new ClientRecord(decoded, decodedSize));
+            auto verifier = flatbuffers::Verifier(decoded, decodedSize);
             if (Data::VerifyFlatAssetBuffer(verifier)) {
                 callback(key, flatAsset);
             } else {
@@ -122,7 +127,18 @@ void HttpClient::getAssetData(uint64_t key, uint64_t chunk,
     promise.then([&key, &chunk, &callback, &request](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
             LOG(INFO) << "received Ok response for AssetData request " << request;
-            callback(key, chunk, RecordPtr(new ClientRecord(response.body())));
+            uint8_t decoded[kPageSize];
+            size_t decodedSize;
+            base64_decode(response.body().c_str(), response.body().size(), reinterpret_cast<char*>(decoded),
+                &decodedSize, 0);
+            RecordPtr flatAssetData(new ClientRecord(decoded, decodedSize));
+            auto verifier = flatbuffers::Verifier(decoded, decodedSize);
+            if (Data::VerifyFlatAssetDataBuffer(verifier)) {
+                callback(key, chunk, flatAssetData);
+            } else {
+                LOG(ERROR) << "failed to verify server-provided data for AssetData request " << request;
+                callback(key, chunk, makeEmptyRecord());
+            }
         } else {
             LOG(ERROR) << "error code " << response.code() << " on AssetData request " << request;
             callback(key, chunk, makeEmptyRecord());
@@ -156,22 +172,15 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     std::string request = m_serverAddress + "/asset/" + Asset::keyToString(key);
     LOG(INFO) << "sending POST for new inline asset " << request << ", " << builder.GetSize() << " bytes";
 
-    {
-        char buf[1024];
-        for (size_t i = 0; i < builder.GetSize(); ++i) {
-            snprintf(buf + (i * 3), 4, "%02x ", builder.GetBufferPointer()[i]);
-        }
-        LOG(INFO) << "sent bytes: " << std::string(buf);
-    }
-
     char base64[kPageSize];
     size_t encodedSize = 0;
-    base64_encode(builder.GetBufferPointer(), builder.GetSize(), base64, &encodedSize, 0);
+    base64_encode(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize(), base64, &encodedSize,
+        0);
 
     bool ok = true;
     auto promise = m_client->post(request)
         .header<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream))
-        .header<Pistache::Http::Header::ContentLength>(builder.GetSize())
+        .header<Pistache::Http::Header::ContentLength>(encodedSize)
         .body(std::string(base64, encodedSize))
         .send();
     promise.then([&request, &ok](Pistache::Http::Response response) {
@@ -256,10 +265,14 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     flatbuffers::FlatBufferBuilder builder(kPageSize);
     asset.flatten(builder);
 
+    char base64[kPageSize];
+    size_t encodedSize = 0;
+    base64_encode(reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize(), base64, &encodedSize, 0);
+
     std::string request = m_serverAddress + "/asset/" + keyString;
     bool ok = true;
     auto promise = m_client->post(request)
-        .body(std::string(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize()))
+        .body(std::string(base64, encodedSize))
         .send();
     promise.then([&request, &ok](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
@@ -307,12 +320,15 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
             auto assetData = assetDataBuilder.Finish();
             builder.Finish(assetData);
 
+            base64_encode(reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize(), base64, &encodedSize,
+                0);
+
             LOG(INFO) << "sending POST of asset data for " << keyString << " chunk " << chunk;
             char numBuf[32];
             snprintf(numBuf, 32, "%" PRIu64, chunk);
             request = m_serverAddress + "/asset_data/" + keyString + "/" + std::string(numBuf);
             promise = m_client->post(request)
-                .body(std::string(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize()))
+                .body(std::string(base64, encodedSize))
                 .send();
             promise.then([&request, &ok](Pistache::Http::Response response) {
                 if (response.code() == Pistache::Http::Code::Ok) {
