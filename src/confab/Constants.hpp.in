@@ -20,7 +20,7 @@ static const Common::Version confabVersion(kConfabVersionMajor, kConfabVersionMi
 constexpr size_t kPageSize = 4096;
 // Because we have to base64 encode records for sending data via HTTP. The base64 expansion uses s = 4 * ((n / 3) + 1)
 // bytes where n is input size. This means that max sizes need to be adjusted for padding by n = ((s / 4) - 1) * 3.
-constexpr size_t kDataChunkSize = 3 * (((kPageSize - 32) / 4) - 1);
+constexpr size_t kDataChunkSize = 3 * (((kPageSize - 64) / 4) - 1);
 constexpr size_t kSingleChunkDataSize = 3 * (((3 * 1024) / 4) - 1);
 constexpr size_t kMaxAssetSize = 4ull * 1024ull * 1024ull * 1024ull;
 

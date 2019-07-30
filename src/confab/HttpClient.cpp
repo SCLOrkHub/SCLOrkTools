@@ -227,7 +227,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     XXH64_reset(hashState, 0);
     inFile.read(fileChunk.data(), kDataChunkSize);
     size_t bytesRead = inFile.gcount();
-    size_t bytesRemaining = fileSize;
+    size_t bytesRemaining = fileSize - bytesRead;
 
     while (inFile && bytesRemaining > 0) {
         XXH64_update(hashState, fileChunk.data(), bytesRead);
@@ -247,7 +247,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     XXH64_freeState(hashState);
 
     if (bytesRemaining > 0) {
-        LOG(ERROR) << "file read error for " << assetFile << ", some bytes left unread.";
+        LOG(ERROR) << "file read error for " << assetFile << ", " << bytesRemaining << " bytes left unread.";
         return 0;
     }
 
@@ -268,6 +268,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     char base64[kPageSize];
     size_t encodedSize = 0;
     base64_encode(reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize(), base64, &encodedSize, 0);
+    LOG(INFO) << "sending POST of file asset " << keyString << ", " << encodedSize << " bytes.";
 
     std::string request = m_serverAddress + "/asset/" + keyString;
     bool ok = true;
@@ -295,6 +296,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     // FlatBufferBuilder object, to skip a copy.
     hashState = XXH64_createState();
     XXH64_reset(hashState, 0);
+    inFile.clear();
     inFile.seekg(0, std::ios::beg);
     bytesRemaining = fileSize;
     size_t chunk = 0;
@@ -307,6 +309,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
         auto flatAssetData = builder.CreateUninitializedVector(flatDataSize, &flatData);
         inFile.read(reinterpret_cast<char*>(flatData), flatDataSize);
         bytesRead = inFile.gcount();
+        bytesRemaining -= bytesRead;
         if (bytesRead != flatDataSize) {
             LOG(ERROR) << "error re-reading asset file " << assetFile << " expected " << flatDataSize << " bytes, got "
                 << bytesRead << " bytes instead.";
@@ -322,8 +325,10 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
 
             base64_encode(reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize(), base64, &encodedSize,
                 0);
+            CHECK_LT(encodedSize, kPageSize) << "stack overrun on encode!";
 
-            LOG(INFO) << "sending POST of asset data for " << keyString << " chunk " << chunk;
+            LOG(INFO) << "sending POST of asset data for " << keyString << " chunk " << chunk << ", " << encodedSize
+                << " bytes.";
             char numBuf[32];
             snprintf(numBuf, 32, "%" PRIu64, chunk);
             request = m_serverAddress + "/asset_data/" + keyString + "/" + std::string(numBuf);
@@ -353,6 +358,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
         return 0;
     }
 
+    LOG(INFO) << "completed successful upload of file Asset " << keyString << " from " << assetFile;
     return key;
 }
 

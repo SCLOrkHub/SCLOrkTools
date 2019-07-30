@@ -34,7 +34,7 @@ public:
     void setupRoutes() {
         Pistache::Address address(Pistache::Ipv4::any(), Pistache::Port(m_listenPort));
         m_server.reset(new Pistache::Http::Endpoint(address));
-        auto opts = Pistache::Http::Endpoint::options().threads(m_numThreads);
+        auto opts = Pistache::Http::Endpoint::options().threads(m_numThreads).maxRequestSize(2 * kPageSize);
         m_server->init(opts);
 
         Pistache::Rest::Routes::Get(m_router, "/asset/:key", Pistache::Rest::Routes::bind(
