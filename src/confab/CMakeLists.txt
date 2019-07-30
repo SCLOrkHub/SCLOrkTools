@@ -49,14 +49,14 @@ set(confab_common_src_files
     Database.hpp
     Record.hpp
     SizedPointer.hpp
+    ${BASE64_OBJECT}
 )
 
 add_library(confab_common ${confab_common_src_files})
 
-add_dependencies(confab_common confab_schemas)
+add_dependencies(confab_common confab_schemas base64)
 
 target_link_libraries(confab_common PUBLIC
-    base64_lib
     flatbuffers
     gflags::gflags
     glog::glog
