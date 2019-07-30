@@ -94,6 +94,14 @@ private:
         SizedPointer postedData(reinterpret_cast<const uint8_t*>(request.body().c_str()), request.body().size());
         LOG(INFO) << "processing HTTP POST request for /asset/" << keyString << ", " << postedData.size() << " bytes.";
 
+        {
+            char buf[1024];
+            for (size_t i = 0; i < postedData.size(); ++i) {
+                snprintf(buf + (i * 3), 4, "%02x ", postedData.data()[i]);
+            }
+            LOG(INFO) << "received bytes: " << std::string(buf);
+        }
+
         // Sanity-check the provided serialized FlatAsset data.
         auto verifier = flatbuffers::Verifier(postedData.data(), postedData.size());
         bool status = Data::VerifyFlatAssetBuffer(verifier);

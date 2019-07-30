@@ -155,6 +155,14 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     std::string request = m_serverAddress + "/asset/" + Asset::keyToString(key);
     LOG(INFO) << "sending POST for new inline asset " << request << ", " << builder.GetSize() << " bytes";
 
+    {
+        char buf[1024];
+        for (size_t i = 0; i < builder.GetSize(); ++i) {
+            snprintf(buf + (i * 3), 4, "%02x ", builder.GetBufferPointer()[i]);
+        }
+        LOG(INFO) << "sent bytes: " << std::string(buf);
+    }
+
     bool ok = true;
     auto promise = m_client->post(request)
         .header<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream))
