@@ -1,5 +1,22 @@
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "build static libs instead" FORCE)
 
+### base64
+include(ExternalProject)
+ExternalProject_Add(base64
+    PREFIX "base64-git"
+    GIT_REPOSITORY "https://github.com/aklomp/base64"
+    GIT_TAG "master"
+    CONFIGURE_COMMAND ""
+    BUILD_IN_SOURCE 1
+    #BUILD_COMMAND /usr/bin/make lib/libbase64.o
+    BUILD_COMMAND AVX2_CFLAGS=-mavx2 SSSE3_CFLAGS=-mssse3 SSE41_CFLAGS=-msse4.1 SSE42_CFLAGS=-msse4.2 AVX_CFLAGS=-mavx make -j1 lib/libbase64.o
+    INSTALL_COMMAND ""
+)
+set(BASE64_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}/base64-git/src/base64/include" CACHE STRING "base64 include directory")
+add_library(base64_lib STATIC IMPORTED)
+set_target_properties(base64_lib PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/base64-git/src/base64/lib/libbase64.o")
+add_dependencies(base64_lib base64)
+
 ### flatbuffers
 add_subdirectory(flatbuffers)
 

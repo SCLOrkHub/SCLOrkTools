@@ -30,6 +30,7 @@ configure_file(
 
 # To pick up the pre-processed ConfabVersion.hpp.
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+include_directories("${BASE64_INCLUDE}")
 
 ###
 # confab common files
@@ -55,6 +56,7 @@ add_library(confab_common ${confab_common_src_files})
 add_dependencies(confab_common confab_schemas)
 
 target_link_libraries(confab_common PUBLIC
+    base64_lib
     flatbuffers
     gflags::gflags
     glog::glog

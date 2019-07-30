@@ -7,6 +7,7 @@
 #include "schemas/FlatAssetData_generated.h"
 
 #include "glog/logging.h"
+#include "libbase64.h"
 #include "pistache/net.h"
 #include "pistache/http.h"
 #include "pistache/client.h"
@@ -163,11 +164,15 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
         LOG(INFO) << "sent bytes: " << std::string(buf);
     }
 
+    char base64[kPageSize];
+    size_t encodedSize = 0;
+    base64_encode(builder.GetBufferPointer(), builder.GetSize(), base64, &encodedSize, 0);
+
     bool ok = true;
     auto promise = m_client->post(request)
         .header<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream))
         .header<Pistache::Http::Header::ContentLength>(builder.GetSize())
-        .body(std::string(reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize()))
+        .body(std::string(base64, encodedSize))
         .send();
     promise.then([&request, &ok](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
