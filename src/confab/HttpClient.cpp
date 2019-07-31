@@ -77,8 +77,8 @@ HttpClient::HttpClient(const std::string& serverAddress) :
     m_distribution(0, std::numeric_limits<uint64_t>::max()) {
     auto opts = Pistache::Http::Client::options()
         .keepAlive(true)
-        .maxConnectionsPerHost(16)
-        .threads(2);
+        .maxConnectionsPerHost(4)
+        .threads(4);
     m_client->init(opts);
 }
 
@@ -110,7 +110,7 @@ void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)>
             LOG(ERROR) << "error code " << response.code() << " on Asset request " << request;
             callback(key, makeEmptyRecord());
         }
-    }, Pistache::Async::IgnoreException);
+    }, Pistache::Async::NoExcept);
 
     Pistache::Async::Barrier barrier(promise);
     barrier.wait();
@@ -126,7 +126,8 @@ void HttpClient::getAssetData(uint64_t key, uint64_t chunk,
     auto promise = m_client->get(request).send();
     promise.then([&key, &chunk, &callback, &request](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
-            LOG(INFO) << "received Ok response for AssetData request " << request;
+            LOG(INFO) << "received Ok response for AssetData request " << request << ", " << response.body().size()
+                << " bytes ";
             uint8_t decoded[kPageSize];
             size_t decodedSize;
             base64_decode(response.body().c_str(), response.body().size(), reinterpret_cast<char*>(decoded),
@@ -143,7 +144,7 @@ void HttpClient::getAssetData(uint64_t key, uint64_t chunk,
             LOG(ERROR) << "error code " << response.code() << " on AssetData request " << request;
             callback(key, chunk, makeEmptyRecord());
         }
-    }, Pistache::Async::IgnoreException);
+    }, Pistache::Async::NoExcept);
 
     Pistache::Async::Barrier barrier(promise);
     barrier.wait();
@@ -180,7 +181,7 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
 
     bool ok = true;
     auto promise = m_client->post(request)
-        .header<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream))
+        .header<Pistache::Http::Header::ContentType>(MIME(Text, Plain))
         .header<Pistache::Http::Header::ContentLength>(encodedSize)
         .body(std::string(base64, encodedSize))
         .send();
@@ -191,7 +192,7 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
             LOG(ERROR) << "error code " << response.code() << " on inline Asset post " << request;
             ok = false;
         }
-    }, Pistache::Async::IgnoreException);
+    }, Pistache::Async::NoExcept);
 
     Pistache::Async::Barrier barrier(promise);
     barrier.wait();
@@ -284,7 +285,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
             LOG(ERROR) << "error code " << response.code() << " on file Asset post " << request;
             ok = false;
         }
-    }, Pistache::Async::IgnoreException);
+    }, Pistache::Async::NoExcept);
 
     Pistache::Async::Barrier barrier(promise);
     barrier.wait();
@@ -344,7 +345,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
                     LOG(ERROR) << "error code " << response.code() << " on file asset chunk post " << request;
                     ok = false;
                 }
-            }, Pistache::Async::IgnoreException);
+            }, Pistache::Async::NoExcept);
 
             Pistache::Async::Barrier chunkBarrier(promise);
             chunkBarrier.wait();

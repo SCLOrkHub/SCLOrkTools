@@ -85,13 +85,11 @@ private:
             size_t encodedSize = 0;
             base64_encode(reinterpret_cast<const char*>(record->data().data()), record->data().size(), base64,
                 &encodedSize, 0);
-            CHECK_LT(encodedSize, kPageSize) << "encoded asset larger than page size";
-            response.headers()
-                .add<Pistache::Http::Header::Server>("confab")
-                .add<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream));
-            auto stream = response.stream(Pistache::Http::Code::Ok);
-            stream.write(base64, encodedSize);
-            stream.ends();
+            if (encodedSize >= kPageSize) {
+                LOG(ERROR) << "encoded size: " << encodedSize << " exceeds buffer size " << kPageSize;
+            }
+            response.headers().add<Pistache::Http::Header::Server>("confab");
+            response.send(Pistache::Http::Code::Ok, std::string(base64, encodedSize), MIME(Text, Plain));
         }
     }
 
@@ -142,14 +140,14 @@ private:
             size_t encodedSize = 0;
             base64_encode(reinterpret_cast<const char*>(assetData->data().data()), assetData->data().size(), base64,
                 &encodedSize, 0);
-            CHECK_LT(encodedSize, kPageSize) << "encoded asset data larger than page size.";
-            response.headers()
-                    .add<Pistache::Http::Header::Server>("confab")
-                    .add<Pistache::Http::Header::ContentType>(MIME(Application, OctetStream));
-            auto stream = response.stream(Pistache::Http::Code::Ok);
-            stream.write(base64, encodedSize);
-            stream.ends();
-        };
+            if (encodedSize >= kPageSize) {
+                LOG(ERROR) << "encoded Size: " << encodedSize << " exceeds buffer size " << kPageSize;
+            } else {
+                LOG(INFO) << "sending " << encodedSize << " bytes of Asset Data.";
+            }
+            response.headers().add<Pistache::Http::Header::Server>("confab");
+            response.send(Pistache::Http::Code::Ok, std::string(base64, encodedSize), MIME(Text, Plain));
+        }
     }
 
     void postAssetData(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {

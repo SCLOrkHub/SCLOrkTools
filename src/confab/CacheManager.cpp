@@ -112,7 +112,7 @@ fs::path CacheManager::checkCache(uint64_t key) {
 
 fs::path CacheManager::download(uint64_t key, size_t fileSize, uint64_t chunks, const std::string& fileExtension) {
     fs::path filePath = m_cachePath;
-    filePath += fs::path(Asset::keyToString(key) + fileExtension);
+    filePath += fs::path("/" + Asset::keyToString(key) + fileExtension);
     LOG(INFO) << "downloading Asset data for " << Asset::keyToString(key) << ", " << chunks << " chunks "
         << fileSize << " bytes, into file " << filePath;
 

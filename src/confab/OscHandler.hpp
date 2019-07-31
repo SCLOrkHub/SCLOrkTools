@@ -36,11 +36,13 @@ public:
      */
     ~OscHandler();
 
-    /*! Process incoming OSC messages until terminated with a SIGINT.
-     *
-     * This function won't return until the program receives a SIGINT.
+    /*! Launch a thread to run the OSC message processing loop. Call shutdown() to stop the processing loop.
      */
-    void listenUntilSigInt();
+    void run();
+
+    /*! Stops the processing loop and closes the open ports.
+     */
+    void shutdown();
 
 private:
     class OscListener;

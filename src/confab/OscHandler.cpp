@@ -158,13 +158,19 @@ OscHandler::OscHandler(int listenPort, int sendPort, std::shared_ptr<AssetDataba
 OscHandler::~OscHandler() {
 }
 
-void OscHandler::listenUntilSigInt() {
+void OscHandler::run() {
     m_transmitSocket.reset(new UdpTransmitSocket(IpEndpointName("127.0.0.1", m_sendPort)));
 
     m_listener.reset(new OscListener(this));
     m_listenSocket.reset(new UdpListeningReceiveSocket(IpEndpointName(IpEndpointName::ANY_ADDRESS, m_listenPort),
         m_listener.get()));
-    m_listenSocket->RunUntilSigInt();
+    std::async(std::launch::async, [this] {
+        m_listenSocket->Run();
+    });
+}
+
+void OscHandler::shutdown() {
+    m_listenSocket->AsynchronousBreak();
 }
 
 void OscHandler::findAsset(uint64_t assetId) {
@@ -244,9 +250,9 @@ void OscHandler::loadAsset(uint64_t key) {
     char buffer[kPageSize];
     osc::OutboundPacketStream p(buffer, kPageSize);
     p << osc::BeginMessage("/assetLoaded")
-        << osc::Symbol(Asset::keyToString(key).c_str())
-        << osc::Symbol(Asset::keyToString(downloadKey).c_str())
-        << osc::Symbol(assetPath.c_str())
+        << Asset::keyToString(key).c_str()
+        << Asset::keyToString(downloadKey).c_str()
+        << assetPath.c_str()
         << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
 }
@@ -256,7 +262,7 @@ void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string na
     uint64_t key = m_httpClient->postFileAsset(type, name, author, deprecates, filePath);
     char buffer[kPageSize];
     osc::OutboundPacketStream p(buffer, kPageSize);
-    p << osc::BeginMessage("/assetAdded") << serialNumber << osc::Symbol(Asset::keyToString(key).c_str())
+    p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
         << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
 }
@@ -269,7 +275,7 @@ void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string 
     // Regardless of success or failure of Asset add we return the key and serial number.
     char buffer[kPageSize];
     osc::OutboundPacketStream p(buffer, kPageSize);
-    p << osc::BeginMessage("/assetAdded") << serialNumber << osc::Symbol(Asset::keyToString(key).c_str())
+    p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
         << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
 }
@@ -279,13 +285,13 @@ void OscHandler::sendAsset(uint64_t requestedKey, RecordPtr record) {
     osc::OutboundPacketStream p(buffer, kDataChunkSize);
     const Data::FlatAsset* asset = Data::GetFlatAsset(record->data().data());
     p << osc::BeginMessage("/assetFound");
-    p << osc::Symbol(Asset::keyToString(requestedKey).c_str());
-    p << osc::Symbol(Asset::keyToString(asset->key()).c_str());
-    p << osc::Symbol(Asset::enumToTypeString(static_cast<Asset::Type>(asset->type())).c_str());
-    p << osc::Symbol(asset->name()->c_str());  // TODO: coming across as "true" right now?
-    p << osc::Symbol(Asset::keyToString(asset->author()).c_str());
-    p << osc::Symbol(Asset::keyToString(asset->deprecatedBy()).c_str());
-    p << osc::Symbol(Asset::keyToString(asset->deprecates()).c_str());
+    p << Asset::keyToString(requestedKey).c_str();
+    p << Asset::keyToString(asset->key()).c_str();
+    p << Asset::enumToTypeString(static_cast<Asset::Type>(asset->type())).c_str();
+    p << asset->name()->c_str();
+    p << Asset::keyToString(asset->author()).c_str();
+    p << Asset::keyToString(asset->deprecatedBy()).c_str();
+    p << Asset::keyToString(asset->deprecates()).c_str();
     if (asset->inlineData()) {
         osc::Blob blob(asset->inlineData()->data(), asset->inlineData()->size());
         p << blob;

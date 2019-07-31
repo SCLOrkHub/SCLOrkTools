@@ -25,6 +25,10 @@ public:
      */
     bool initialize(int argc, char* argv[]);
 
+    /*! Blocks the calling thread until one of the process interrupt signals are sent, then returns.
+     */
+    void waitForTerminationSignal();
+
     /*! Shuts down the common subsystems.
      */
     void shutdown();

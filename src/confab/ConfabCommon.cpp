@@ -41,6 +41,22 @@ bool ConfabCommon::initialize(int argc, char* argv[]) {
     return openDatabase();
 }
 
+void ConfabCommon::waitForTerminationSignal() {
+    sigset_t signals;
+    sigemptyset(&signals);
+    sigaddset(&signals, SIGINT);
+    sigaddset(&signals, SIGTERM);
+    sigaddset(&signals, SIGHUP);
+    int signal = 0;
+    // Block until termination signal sent.
+    int status = sigwait(&signals, &signal);
+    if (status == 0) {
+        LOG(INFO) << "got termination signal " << signal;
+    } else {
+        LOG(ERROR) << "got error from sigwait " << status;
+    }
+}
+
 void ConfabCommon::shutdown() {
     m_database->close();
     // Delete pid sentinel file.
