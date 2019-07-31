@@ -49,6 +49,10 @@ private:
      */
     void findAsset(uint64_t assetId);
 
+    /*! Downloads an asset file to cache, provides path back to caller. Should run as a task.
+     */
+    void loadAsset(uint64_t key);
+
     /*! Processes an asset addition request for a given file path. Should run as a task.
      */
     void addAssetFile(Asset::Type type, int serialNumber, std::string name, uint64_t author, uint64_t deprecates,

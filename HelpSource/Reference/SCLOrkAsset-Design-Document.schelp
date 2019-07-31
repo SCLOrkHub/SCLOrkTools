@@ -107,6 +107,10 @@ table::
 
 subsection:: /assetLoaded
 
+## strong::label:: || requestedKey || The key of the requested Asset.
+## strong::label:: || returnedKey  || The key of the returned Asset.
+## strong::label:: || assetPath    || The path to the cached file Asset.
+
 subsection:: /assetError
 
 table::

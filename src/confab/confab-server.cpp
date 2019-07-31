@@ -25,11 +25,15 @@ int main(int argc, char* argv[]) {
 
     httpEndpoint.startServerThread();
 
+
+    // TODO: set this as the ConfabCommon blocker function for confab too.
     sigset_t signals;
     sigemptyset(&signals);
     sigaddset(&signals, SIGINT);
+    sigaddset(&signals, SIGTERM);
+    sigaddset(&signals, SIGHUP);
     int signal = 0;
-    // Block until SIGINT.
+    // Block until termination signal sent.
     int status = sigwait(&signals, &signal);
     if (status == 0) {
         LOG(INFO) << "got signal " << signal;

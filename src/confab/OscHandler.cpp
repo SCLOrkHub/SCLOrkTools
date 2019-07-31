@@ -54,6 +54,24 @@ public:
                         m_handler->findAsset(assetKey);
                     });
                 }
+            } else if (std::strcmp("/assetLoad", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                std::string keyString((arguments++)->AsString());
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
+
+                LOG(INFO) << "processing [/assetLoad " << keyString << "]";
+
+                uint64_t key = Asset::stringToKey(keyString);
+                if (key == 0) {
+                    LOG(ERROR) << "/assetLoad got invalid key value: " << keyString;
+                } else {
+                    std::async(std::launch::async, [this, key] {
+                        m_handler->loadAsset(key);
+                    });
+                };
+
             } else if (std::strcmp("/assetAddFile", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
                 int serialNumber = (arguments++)->AsInt32();
@@ -169,7 +187,7 @@ void OscHandler::findAsset(uint64_t assetId) {
             m_transmitSocket->Send(p.Data(), p.Size());
         } else {
             // Store in database cache for future use.
-            m_assetDatabase->storeAsset(assetId, record->data());
+            m_assetDatabase->storeAsset(loadedKey, record->data());
             // Send to client.
             LOG(INFO) << "downloaded asset " << Asset::keyToString(assetId) << " cached and sending to SC.";
             sendAsset(assetId, record);
@@ -177,12 +195,68 @@ void OscHandler::findAsset(uint64_t assetId) {
     });
 }
 
+void OscHandler::loadAsset(uint64_t key) {
+    uint64_t downloadKey = 0;
+    fs::path assetPath = m_cacheManager->checkCache(key);
+
+    if (assetPath.empty()) {
+        LOG(INFO) << "file cache miss for asset " << Asset::keyToString(key) << ", downloading.";
+        size_t size = 0;
+        uint64_t chunks = 0;
+        std::string fileExtension;
+        // Asset likely in cache.
+        RecordPtr asset = m_assetDatabase->findAsset(key);
+        if (asset->empty()) {
+            LOG(INFO) << "cache miss for asset " << Asset::keyToString(key);
+            m_httpClient->getAsset(key, [this, &downloadKey, &size, &chunks, &fileExtension](uint64_t loadedKey,
+                RecordPtr record) {
+                if (record->empty()) {
+                    LOG(ERROR) << "asset not found " << Asset::keyToString(loadedKey);
+                } else {
+                    m_assetDatabase->storeAsset(loadedKey, record->data());
+                    const Data::FlatAsset* flatAsset = Data::GetFlatAsset(record->data().data());
+                    downloadKey = loadedKey;
+                    size = flatAsset->size();
+                    chunks = flatAsset->chunks();
+                    fileExtension = flatAsset->fileExtension()->str();
+                }
+            });
+        } else {
+            LOG(INFO) << "cache hit for asset " << Asset::keyToString(key);
+            const Data::FlatAsset* flatAsset = Data::GetFlatAsset(asset->data().data());
+            // TODO: code duplication not great here.
+            downloadKey = key;
+            size = flatAsset->size();
+            chunks = flatAsset->chunks();
+            fileExtension = flatAsset->fileExtension()->str();
+        }
+
+        // We should have extracted what we need from the asset to download now.
+        if (downloadKey != 0) {
+            LOG(INFO) << "starting download for asset " << Asset::keyToString(downloadKey) << " for requested asset "
+                << Asset::keyToString(key) << ", " << size << " bytes, " << chunks << " chunks, " << fileExtension;
+            assetPath = m_cacheManager->download(downloadKey, size, chunks, fileExtension);
+        } else {
+            LOG(ERROR) << "unable to find Asset " << Asset::keyToString(key);
+        }
+    }
+
+    char buffer[kPageSize];
+    osc::OutboundPacketStream p(buffer, kPageSize);
+    p << osc::BeginMessage("/assetLoaded")
+        << osc::Symbol(Asset::keyToString(key).c_str())
+        << osc::Symbol(Asset::keyToString(downloadKey).c_str())
+        << osc::Symbol(assetPath.c_str())
+        << osc::EndMessage;
+    m_transmitSocket->Send(p.Data(), p.Size());
+}
+
 void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string name, uint64_t author,
     uint64_t deprecates, std::string filePath) {
     uint64_t key = m_httpClient->postFileAsset(type, name, author, deprecates, filePath);
-    char buffer[1024];
-    osc::OutboundPacketStream p(buffer, 1024);
-    p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
+    char buffer[kPageSize];
+    osc::OutboundPacketStream p(buffer, kPageSize);
+    p << osc::BeginMessage("/assetAdded") << serialNumber << osc::Symbol(Asset::keyToString(key).c_str())
         << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
 }
@@ -193,25 +267,25 @@ void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string 
         reinterpret_cast<const uint8_t*>(assetString.c_str()));
 
     // Regardless of success or failure of Asset add we return the key and serial number.
-    char buffer[1024];
-    osc::OutboundPacketStream p(buffer, 1024);
-    p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
+    char buffer[kPageSize];
+    osc::OutboundPacketStream p(buffer, kPageSize);
+    p << osc::BeginMessage("/assetAdded") << serialNumber << osc::Symbol(Asset::keyToString(key).c_str())
         << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
 }
 
 void OscHandler::sendAsset(uint64_t requestedKey, RecordPtr record) {
-    char buffer[kDataChunkSize];
+    char buffer[kPageSize];
     osc::OutboundPacketStream p(buffer, kDataChunkSize);
     const Data::FlatAsset* asset = Data::GetFlatAsset(record->data().data());
     p << osc::BeginMessage("/assetFound");
-    p << Asset::keyToString(requestedKey).c_str();
-    p << Asset::keyToString(asset->key()).c_str();
-    p << Asset::enumToTypeString(static_cast<Asset::Type>(asset->type())).c_str();
-    p << asset->name();
-    p << Asset::keyToString(asset->author()).c_str();
-    p << Asset::keyToString(asset->deprecatedBy()).c_str();
-    p << Asset::keyToString(asset->deprecates()).c_str();
+    p << osc::Symbol(Asset::keyToString(requestedKey).c_str());
+    p << osc::Symbol(Asset::keyToString(asset->key()).c_str());
+    p << osc::Symbol(Asset::enumToTypeString(static_cast<Asset::Type>(asset->type())).c_str());
+    p << osc::Symbol(asset->name()->c_str());  // TODO: coming across as "true" right now?
+    p << osc::Symbol(Asset::keyToString(asset->author()).c_str());
+    p << osc::Symbol(Asset::keyToString(asset->deprecatedBy()).c_str());
+    p << osc::Symbol(Asset::keyToString(asset->deprecates()).c_str());
     if (asset->inlineData()) {
         osc::Blob blob(asset->inlineData()->data(), asset->inlineData()->size());
         p << blob;

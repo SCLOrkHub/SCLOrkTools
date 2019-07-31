@@ -48,6 +48,10 @@ SCLOrkConfab {
 		});
 	}
 
+	*loadAssetById { |id, callback|
+
+	}
+
 	*isConfabRunning {
 		if (confabPid.notNil, {
 			^confabPid.pidRunning;

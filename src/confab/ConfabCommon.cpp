@@ -77,10 +77,12 @@ bool ConfabCommon::checkSentinelFile() {
 bool ConfabCommon::setThreadMask() {
     // Create thread masks for ignoring SIGINT signals here, as the OSC handler will catch the SIGINT and terminate the
     // program itself on that.
-    sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set, SIGTERM);
-    if (pthread_sigmask(SIG_BLOCK, &set, nullptr) != 0) {
+    sigset_t signals;
+    sigemptyset(&signals);
+    sigaddset(&signals, SIGHUP);
+    sigaddset(&signals, SIGINT);
+    sigaddset(&signals, SIGTERM);
+    if (pthread_sigmask(SIG_BLOCK, &signals, nullptr) != 0) {
         LOG(ERROR) << "error setting pthread thread mask to ignore SIGINT.";
         return false;
     }
