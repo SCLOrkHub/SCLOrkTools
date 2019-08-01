@@ -39,6 +39,27 @@ public:
      */
     static Type typeStringToEnum(const std::string& assetType);
 
+    /*! Utility to convert an Asset::type enumeration back into a descriptive string.
+     *
+     * \param type The Asset enumerated type.
+     * \return The string of that type, "invalid" on error.
+     */
+    static std::string enumToTypeString(Asset::Type type);
+
+    /*! Converts a 64-bit binary key into a human-readable hexadecimal string.
+     *
+     * \param key A binary key.
+     * \return A hexadecimal string of key.
+     */
+    static std::string keyToString(uint64_t key);
+
+    /*! Converts a 64-bit hexadecimal string into a binary key.
+     *
+     * \param keyString A key in hexadecimal string form.
+     * \return The binary value of that string, or zero on error.
+     */
+    static uint64_t stringToKey(const std::string& keyString);
+
     /*! Constructs a new empty Asset.
      *
      * \param type The type of asset to make.
@@ -48,18 +69,18 @@ public:
     /*! Constructs a new Asset based on a backing FlatAsset store.
      *
      * \param Asset The serialized FlatAsset object.
-     * \param key The key associated with this asset. If the serialized asset in data has a key the serialized key will
-     *            override this value and it will be ignored. But if the key is absent from those data it can be
-     *            provided here.
      * \return An Asset object created by copying the FlatAsset inside of record.
      */
-    explicit Asset(const Data::FlatAsset* Asset, uint64_t key = 0);
+    explicit Asset(const Data::FlatAsset* Asset);
 
     /*! Serialize and return a pointer to the flattened Asset.
      *
      * \param builder A FlatBufferBuilder object to serialize the Asset in to.
+     * \param inlineData An optional buffer of data to serialize along with the Asset. Assumed to be of size of the
+     *                   already-set size parameter. Will override any inlineData already copied in to this Asset.
+     *                   Added here to allow saving an additional copy of the data into the Asset before serializing.
      */
-    void flatten(flatbuffers::FlatBufferBuilder& builder);
+    void flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inlineData = nullptr);
 
     /*! The type of this Asset.
      *
@@ -93,9 +114,9 @@ public:
 
     /*! Add the file extension string.
      *
-     * \note The . is normally not stored.
+     * \note The . is normally included.
      *
-     * \param fileExtension The extension of the file, e.g. "yaml", "png", "wav".
+     * \param fileExtension The extension of the file, e.g. ".yaml", ".png", ".wav".
      */
     void setFileExtension(const std::string& fileExtension) { m_fileExtension = fileExtension; }
 
@@ -141,6 +162,43 @@ public:
      */
     uint64_t deprecates() const { return m_deprecates; }
 
+    /*! Sets the size in bytes of the data associated with this Asset.
+     *
+     * \param size The size in bytes of the Asset.
+     */
+    void setSize(uint64_t size) { m_size = size; }
+
+    /*! The size in bytes of the Asset.
+     *
+     * \return Size in bytes of the Asset.
+     */
+    uint64_t size() const { return m_size; }
+
+    /*! The number of AssetData chunks associated with this Asset. If inlineData is present, this should be zero.
+     *
+     * \param chunks The number of chunks to store separately.
+     */
+    void setChunks(uint64_t chunks) { m_chunks = chunks; }
+
+    /*! The number of AssetData chunks stored for this Asset.
+     *
+     * \return The number of chunks to expect stored with this Asset.
+     */
+    uint64_t chunks() const { return m_chunks; }
+
+    /*! Adds a salt value to the Asset.
+     *
+     * \param salt The salt value to add. It will be used as the starting state in hash computations.
+     */
+    void setSalt(uint64_t salt) { m_salt = salt; }
+
+    /*! Provides an initial state for the hashing function, to reduce the chance of hash collision on small data sizes.
+     *  Only nonzero when inlineData is present.
+     *
+     * \return A salt value.
+     */
+    uint64_t salt() const { return m_salt; }
+
     /*! Reserves space in the backing store for an inline buffer, returning the pointer to that space for writing.
      *
      * \param size How many bytes to reserve. Should be less than or equal to kSingleChunkDataSize.
@@ -148,7 +206,7 @@ public:
      */
     uint8_t* setInlineData(size_t size) {
         m_inlineData.reset(new uint8_t[size]);
-        m_inlineDataSize = size;
+        m_size = size;
         return m_inlineData.get();
     }
 
@@ -160,39 +218,6 @@ public:
      * \return A pointer to the inline data, or nullptr if not present.
      */
     const uint8_t* inlineData() const { return m_inlineData.get(); }
-
-    /*! Size of Asset data, if present.
-     *
-     * \return The size of the inline data pointed to by inlineData().
-     * \sa inlineData()
-     */
-    size_t inlineDataSize() const { return m_inlineDataSize; }
-
-    /*! Sets a UNIX epoch after which this Asset should be re-checked for validity or deleted.
-     *
-     * \param expiresOnEpoch The UNIX epoch to check this Asset on.
-     */
-    void setExpiresOn(uint64_t expiresOnEpoch) { m_expiresOn = expiresOnEpoch; }
-
-    /*! Specifies a UNIX epoch after which this Asset should be re-checked for validity or deleted.
-     *
-     * For cached Assets, or Assets likely to be deprecated, can store a timeout here.
-     *
-     * \return A UNIX epoch for when this Asset should be refreshed, or 0 if not present.
-     */
-    uint64_t expiresOn() const { return m_expiresOn; }
-
-    /*! Adds a salt value to the Asset.
-     *
-     * \param salt The salt value to add. It will be used as the starting state in hash computations.
-     */
-    void setSalt(uint64_t salt) { m_salt = salt; }
-
-    /*! Provides an initial state for the hashing function, to reduce the chance of hash collision on small data sizes.
-     *
-     * \return A salt value.
-     */
-    uint64_t salt() const { return m_salt; }
 
     /// @cond UNDOCUMENTED
     Asset() = delete;
@@ -209,10 +234,11 @@ private:
     uint64_t m_author;
     uint64_t m_deprecatedBy;
     uint64_t m_deprecates;
-    std::unique_ptr<uint8_t[]> m_inlineData;
-    size_t m_inlineDataSize;
-    uint64_t m_expiresOn;
+    uint64_t m_size;
+    uint64_t m_chunks;
+
     uint64_t m_salt;
+    std::unique_ptr<uint8_t[]> m_inlineData;
 };
 
 }  // namespace Confab

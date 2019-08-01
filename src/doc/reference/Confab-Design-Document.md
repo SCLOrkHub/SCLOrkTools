@@ -3,28 +3,51 @@
 [TOC]
 
 The confab program is the C++-based support binary for the SCLOrkTools resource sharing system that powers things like
-images, memes, emoji, and code sharing in SCLOrkChat.
+chat, images, memes, and code sharing in SCLOrkChat.
 
 This document serves as an overview of the design of the confab program.
 
 # Overview
 
+# Architecture
+
+Confab is based on a classical client-server model, with the added complication that since the SuperCollider language
+can't communicate over HTTP there is a *proxy* client, written in C++, that caches larger assets locally by first
+transferring them over HTTP from the Confab server, then sending the file path and other Asset metadata to sclang via
+OSC messages over UDP.
+
+The three major components to the Confab system are therefore:
+
+  * The Confab Server, called ```confab-server```, written in C++. Uses the Pistache library to keep a multi-threaded
+    HTTP server available. Stores all Assets as records in a leveldb file database, serves as a centralized authority
+    on all assets, and can stream Asset metadata and data chunks to clients on demand.
+  * The Confab Client, called ```confab```, also written in C++. Uses the Pistache library to communicate with the
+    server, maintains a local file-based cache of Assets, uses an LRU eviction strategy to delete older content from the
+    cache. The client is a "proxy client" in that it communicates with the SuperCollider language process, ```sclang```,
+    using the OSC protocol over UDP.
+  * A suite of SuperCollider objects, namely ```SCLOrkConfab``` and ```SCLOrkAsset```, that represent SC-side language
+    abstractions of asset metadata and provide access to these assets as needed. These classes are documented in the
+    SuperCollider ```schelp``` format, along with their design document, and so are discussed here only to provide
+    context for the C++ Confab system.
+
+# Another Deprecation Line! Stuff Below Probably Still Useful Just Needs Rework
+
 # Asset Streaming
 
 Confab is likely to be running in a peformance environment and therefore needs to be very careful in its usage of memory
 and disk resources. As a thought experiment, consider a large audio sample file (on the order of tens or possibly hundreds
-of MB). This Asset is not available locally, so first Confab issues a request to the Upstream Confab server. This server
+of MB). This Asset is not available locally, so first Confab issues a request to the Confab server. This server
 does have the file, so sends it along. Without asset streaming, the Confab instance is likely to allocate *at least one*
-buffer of the size of the asset, if not more, between downloading the Asset from the upstream instance, writing it to the
-database, and then saving it out to disk. Then when the SuperCollider synth process opens the audio file for sampling,
+buffer of the size of the asset, if not more, between downloading the Asset from the server, writing it to the database,
+and then saving it out to disk. Then when the SuperCollider synth process opens the audio file for sampling,
 that means that there are now potentially two copies of the asset now loaded into RAM at different (but potentially overlapping)
 times. For any asset over the asset size limit it is therefore proposed that a *streaming* mode be used for transmission,
-storage, and retrieval of the asset.
-
-The asset chunk size limit is currently based on the default memory page size of 4KB. 
+storage, and retrieval of the asset. We break assets into individual chunks based on the default memory code page size
+of 4K, which should hopefully keep memory pressure from Confab very low, while using memory pages efficiently, even when
+handling very large assets.
 
 Pistache can both transmit and receive in streaming mode, with flushes happening in increments of the asset size. These can
-be sequentially added to the database as they are received. 
+be sequentially added to the database as they are received.
 
 xxHash can compute hashes in a streaming mode, meaning that on initial asset hash computation the asset file can be progressively
 loaded into 4KB chunks at a time with the hash computed. It might be possible to double-buffer, meaning kick off an asynchronous

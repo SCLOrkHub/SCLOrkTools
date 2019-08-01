@@ -8,3 +8,4 @@ table FlatConfig {
 
 root_type FlatConfig;
 file_identifier "cnfb";
+
