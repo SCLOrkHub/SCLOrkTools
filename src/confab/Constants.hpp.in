@@ -23,7 +23,7 @@ constexpr size_t kPageSize = 4096;
 // These values have been adjusted heuristically to keep the maximum size of encoded data sent between HTTP client and
 // server under 4096 bytes, as the HTTP client code will hang if that size is exceeded.
 constexpr size_t kDataChunkSize = 3 * (((kPageSize - 256) / 4) - 1);
-constexpr size_t kSingleChunkDataSize = 3 * (((2 * 1024) / 4) - 1);
+constexpr size_t kSingleChunkDataSize = 3 * (((3 * 1024) / 4) - 1);
 constexpr size_t kMaxAssetSize = 4ull * 1024ull * 1024ull * 1024ull;
 
 }  // namespace Confab
