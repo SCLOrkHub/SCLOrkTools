@@ -21,7 +21,7 @@ public:
      */
     AssetDatabase(std::shared_ptr<Database> database);
 
-    /*! Locates an asset associated with the provided Id and returns it by calling the provided callback function.
+    /*! Locates an asset associated with the provided key and returns it.
      *
      * If the asset retrieved is marked as deprecated, this function will iteratively retrieve assets until it discovers
      * a non-deprecated Asset, and then will return that one. So it is possible that the returned Asset will have a
@@ -32,13 +32,22 @@ public:
      */
     RecordPtr findAsset(uint64_t key);
 
+    /*! Locates an Asset associated with the provided name and returns it.
+     *
+     * Just like findAsset, will return the most recent version of the requested Asset, following deprecations.
+     *
+     * \param name The name of the asset to look up.
+     * \return A non-owning pointer to the FlatAsset record, or an empty Record on error.
+     */
+    RecordPtr findNamedAsset(const std::string& name);
+
     /*! Stores a FlatAsset record with an already computed hash into the database.
      *
      * \param key The key to store the serialized asset under.
-     * \param flatAsset The serialized asset data.
+     * \param assetData The serialized asset data.
      * \return true on success, false on error.
      */
-    bool storeAsset(uint64_t key, const SizedPointer& flatAsset);
+    bool storeAsset(uint64_t key, const SizedPointer& assetData);
 
     /*! Loads a chunk FlatAssetData record from the database.
      *

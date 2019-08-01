@@ -54,6 +54,17 @@ public:
                         m_handler->findAsset(assetKey);
                     });
                 }
+            } else if (std::strcmp("/assetFindName", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                std::string name((arguments++)->AsString());
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
+
+                LOG(INFO) << "processing [/assetFindName " << name << "]";
+                std::async(std::launch::async, [this, name] {
+                    m_handler->findNamedAsset(name);
+                });
             } else if (std::strcmp("/assetLoad", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
                 std::string keyString((arguments++)->AsString());
@@ -71,7 +82,6 @@ public:
                         m_handler->loadAsset(key);
                     });
                 };
-
             } else if (std::strcmp("/assetAddFile", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
                 int serialNumber = (arguments++)->AsInt32();
@@ -199,6 +209,16 @@ void OscHandler::findAsset(uint64_t assetId) {
             sendAsset(assetId, record);
         }
     });
+}
+
+void OscHandler::findNamedAsset(std::string name) {
+    // First check database cache.
+    RecordPtr databaseAsset = m_assetDatabase->findNamedAsset(name);
+    if (!databaseAsset->empty()) {
+        LOG(INFO) << "database cache hit for named asset " << name << "sending to SC.";
+        // TODO: why not re-use sendAsset() with requestedKey as a string?
+    }
+
 }
 
 void OscHandler::loadAsset(uint64_t key) {

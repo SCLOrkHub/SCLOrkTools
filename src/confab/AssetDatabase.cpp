@@ -29,6 +29,8 @@ static const size_t kAssetDataDatabaseKeySize = 17;
  */
 enum KeyPrefix : uint8_t { kAsset = 0xaa, kData = 0xdd };
 
+static const char* kAssetNamePrefix = "an";
+
 /*! Writes a byte sequence in keyOut suitable for storing or retrieving an Asset record from the database.
  *
  * \param key The key to format.
@@ -89,17 +91,48 @@ RecordPtr AssetDatabase::findAsset(uint64_t key) {
     return assetRecord;
 }
 
-bool AssetDatabase::storeAsset(uint64_t key, const SizedPointer& flatAsset) {
+RecordPtr AssetDatabase::findNamedAsset(const std::string& name) {
+    // Look up name entry, if any.
+    std::string nameKey = kAssetNamePrefix + name;
+    RecordPtr namedAssetId = m_database->load(SizedPointer(nameKey.c_str(), nameKey.size()));
+    if (namedAssetId->empty()) {
+        LOG(INFO) << "no named asset found under name " << name;
+        return makeEmptyRecord();
+    }
+
+    uint64_t assetKey = 0;
+    std::memcpy(&assetKey, namedAssetId->data().data(), sizeof(uint64_t));
+    LOG(INFO) << "found key " << Asset::keyToString(assetKey) << " under name lookup " << name;
+    return findAsset(assetKey);
+}
+
+bool AssetDatabase::storeAsset(uint64_t key, const SizedPointer& assetData) {
+    Database::Batch batch;
+
+    // First we parse the Asset data to extract the name, if any.
+    const Data::FlatAsset* flatAsset = Data::GetFlatAsset(assetData.data());
+    // This string, name has to live as long as the call to the database write(), so lives out here.
+    std::string name;
+    if (flatAsset->name() && flatAsset->name()->size() > 0) {
+        name = kAssetNamePrefix + flatAsset->name()->str();
+        const SizedPointer nameKey(name.c_str(), name.size());
+        const SizedPointer keyKey(reinterpret_cast<const uint8_t*>(key), sizeof(uint64_t));
+        batch.store(nameKey, keyKey);
+    }
+
+    // Store actual Asset key/value pair.
     std::array<char, kAssetDatabaseKeySize> assetDatabaseKey;
     SizedPointer flatKey(assetDatabaseKey.data(), kAssetDatabaseKeySize);
     makeAssetDatabaseKey(key, flatKey);
+    batch.store(flatKey, assetData);
 
-    bool result = m_database->store(flatKey, flatAsset);
+    bool result = m_database->write(batch);
     if (result) {
         LOG(INFO) << "Asset store " << Asset::keyToString(key) << " success.";
     } else {
         LOG(ERROR) << "Failed to store Asset " << Asset::keyToString(key) << " in database.";
     }
+
     return result;
 }
 

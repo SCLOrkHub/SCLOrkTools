@@ -8,7 +8,7 @@
 
 namespace leveldb {
     class DB;
-    class Iterator;
+    class WriteBatch;
 }
 
 namespace Confab {
@@ -23,6 +23,37 @@ namespace Confab {
  */
 class Database {
 public:
+    /*! Container class allowing for multiple writes to the database with Atomicity.
+     */
+    class Batch {
+    public:
+        /*! Constructs a empty Batch.
+         */
+        Batch();
+
+        /*! Destructs a Batch.
+         */
+        ~Batch();
+
+        /*! Adds a Database store operation to the Batch. Will not actually execute any stores until the
+         * Database::write() function is called. Note that *all* SizedPointers provided to Batch via store() must remain
+         * valid until Database::write() returns.
+         *
+         * \param key A pointer to the key data to store the provided data under.
+         * \param value The value data to store the provided key with.
+         */
+        void store(const SizedPointer& key, const SizedPointer& value);
+
+        /*! Internal accessor for the contained LevelDB batch object, for use by the Database object.
+         *
+         * \return A pointer to the LevelDB batch object.
+         */
+        leveldb::WriteBatch* batch() { return m_batch.get(); }
+
+    private:
+        std::unique_ptr<leveldb::WriteBatch> m_batch;
+    };
+
     /*! Constructs an empty Database object.
      *
      * \param database An pointer to an existing LevelDB database object (or a mock for testing), or nullptr. Note that
@@ -31,9 +62,9 @@ public:
      */
     Database(leveldb::DB* database = nullptr);
 
-    /// @cond UNDOCUMENTED
-    virtual ~Database() = default;
-    /// @endcond UNDOCUMENTED
+    /*! Destructs a Dataase.
+     */
+    ~Database();
 
     /*! Open or create Database LevelDB database file tree.
      *
@@ -45,7 +76,7 @@ public:
      *                  cache.
      * \return true on success, or false on error.
      */
-    virtual bool open(const char* path, bool createNew, int cacheSize);
+    bool open(const char* path, bool createNew, int cacheSize);
 
     /*! Loads the data associated with the provided key.
      *
@@ -53,23 +84,31 @@ public:
      * \return A Record providing a non-owning pointer to the data associated with key, or an empty record if the key
      *         was not found in the database.
      */
-    virtual const RecordPtr load(const SizedPointer& key);
+    const RecordPtr load(const SizedPointer& key);
 
     /*! Saves the provided data associated with the key. Overwrites old data that may have been present under that key.
      *
      * \param key A pointer to the key to associate with the provided data.
-     * \param data A pointer to the data to associate with the provided key.
+     * \param value A pointer to the data to associate with the provided key.
      * \return Will be true on success, false on error.
      */
-    virtual bool store(const SizedPointer& key, const SizedPointer& data);
+    bool store(const SizedPointer& key, const SizedPointer& value);
+
+    /*! Executes the provided Batch object atomically on the database. Note that the state of the Batch object is
+     * invalid after this call, and it should be deleted.
+     *
+     * \param batch A Batch object with commands previously recorded.
+     * \return true on atomic success (all operations succeeded), false on error.
+     */
+    bool write(Database::Batch& batch);
 
     /*! Close the database, and delete any internal references to it.
      *
      */
-    virtual void close();
+    void close();
 
 private:
-    std::shared_ptr<leveldb::DB> m_database;
+    std::unique_ptr<leveldb::DB> m_database;
 };
 
 }  // namespace Confab

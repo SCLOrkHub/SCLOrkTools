@@ -37,14 +37,17 @@ public:
         auto opts = Pistache::Http::Endpoint::options().threads(m_numThreads).maxRequestSize(2 * kPageSize);
         m_server->init(opts);
 
-        Pistache::Rest::Routes::Get(m_router, "/asset/:key", Pistache::Rest::Routes::bind(
+        Pistache::Rest::Routes::Get(m_router, "/asset/id/:key", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::getAsset, this));
-        Pistache::Rest::Routes::Post(m_router, "/asset/:key", Pistache::Rest::Routes::bind(
+        Pistache::Rest::Routes::Post(m_router, "/asset/id/:key", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::postAsset, this));
 
-        Pistache::Rest::Routes::Get(m_router, "/asset_data/:key/:chunk", Pistache::Rest::Routes::bind(
+        Pistache::Rest::Routes::Get(m_router, "/asset/name/:name", Pistache::Rest::Routes::bind(
+            &HttpEndpoint::HttpHandler::getNamedAsset, this));
+
+        Pistache::Rest::Routes::Get(m_router, "/asset/data/:key/:chunk", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::getAssetData, this));
-        Pistache::Rest::Routes::Post(m_router, "/asset_data/:key/:chunk", Pistache::Rest::Routes::bind(
+        Pistache::Rest::Routes::Post(m_router, "/asset/data/:key/:chunk", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::postAssetData, this));
     }
 
@@ -72,7 +75,7 @@ public:
 private:
     void getAsset(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto keyString = request.param(":key").as<std::string>();
-        LOG(INFO) << "processing HTTP GET request for /asset/" << keyString;
+        LOG(INFO) << "processing HTTP GET request for /asset/id/" << keyString;
         uint64_t key = Asset::stringToKey(keyString);
         RecordPtr record = m_assetDatabase->findAsset(key);
         if (record->empty()) {
@@ -100,7 +103,7 @@ private:
         size_t decodedSize;
         base64_decode(request.body().c_str(), request.body().size(), reinterpret_cast<char*>(decoded), &decodedSize, 0);
         SizedPointer postedData(decoded, decodedSize);
-        LOG(INFO) << "processing HTTP POST request for /asset/" << keyString << ", " << postedData.size() << " bytes.";
+        LOG(INFO) << "processing HTTP POST request for /asset/id/" << keyString << ", " << postedData.size() << " bytes.";
 
         // Sanity-check the provided serialized FlatAsset data.
         auto verifier = flatbuffers::Verifier(postedData.data(), postedData.size());
@@ -122,10 +125,32 @@ private:
         }
     }
 
+    void getNamedAsset(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto name = request.param(":name").as<std::string>();
+        LOG(INFO) << "processing HTTP GET request for /asset/name/" << name;
+        RecordPtr record = m_assetDatabase->findNamedAsset(name);
+        if (record->empty()) {
+            LOG(ERROR) << "HTTP get request for named Asset " << name << " not found, returning 404.";
+            response.headers().add<Pistache::Http::Header::Server>("confab");
+            response.send(Pistache::Http::Code::Not_Found);
+        } else {
+            LOG(INFO) << "HTTP get request returning named asset data for " << name;
+            char base64[kPageSize];
+            size_t encodedSize = 0;
+            base64_encode(reinterpret_cast<const char*>(record->data().data()), record->data().size(), base64,
+                &encodedSize, 0);
+            if (encodedSize >= kPageSize) {
+                LOG(ERROR) << "encoded size: " << encodedSize << " exceeds buffer size " << kPageSize;
+            }
+            response.headers().add<Pistache::Http::Header::Server>("confab");
+            response.send(Pistache::Http::Code::Ok, std::string(base64, encodedSize), MIME(Text, Plain));
+        }
+    }
+
     void getAssetData(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto keyString = request.param(":key").as<std::string>();
         auto chunk = request.param(":chunk").as<uint64_t>();
-        LOG(INFO) << "processing HTTP GET request for /asset_data/" << keyString << "/" << chunk;
+        LOG(INFO) << "processing HTTP GET request for /asset/data/" << keyString << "/" << chunk;
         uint64_t key = Asset::stringToKey(keyString);
         RecordPtr assetData = m_assetDatabase->loadAssetDataChunk(key, chunk);
         if (assetData->empty()) {
@@ -153,7 +178,7 @@ private:
     void postAssetData(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto keyString = request.param(":key").as<std::string>();
         auto chunk = request.param(":chunk").as<uint64_t>();
-        LOG(INFO) << "processing HTTP POST request for /asset_data/" << keyString << "/" << chunk;
+        LOG(INFO) << "processing HTTP POST request for /asset/data/" << keyString << "/" << chunk;
         uint64_t key = Asset::stringToKey(keyString);
         uint8_t decoded[kPageSize];
         size_t decodedSize;

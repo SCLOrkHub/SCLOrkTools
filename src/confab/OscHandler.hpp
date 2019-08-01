@@ -51,6 +51,10 @@ private:
      */
     void findAsset(uint64_t assetId);
 
+    /*! Searches for an asset with provided name. Should run as a task.
+     */
+    void findNamedAsset(std::string name);
+
     /*! Downloads an asset file to cache, provides path back to caller. Should run as a task.
      */
     void loadAsset(uint64_t key);

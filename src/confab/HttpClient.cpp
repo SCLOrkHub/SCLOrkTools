@@ -86,7 +86,7 @@ HttpClient::~HttpClient() {
 }
 
 void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback) {
-    std::string request = m_serverAddress + "/asset/" + Asset::keyToString(key);
+    std::string request = m_serverAddress + "/asset/id/" + Asset::keyToString(key);
     LOG(INFO) << "issuing Asset request to " << request;
 
     auto promise = m_client->get(request).send();
@@ -116,11 +116,41 @@ void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)>
     barrier.wait();
 }
 
+void HttpClient::getNamedAsset(const std::string& name, std::function<void(RecordPtr)> callback) {
+    std::string request = m_serverAddress + "/asset/name/" + name;
+    LOG(INFO) << "issuing named Asset request to " << request;
+
+    auto promise = m_client->get(request).send();
+    promise.then([&callback, &request](Pistache::Http::Response response) {
+        if (response.code() == Pistache::Http::Code::Ok) {
+            LOG(INFO) << "recevied Ok response for named Asset request " << request;
+            uint8_t decoded[kPageSize];
+            size_t decodedSize;
+            base64_decode(response.body().c_str(), response.body().size(), reinterpret_cast<char*>(decoded),
+                &decodedSize, 0);
+            RecordPtr flatAsset(new ClientRecord(decoded, decodedSize));
+            auto verifier = flatbuffers::Verifier(decoded, decodedSize);
+            if (Data::VerifyFlatAssetBuffer(verifier)) {
+                callback(flatAsset);
+            } else {
+                LOG(ERROR) << "failed to verify named asset for request " << request;
+                callback(makeEmptyRecord());
+            }
+        } else {
+            LOG(ERROR) << "error code " << response.code() << " on named Asset request " << request;
+            callback(makeEmptyRecord());
+        }
+    }, Pistache::Async::NoExcept);
+
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
+}
+
 void HttpClient::getAssetData(uint64_t key, uint64_t chunk,
     std::function<void(uint64_t, uint64_t, RecordPtr)> callback) {
     char numBuf[32];
     snprintf(numBuf, 32, "%" PRIu64, chunk);
-    std::string request = m_serverAddress + "/asset_data/" + Asset::keyToString(key) + "/" + std::string(numBuf);
+    std::string request = m_serverAddress + "/asset/data/" + Asset::keyToString(key) + "/" + std::string(numBuf);
     LOG(INFO) << "issuing AssetData request to " << request;
 
     auto promise = m_client->get(request).send();
@@ -170,7 +200,7 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     flatbuffers::FlatBufferBuilder builder(kPageSize);
     asset.flatten(builder, inlineData);
 
-    std::string request = m_serverAddress + "/asset/" + Asset::keyToString(key);
+    std::string request = m_serverAddress + "/asset/id/" + Asset::keyToString(key);
     LOG(INFO) << "sending POST for new inline asset " << request << ", " << builder.GetSize() << " bytes";
 
     char base64[kPageSize];
@@ -273,7 +303,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     CHECK_LT(encodedSize, kPageSize) << "encoded file asset record larger than page.";
     LOG(INFO) << "sending POST of file asset " << keyString << ", " << encodedSize << " bytes.";
 
-    std::string request = m_serverAddress + "/asset/" + keyString;
+    std::string request = m_serverAddress + "/asset/id/" + keyString;
     bool ok = true;
     auto promise = m_client->post(request)
         .body(std::string(base64, encodedSize))
@@ -334,7 +364,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
                 << " bytes.";
             char numBuf[32];
             snprintf(numBuf, 32, "%" PRIu64, chunk);
-            request = m_serverAddress + "/asset_data/" + keyString + "/" + std::string(numBuf);
+            request = m_serverAddress + "/asset/data/" + keyString + "/" + std::string(numBuf);
             promise = m_client->post(request)
                 .body(std::string(base64, encodedSize))
                 .send();
