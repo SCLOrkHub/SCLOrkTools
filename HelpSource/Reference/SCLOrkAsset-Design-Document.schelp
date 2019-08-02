@@ -67,10 +67,18 @@ table::
 
 subsection:: /assetFind
 
-Loads Asset metadata only and supplies it back to SuperCollider via an /assetFound message, or an /assetError message on issue. Note that for larger Assets this will start the Confab system loading the Asset from the network if it is not available locally, but Confab will not create a file for use by SuperCollider until /assetLoad is called. So this can be a way to "warm" assets that may have been deprecated or may not be available locally.
+Loads Asset metadata only and supplies it back to SuperCollider via an strong::/assetFound:: message, or an strong::/assetError:: message on issue. Note that for larger Assets this will start the Confab system loading the Asset from the network if it is not available locally, but Confab will not create a file for use by SuperCollider until strong::/assetLoad:: is called. So this can be a way to "warm" assets that may have been deprecated or may not be available locally.
 
 table::
 ## strong::label:: || key || An asset key string, typically at 16-digit hexadecimal number.
+::
+
+subsection:: /assetFindName
+
+Will still call strong::/assetFound::
+
+table::
+## strong::label:: || name || The name of the asset.
 ::
 
 subsection:: /assetLoad
@@ -103,7 +111,7 @@ table::
 ## strong::label:: || deprecatedBy || A key for an Asset that deprecates this one.
 ## strong::label:: || deprecates || A key for an Asset that this Asset deprecates, if there is one.
 ## strong::Int8Array:: || inlineData || inlineData for the Asset, if any.
-## strong::
+::
 
 subsection:: /assetLoaded
 
@@ -114,6 +122,6 @@ subsection:: /assetLoaded
 subsection:: /assetError
 
 table::
-## strong::label:: || key || The Asset key associated with this error
+## strong::label:: || key || The Asset key or name associated with this error
 ## strong::string:: || errorString || Some descriptive error message from the server.
 ::

@@ -48,6 +48,14 @@ public:
      */
     void getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)> callback);
 
+    /*! Requests an asset by name from the server. Blocks until return.
+     *
+     * \param name The name of the Asset to look up.
+     * \param callback The function to call when the asset is downloaded, with a pointer to the requested Asset or an
+     *                 empty Record on error.
+     */
+    void getNamedAsset(const std::string& name, std::function<void(RecordPtr)> callback);
+
     /*! Retrieves an asset data chunk from the server. Blocks until an outcome is resolved.
      *
      * \param key The asset key associated with these AssetData records.

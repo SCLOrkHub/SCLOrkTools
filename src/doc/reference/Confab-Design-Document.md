@@ -30,6 +30,21 @@ The three major components to the Confab system are therefore:
     SuperCollider ```schelp``` format, along with their design document, and so are discussed here only to provide
     context for the C++ Confab system.
 
+## Named Assets
+
+The "name" field within an Asset record should indicate another way to look up an Asset by name. When an Asset is added
+that has a name identifier field, that name is also added as a key in the database, with value as an 8-byte reference
+back to the Asset. Lists can also have names, which are stored in a separate name lookup table. Names need to be at
+least one character long.
+
+## Lists
+
+We add a FlatList data structure but the question is if that requires any special handling of list metadata or are the
+same general things we are storing about Assets sufficient, and the difference is just that the payload of the list is
+stored in another series of database entires. There is also the concept of "automatic lists," so for instance the list
+of all Assets of a certain type, etc. And it is obvious it would be useful to have a concept like a "named list" which
+is accessible in a manner similar to a named asset.
+
 # Another Deprecation Line! Stuff Below Probably Still Useful Just Needs Rework
 
 # Asset Streaming

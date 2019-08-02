@@ -51,6 +51,10 @@ private:
      */
     void findAsset(uint64_t assetId);
 
+    /*! Searches for an asset with provided name. Should run as a task.
+     */
+    void findNamedAsset(std::string name);
+
     /*! Downloads an asset file to cache, provides path back to caller. Should run as a task.
      */
     void loadAsset(uint64_t key);
@@ -65,9 +69,10 @@ private:
     void addAssetString(Asset::Type type, int serialNumber, std::string name, uint64_t author, uint64_t deprecates,
         std::string assetString);
 
-    /*! Utility method, sends an Asset back to SuperCollider via OSC.
+    /*! Utility method, sends an Asset back to SuperCollider via OSC. The requested string can either be a key or a
+     * name.
      */
-    void sendAsset(uint64_t requstedKey, RecordPtr record);
+    void sendAsset(const std::string& requested, RecordPtr record);
 
     int m_listenPort;
     int m_sendPort;

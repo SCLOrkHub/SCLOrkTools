@@ -44,6 +44,11 @@ SCLOrkConfab {
 		confab.sendMsg('/assetFind', id);
 	}
 
+	*findAssetByName { |name, callback|
+		findCallbackMap.put(name, callback);
+		confab.sendMsg('/assetFindName', name);
+	}
+
 	*loadAssetById { |id, callback|
 		loadCallbackMap.put(id, callback);
 		confab.sendMsg('/assetLoad', id);
@@ -122,7 +127,7 @@ SCLOrkConfab {
 
 			if (callback.notNil, {
 				callback.value(requestedKey, assetPath);
-				loadCallbackMap.remove(requestedKey);
+				loadCallbackMap.removeAt(requestedKey);
 			}, {
 				"confab got loaded callback on missing Asset id %".format(requestedKey).postln;
 			});

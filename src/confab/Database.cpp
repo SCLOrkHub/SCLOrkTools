@@ -1,9 +1,9 @@
 #include "Database.hpp"
 
-
-#include <glog/logging.h>
-#include <leveldb/cache.h>
-#include <leveldb/db.h>
+#include "glog/logging.h"
+#include "leveldb/cache.h"
+#include "leveldb/db.h"
+#include "leveldb/write_batch.h"
 
 #include <cstring>
 
@@ -61,8 +61,23 @@ private:
     leveldb::Iterator* m_iterator;
 };
 
+Database::Batch::Batch() : m_batch(new leveldb::WriteBatch) {
+}
+
+Database::Batch::~Batch() {
+}
+
+void Database::Batch::store(const SizedPointer& key, const SizedPointer& value) {
+    auto keySlice = leveldb::Slice(key.dataChar(), key.size());
+    auto valueSlice = leveldb::Slice(value.dataChar(), value.size());
+    m_batch->Put(keySlice, valueSlice);
+}
+
 Database::Database(leveldb::DB* database) :
     m_database(database) {
+}
+
+Database::~Database() {
 }
 
 bool Database::open(const char* path, bool createNew, int cacheSize) {
@@ -104,13 +119,18 @@ const RecordPtr Database::load(const SizedPointer& key) {
     return RecordPtr(new DatabaseRecord(iterator));
 }
 
-bool Database::store(const SizedPointer& key, const SizedPointer& data) {
+bool Database::store(const SizedPointer& key, const SizedPointer& value) {
     CHECK(m_database) << "Database should already be open.";
 
     auto keySlice = leveldb::Slice(key.dataChar(), key.size());
-    auto dataSlice = leveldb::Slice(data.dataChar(), data.size());
-    auto status = m_database->Put(leveldb::WriteOptions(), keySlice, dataSlice);
+    auto valueSlice = leveldb::Slice(value.dataChar(), value.size());
+    auto status = m_database->Put(leveldb::WriteOptions(), keySlice, valueSlice);
 
+    return status.ok();
+}
+
+bool Database::write(Database::Batch& batch) {
+    auto status = m_database->Write(leveldb::WriteOptions(), batch.batch());
     return status.ok();
 }
 
