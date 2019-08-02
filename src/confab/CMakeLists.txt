@@ -36,8 +36,6 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 set(confab_common_src_files
     Asset.cpp
     Asset.hpp
-    AssetData.cpp
-    AssetData.hpp
     AssetDatabase.cpp
     AssetDatabase.hpp
     ConfabCommon.cpp
