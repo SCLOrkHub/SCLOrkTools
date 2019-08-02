@@ -25,11 +25,22 @@ static const size_t kAssetDatabaseKeySize = 9;
  */
 static const size_t kAssetDataDatabaseKeySize = 17;
 
-/*! Byte prefixes to prepend to Asset or AssetData keys for database.
+/*! Addition to lists is done by creating a new key (with no associated value) constructed from the kListData prefix,
+ * followed by the 64-bit List unique identifier, followed by a 64-bit nanosecond time stamp, which is intended to keep
+ * a monotonically increasing part of the key for lexical ordering, followed at last by the key of the data being added,
+ * to avoid the (small) possibility of key collision between two different threads adding a list element at the exact
+ * same time. This makes for a total key size of (3 * 8) + 1 = 25 bytes.
  */
-enum KeyPrefix : uint8_t { kAsset = 0xaa, kData = 0xdd };
+static const size_t kListDataDatabaseKeySize = 25;
+
+
+/*! Byte prefixes to prepend to Asset or AssetData keys for database. Keep these above 0x7f, so outside of normal ASCII
+ * namespace so we can use the lower namespace for string prefixes.
+ */
+enum KeyPrefix : uint8_t { kAsset = 0xaa, kData = 0xdd, kListData = 0xf1, kListNames = 0xe1 };
 
 static const char* kAssetNamePrefix = "an";
+static const char* kListNamePrefix = "ln";
 
 /*! Writes a byte sequence in keyOut suitable for storing or retrieving an Asset record from the database.
  *
@@ -119,6 +130,16 @@ bool AssetDatabase::storeAsset(uint64_t key, const SizedPointer& assetData) {
         const SizedPointer nameKey(name.c_str(), name.size());
         const SizedPointer keyKey(reinterpret_cast<const uint8_t*>(&key), sizeof(uint64_t));
         batch.store(nameKey, keyKey);
+    }
+
+    // There may be list entries this Asset will be added to, add them to batch.
+    if (flatAsset->lists() && flatAsset->lists()->size() > 0) {
+        std::array<uint8_t, kListDataDatabaseKeySize> listKeyArray;
+        SizedPointer listKey(listKeyArray.data(), kListDataDatabaseKeySize);
+        listKeyArray[0] = kListData;
+        for (auto i = 0; i < flatAsset->lists()->size(); ++i) {
+            // TODO:
+        }
     }
 
     // Store actual Asset key/value pair.

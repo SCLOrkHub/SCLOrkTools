@@ -45,6 +45,30 @@ stored in another series of database entires. There is also the concept of "auto
 of all Assets of a certain type, etc. And it is obvious it would be useful to have a concept like a "named list" which
 is accessible in a manner similar to a named asset.
 
+Things one can do with lists:
+
+  * Create a new list. Lists need to be nameable, and uniqueness of names means old lists can have their name cloberred.
+    That means that lists should have a unique identifier, which just like Assets probably is a random uint64_t that
+    is assumed unique.
+  * Add elements to list. Easiest to only support implicit automatic adding via the lists array inside of a FlatAsset
+    record, because otherwise explicit adding will require an update of the FlatAsset too, or just the assumption
+    that the data inside the Asset may not be complete in terms of list membership.
+  * Forward iteration through list from supplied element (or beginning). Also some reverse iteration, at least to
+    tail element.
+
+So it seems like server can create a named list:
+  * computes a unique key for the list based on the name and some number
+  * saves the name->number and number->name lookups in the database.
+  * returns the unique key.
+  * we may want to warn if the name is not unique?
+
+On lookup of a named list:
+  * returns the current unique key for the list. This should not be cached by the client.
+
+On storage of a new asset:
+  * append the asset key to any list elements identified in the FlatAsset record.
+
+
 # Another Deprecation Line! Stuff Below Probably Still Useful Just Needs Rework
 
 # Asset Streaming

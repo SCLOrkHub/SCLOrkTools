@@ -20,6 +20,7 @@ table FlatAsset {
     deprecates:ulong = 0;
     size:ulong = 0;
     chunks:ulong = 0;
+    lists:[ulong];
 
     salt:ulong = 0;
     inlineData:[ubyte];

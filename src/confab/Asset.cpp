@@ -80,6 +80,10 @@ Asset::Asset(const Data::FlatAsset* flatAsset)  :
         m_fileExtension = std::string(flatAsset->fileExtension()->c_str());
     }
 
+    if (flatAsset->lists()) {
+        std::copy(flatAsset->lists()->begin(), flatAsset->lists()->end(), m_lists.begin());
+    }
+
     if (flatAsset->inlineData()) {
         m_inlineData.reset(new uint8_t[m_size]);
         std::memcpy(m_inlineData.get(), flatAsset->inlineData()->data(), m_size);
@@ -90,6 +94,7 @@ void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inli
     // Create leaf objects first.
     auto name = m_name != "" ? builder.CreateString(m_name.c_str()) : 0;
     auto fileExtension = m_fileExtension != "" ? builder.CreateString(m_fileExtension.c_str()) : 0;
+    auto lists = m_lists.size() > 0 ? builder.CreateVector(m_lists) : 0;
     const uint8_t* serialInline = inlineData ? inlineData : m_inlineData.get();
     // These builder Create* calls do a byte-by-byte copy in a for loop of the source data into the builder.
     auto builderInline = serialInline != nullptr ? builder.CreateVector(serialInline, m_size) : 0;
@@ -107,6 +112,9 @@ void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inli
     }
     if (!fileExtension.IsNull()) {
         assetBuilder.add_fileExtension(fileExtension);
+    }
+    if (!lists.IsNull()) {
+        assetBuilder.add_lists(lists);
     }
     if (m_author) {
         assetBuilder.add_author(m_author);

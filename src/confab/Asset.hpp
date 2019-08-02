@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace Confab {
 
@@ -199,6 +200,18 @@ public:
      */
     uint64_t salt() const { return m_salt; }
 
+    /*! Returns the ids of the lists this Asset is included in.
+     *
+     * \return A vector of list ids.
+     */
+    const std::vector<uint64_t>& lists() const { return m_lists; }
+
+    /*! Adds a list id to the list of lists, meaning this Asset will be automatically added to that list on storage.
+     *
+     * \param listKey The key of the list to add this Asset to.
+     */
+    void addToList(uint64_t listKey) { m_lists.push_back(listKey); }
+
     /*! Reserves space in the backing store for an inline buffer, returning the pointer to that space for writing.
      *
      * \param size How many bytes to reserve. Should be less than or equal to kSingleChunkDataSize.
@@ -236,6 +249,7 @@ private:
     uint64_t m_deprecates;
     uint64_t m_size;
     uint64_t m_chunks;
+    std::vector<uint64_t> m_lists;
 
     uint64_t m_salt;
     std::unique_ptr<uint8_t[]> m_inlineData;

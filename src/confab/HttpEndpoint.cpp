@@ -49,6 +49,11 @@ public:
             &HttpEndpoint::HttpHandler::getAssetData, this));
         Pistache::Rest::Routes::Post(m_router, "/asset/data/:key/:chunk", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::postAssetData, this));
+
+        Pistache::Rest::Routes::Get(m_router, "/list/name", Pistache::Rest::Routes::bind(
+            &HttpEndpoint::HttpHandler::getNamedList, this));
+        Pistache::Rest::Routes::Post(m_router, "/list/name", Pistache::Rest::Routes::bind(
+            &HttpEndpoint::HttpHandler::postNamedList, this));
     }
 
     /*! Starts a thread that will listen on the provided TCP port and process incoming requests for storage and
@@ -202,6 +207,19 @@ private:
             response.send(Pistache::Http::Code::Internal_Server_Error);
         }
     }
+
+    void getNamedList(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto name = request.body();
+        LOG(INFO) << "processing GET request for /list/name '" << name << "'.";
+        response.send(Pistache::Http::Code::Not_Found);
+    }
+
+    void postNamedList(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto name = request.body();
+        LOG(INFO) << "processing POST request for /list/name '" << name << "'.";
+        response.send(Pistache::Http::Code::Not_Found);
+    }
+
 
     int m_listenPort;
     int m_numThreads;
