@@ -42,7 +42,7 @@ public:
         Pistache::Rest::Routes::Post(m_router, "/asset/id/:key", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::postAsset, this));
 
-        Pistache::Rest::Routes::Get(m_router, "/asset/name/:name", Pistache::Rest::Routes::bind(
+        Pistache::Rest::Routes::Get(m_router, "/asset/name", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::getNamedAsset, this));
 
         Pistache::Rest::Routes::Get(m_router, "/asset/data/:key/:chunk", Pistache::Rest::Routes::bind(
@@ -126,7 +126,7 @@ private:
     }
 
     void getNamedAsset(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto name = request.param(":name").as<std::string>();
+        auto name = request.body();
         LOG(INFO) << "processing HTTP GET request for /asset/name/" << name;
         RecordPtr record = m_assetDatabase->findNamedAsset(name);
         if (record->empty()) {

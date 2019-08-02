@@ -115,8 +115,9 @@ bool AssetDatabase::storeAsset(uint64_t key, const SizedPointer& assetData) {
     std::string name;
     if (flatAsset->name() && flatAsset->name()->size() > 0) {
         name = kAssetNamePrefix + flatAsset->name()->str();
+        LOG(INFO) << "adding name '" << flatAsset->name()->c_str() << "' lookup to asset " << Asset::keyToString(key);
         const SizedPointer nameKey(name.c_str(), name.size());
-        const SizedPointer keyKey(reinterpret_cast<const uint8_t*>(key), sizeof(uint64_t));
+        const SizedPointer keyKey(reinterpret_cast<const uint8_t*>(&key), sizeof(uint64_t));
         batch.store(nameKey, keyKey);
     }
 

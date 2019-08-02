@@ -188,15 +188,15 @@ void OscHandler::findAsset(uint64_t assetId) {
     RecordPtr databaseAsset = m_assetDatabase->findAsset(assetId);
     if (!databaseAsset->empty()) {
         LOG(INFO) << "database cache hit for asset " << Asset::keyToString(assetId) << " sending to SC.";
-        sendAsset(assetId, databaseAsset);
+        sendAsset(Asset::keyToString(assetId), databaseAsset);
         return;
     }
 
     // Failing database cache, request from upstream server.
     m_httpClient->getAsset(assetId, [this, assetId](uint64_t loadedKey, RecordPtr record) {
-        char buffer[kDataChunkSize];
-        osc::OutboundPacketStream p(buffer, kDataChunkSize);
         if (record->empty()) {
+            char buffer[kDataChunkSize];
+            osc::OutboundPacketStream p(buffer, kDataChunkSize);
             LOG(ERROR) << "failed to retrieve Asset " << Asset::keyToString(assetId) << ".";
             p << osc::BeginMessage("/assetError") << Asset::keyToString(assetId).c_str()
                 << "Failed to find asset associated with key." << osc::EndMessage;
@@ -206,18 +206,31 @@ void OscHandler::findAsset(uint64_t assetId) {
             m_assetDatabase->storeAsset(loadedKey, record->data());
             // Send to client.
             LOG(INFO) << "downloaded asset " << Asset::keyToString(assetId) << " cached and sending to SC.";
-            sendAsset(assetId, record);
+            sendAsset(Asset::keyToString(assetId), record);
         }
     });
 }
 
 void OscHandler::findNamedAsset(std::string name) {
-    // First check database cache.
-    RecordPtr databaseAsset = m_assetDatabase->findNamedAsset(name);
-    if (!databaseAsset->empty()) {
-        LOG(INFO) << "database cache hit for named asset " << name << "sending to SC.";
-        // TODO: why not re-use sendAsset() with requestedKey as a string?
-    }
+    // To ensure freshness of named Assets we don't refer to cache for them.
+    m_httpClient->getNamedAsset(name, [this, &name](RecordPtr record) {
+        if (record->empty()) {
+            char buffer[kDataChunkSize];
+            osc::OutboundPacketStream p(buffer, kDataChunkSize);
+            LOG(ERROR) << "failed to retrieve named asset " << name << ".";
+            p << osc::BeginMessage("/assetError") << name.c_str() << "Failed to find named asset." << osc::EndMessage;
+            m_transmitSocket->Send(p.Data(), p.Size());
+        } else {
+            // TODO: clean up multiple parses here to extract key outside storeAsset, then again inside storeAsset,
+            // then again in sendAsset(). Could refactor all methods to enforce conversion into FlatAsset and size
+            // at time of *validation*.
+            const Data::FlatAsset* flatAsset = Data::GetFlatAsset(record->data().data());
+            m_assetDatabase->storeAsset(flatAsset->key(), record->data());
+            LOG(INFO) << "downloaded named asset " << name << " with key "
+                << Asset::keyToString(flatAsset->key()) << " cached and sending to SC.";
+            sendAsset(name, record);
+        }
+    });
 
 }
 
@@ -230,7 +243,7 @@ void OscHandler::loadAsset(uint64_t key) {
         size_t size = 0;
         uint64_t chunks = 0;
         std::string fileExtension;
-        // Asset likely in cache.
+        // First check cache for this Asset.
         RecordPtr asset = m_assetDatabase->findAsset(key);
         if (asset->empty()) {
             LOG(INFO) << "cache miss for asset " << Asset::keyToString(key);
@@ -300,12 +313,12 @@ void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string 
     m_transmitSocket->Send(p.Data(), p.Size());
 }
 
-void OscHandler::sendAsset(uint64_t requestedKey, RecordPtr record) {
+void OscHandler::sendAsset(const std::string& requested, RecordPtr record) {
     char buffer[kPageSize];
     osc::OutboundPacketStream p(buffer, kDataChunkSize);
     const Data::FlatAsset* asset = Data::GetFlatAsset(record->data().data());
     p << osc::BeginMessage("/assetFound");
-    p << Asset::keyToString(requestedKey).c_str();
+    p << requested.c_str();
     p << Asset::keyToString(asset->key()).c_str();
     p << Asset::enumToTypeString(static_cast<Asset::Type>(asset->type())).c_str();
     p << asset->name()->c_str();

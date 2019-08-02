@@ -117,13 +117,14 @@ void HttpClient::getAsset(uint64_t key, std::function<void(uint64_t, RecordPtr)>
 }
 
 void HttpClient::getNamedAsset(const std::string& name, std::function<void(RecordPtr)> callback) {
-    std::string request = m_serverAddress + "/asset/name/" + name;
-    LOG(INFO) << "issuing named Asset request to " << request;
+    std::string request = m_serverAddress + "/asset/name";
+    LOG(INFO) << "issuing named Asset for '" << name << "' request to " << request;
 
-    auto promise = m_client->get(request).send();
-    promise.then([&callback, &request](Pistache::Http::Response response) {
+    // We supply the Asset name in the body of the request to avoid URL encoding issues with names.
+    auto promise = m_client->get(request).body(name).send();
+    promise.then([&name, &callback, &request](Pistache::Http::Response response) {
         if (response.code() == Pistache::Http::Code::Ok) {
-            LOG(INFO) << "recevied Ok response for named Asset request " << request;
+            LOG(INFO) << "recevied Ok response for named Asset request for '" << name << "'.";
             uint8_t decoded[kPageSize];
             size_t decodedSize;
             base64_decode(response.body().c_str(), response.body().size(), reinterpret_cast<char*>(decoded),
