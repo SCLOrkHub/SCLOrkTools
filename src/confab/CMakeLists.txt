@@ -43,8 +43,6 @@ set(confab_common_src_files
     ConfabCommon.hpp
     Config.cpp
     Config.hpp
-    Database.cpp
-    Database.hpp
     Record.hpp
     SizedPointer.hpp
 )

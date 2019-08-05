@@ -2,6 +2,7 @@
 #define SRC_CONFAB_OSC_HANDLER_HPP_
 
 #include "Asset.hpp"
+#include "Record.hpp"
 
 #include <memory>
 #include <string>

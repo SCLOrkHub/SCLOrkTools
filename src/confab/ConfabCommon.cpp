@@ -3,7 +3,6 @@
 #include "AssetDatabase.hpp"
 #include "Config.hpp"
 #include "Constants.hpp"
-#include "Database.hpp"
 #include "common/Version.hpp"
 
 #include "glog/logging.h"
@@ -58,7 +57,7 @@ void ConfabCommon::waitForTerminationSignal() {
 }
 
 void ConfabCommon::shutdown() {
-    m_database->close();
+    m_assetDatabase->close();
     // Delete pid sentinel file.
     fs::remove(m_pidPath);
 }
@@ -106,18 +105,19 @@ bool ConfabCommon::setThreadMask() {
 }
 
 bool ConfabCommon::openDatabase() {
-    m_database.reset(new Confab::Database);
+    m_assetDatabase.reset(new Confab::AssetDatabase);
 
-    if (!m_database->open((FLAGS_data_directory + "/db").c_str(), FLAGS_create_new_database,
+    if (!m_assetDatabase->open((FLAGS_data_directory + "/db").c_str(), FLAGS_create_new_database,
         FLAGS_database_cache_size_mb * 1024 * 1024)) {
         return false;
     }
 
+    /*
     // If a new database we write the configuration information for the first time. If an existing database we validate
     // that the version written is equal to or older than our current version.
     if (FLAGS_create_new_database) {
         // Verify that no existing configuration information is present.
-        auto configRecord = m_database->load(Confab::Config::getConfigKey());
+        auto configRecord = m_assetDatabase->load(Confab::Config::getConfigKey());
         if (!configRecord->empty()) {
             LOG(ERROR) << "Create new database specified by database has an existing config key.";
             return false;
@@ -125,14 +125,14 @@ bool ConfabCommon::openDatabase() {
 
         Confab::Config config(Confab::confabVersion);
 
-        if (!m_database->store(Confab::Config::getConfigKey(), config.flatten())) {
+        if (!m_assetDatabase->store(Confab::Config::getConfigKey(), config.flatten())) {
             LOG(ERROR) << "Error writing config information to database.";
             return false;
         } else {
             LOG(INFO) << "Wrote new config record to database.";
         }
     } else {
-        auto configRecord = m_database->load(Confab::Config::getConfigKey());
+        auto configRecord = m_assetDatabase->load(Confab::Config::getConfigKey());
         if (configRecord->empty()) {
             LOG(ERROR) << "Error reaading configuration information from database.";
             return false;
@@ -149,14 +149,14 @@ bool ConfabCommon::openDatabase() {
             LOG(INFO) << "Updating confab version in database " << config.version().toString()
                 << " to confab version " << Confab::confabVersion.toString();
             Confab::Config currentConfig(Confab::confabVersion);
-            if (!m_database->store(Confab::Config::getConfigKey(), currentConfig.flatten())) {
+            if (!m_assetDatabase->store(Confab::Config::getConfigKey(), currentConfig.flatten())) {
                 LOG(ERROR) << "Error writing updated Config record to database.";
                 return false;
             }
         }
     }
+    */
 
-    m_assetDatabase.reset(new Confab::AssetDatabase(m_database));
     return true;
 }
 

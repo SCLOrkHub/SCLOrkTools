@@ -31,6 +31,8 @@ public:
 
     /*! The key associated with this Record, if exists.
      *
+     * TODO: deprecate me. Only used by DatabaseRecord.
+     *
      * \return A non-owning pointer to the key data.
      */
     virtual const SizedPointer key() const = 0;

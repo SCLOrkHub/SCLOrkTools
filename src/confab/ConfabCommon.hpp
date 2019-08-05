@@ -11,7 +11,6 @@ DECLARE_string(data_directory);
 namespace Confab {
 
 class AssetDatabase;
-class Database;
 
 /*! Utility class for initalization of subsystems common between confab and confab-server.
  */
@@ -65,7 +64,6 @@ private:
     bool openDatabase();
 
     std::experimental::filesystem::path m_pidPath;
-    std::shared_ptr<Database> m_database;
     std::shared_ptr<AssetDatabase> m_assetDatabase;
 };
 

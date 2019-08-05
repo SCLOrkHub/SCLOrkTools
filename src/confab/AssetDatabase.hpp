@@ -6,6 +6,12 @@
 
 #include <memory>
 
+namespace leveldb {
+    class DB;
+    class Iterator;
+    class WriteBatch;
+}
+
 namespace Confab {
 
 class Database;
@@ -16,10 +22,29 @@ class Database;
 class AssetDatabase {
 public:
     /*! Constructs an AssetDatabase.
-     *
-     * \param database A shared pointer to the database object.
      */
-    AssetDatabase(std::shared_ptr<Database> database);
+    AssetDatabase();
+
+    /*! Destructs an AssetDatabase.
+     */
+    ~AssetDatabase();
+
+    /*! Open or create Database LevelDB database file tree.
+     *
+     * \param path A path to a directory where the Confab LevelDB database is stored.
+     * \param createNew If true, open() will attempt to create a new database, and will treat an existing or already
+     *                  initialized database as an error condition. If false, open() will expect a valid database to
+     *                  exist at \a path.
+     * \param cacheSize Size in bytes of the LRU memory cache to request from LevelDB. A size <= 0 will disable the
+     *                  cache.
+     * \return true on success, or false on error.
+     */
+    bool open(const char* path, bool createNew, int cacheSize);
+
+    /*! Close the database, and delete any internal references to it.
+     *
+     */
+    void close();
 
     /*! Locates an asset associated with the provided key and returns it.
      *
@@ -102,14 +127,12 @@ public:
     size_t getListNext(uint64_t listKey, uint64_t fromToken, size_t maxPairs, uint64_t* listOut);
 
     /// @cond UNDOCUMENTED
-    AssetDatabase() = delete;
     AssetDatabase(const AssetDatabase&) = delete;
     AssetDatabase& operator=(const AssetDatabase&) = delete;
-    ~AssetDatabase() = default;
     /// @endcond UNDOCUMENTED
 
 private:
-    std::shared_ptr<Database> m_database;
+    std::unique_ptr<leveldb::DB> m_database;
 };
 
 }  // namespace Confab
