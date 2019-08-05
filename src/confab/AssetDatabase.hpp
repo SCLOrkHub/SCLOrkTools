@@ -66,6 +66,41 @@ public:
      */
     bool storeAssetDataChunk(uint64_t key, uint64_t chunk, const SizedPointer& flatAssetData);
 
+    /*! Stores a new List entity into the database.
+     *
+     * \param key The list key to associate with this List.
+     * \param listData A pointer to a FlatList record to store.
+     * \return true on success, false on error.
+     */
+    bool storeList(uint64_t key, const SizedPointer& listData);
+
+    /*! Loads a list with the provided key and returns it.
+     *
+     * \param key The list key to load.
+     * \return A non-owning pointer to the FlatList record, or an empty record on error.
+     */
+    RecordPtr loadList(uint64_t key);
+
+    /*! Loads a list by looking for the provided name.
+     *
+     * \param name The name of the list to look up.
+     * \return A non-owning pointer to the FlatList record associated with name, or an empty record on error.
+     */
+    RecordPtr findNamedList(const std::string& name);
+
+    /*! Populates the provided buffer with <token, key> pairs from a list. If it reaches the end of the list it will
+     * put a <kEndList, kEndList> pair at the end.
+     *
+     * \param listKey The key of the list to draw from.
+     * \param fromToken The token to start with, or 0 if starting from the beginning. Returned list will not include
+     *                  this token.
+     * \param maxPairs The maximum number of <token, key> pairs to put into listOut.
+     * \param listOut A pointer to a buffer to hold the ordered list.
+     * \return The number of elements written into listOut, or 0 on error (as at end of list will always return
+     *          the end of list pair <kEndList, kEndList>.
+     */
+    size_t getListNext(uint64_t listKey, uint64_t fromToken, size_t maxPairs, uint64_t* listOut);
+
     /// @cond UNDOCUMENTED
     AssetDatabase() = delete;
     AssetDatabase(const AssetDatabase&) = delete;

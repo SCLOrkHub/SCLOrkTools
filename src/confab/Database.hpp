@@ -8,6 +8,7 @@
 
 namespace leveldb {
     class DB;
+    class Iterator;
     class WriteBatch;
 }
 
@@ -18,6 +19,8 @@ namespace Confab {
  * The Database object is a low-level abstraction around the LevelDB database, adding very little logic of its own. It
  * provide a level of indirection around the LevelDB API as well as allows for easy mocking or faking for testing of
  * objects dependent on this one.
+ *
+ * TODO: consider just morphing this object with AssetDatabase.
  *
  * \sa [Database Design Document](@ref Confab-Design-Document-Database-Design)
  */

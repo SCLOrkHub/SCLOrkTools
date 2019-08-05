@@ -7,6 +7,7 @@ set(confab_schema_files
     schemas/FlatAsset.fbs
     schemas/FlatAssetData.fbs
     schemas/FlatConfig.fbs
+    schemas/FlatList.fbs
 )
 
 build_flatbuffers(
