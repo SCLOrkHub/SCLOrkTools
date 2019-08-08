@@ -5,6 +5,7 @@
 #include "Record.hpp"
 #include "schemas/FlatAsset_generated.h"
 #include "schemas/FlatAssetData_generated.h"
+#include "schemas/FlatList_generated.h"
 
 #include "glog/logging.h"
 #include "libbase64.h"
@@ -182,7 +183,7 @@ void HttpClient::getAssetData(uint64_t key, uint64_t chunk,
 }
 
 uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
-        uint64_t size, const uint8_t* inlineData) {
+        const std::string& listIds, uint64_t size, const uint8_t* inlineData) {
     if (size > kSingleChunkDataSize) {
         LOG(ERROR) << "attempt to post inline Asset of size " << size << " greater than max of "
             << kSingleChunkDataSize;
@@ -197,6 +198,7 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     asset.setSalt(m_distribution(m_randomDevice));
     uint64_t key = XXH64(inlineData, size, asset.salt());
     asset.setKey(key);
+    asset.parseListIds(listIds);
     asset.setSize(size);
     flatbuffers::FlatBufferBuilder builder(kPageSize);
     asset.flatten(builder, inlineData);
@@ -228,15 +230,11 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     Pistache::Async::Barrier barrier(promise);
     barrier.wait();
 
-    if (!ok) {
-        return 0;
-    }
-
-    return key;
+    return ok ? key : 0;
 }
 
 uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
-        const fs::path& assetFile) {
+        const std::string& listIds, const fs::path& assetFile) {
     // Some Assets like images make sense to serialize to a file, regardless of size, because SuperCollider has no
     // concept of loading an image from a binary blob of memory.
     size_t fileSize = fs::file_size(assetFile);
@@ -295,6 +293,7 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     asset.setDeprecates(deprecates);
     asset.setSize(fileSize);
     asset.setChunks((fileSize / kDataChunkSize) + 1);
+    asset.parseListIds(listIds);
     flatbuffers::FlatBufferBuilder builder(kPageSize);
     asset.flatten(builder);
 
@@ -394,6 +393,128 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
 
     LOG(INFO) << "completed successful upload of file Asset " << keyString << " from " << assetFile;
     return key;
+}
+
+// TODO: could probably flatten this, assetData, and asset requests into a single generic call.
+void HttpClient::getList(uint64_t key, std::function<void(RecordPtr)> callback) {
+    std::string request = m_serverAddress + "/list/id/" + Asset::keyToString(key);
+    LOG(INFO) << "issuing list request to " << request;
+
+    auto promise = m_client->get(request).send();
+    promise.then([&key, &callback, &request](Pistache::Http::Response response) {
+        if (response.code() == Pistache::Http::Code::Ok) {
+            LOG(INFO) << "received Ok response for list request " << request;
+            uint8_t decoded[kPageSize];
+            size_t decodedSize;
+            base64_decode(response.body().c_str(), response.body().size(), reinterpret_cast<char*>(decoded),
+                &decodedSize, 0);
+            // Verify the Asset record as returned by the server.
+            RecordPtr flatList(new ClientRecord(decoded, decodedSize));
+            auto verifier = flatbuffers::Verifier(decoded, decodedSize);
+            if (Data::VerifyFlatListBuffer(verifier)) {
+                callback(flatList);
+            } else {
+                LOG(ERROR) << "failed to verify server-provided data for list request " << request;
+                callback(makeEmptyRecord());
+            }
+        } else {
+            LOG(ERROR) << "error code " << response.code() << " on list request " << request;
+            callback(makeEmptyRecord());
+        }
+    }, Pistache::Async::NoExcept);
+
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
+}
+
+void HttpClient::getNamedList(const std::string& name, std::function<void(RecordPtr)> callback) {
+    std::string request = m_serverAddress + "/list/name";
+    LOG(INFO) << "issuing named list for '" << name << "' request to " << request;
+
+    auto promise = m_client->get(request).body(name).send();
+    promise.then([&name, &callback, &request](Pistache::Http::Response response) {
+        if (response.code() == Pistache::Http::Code::Ok) {
+            LOG(INFO) << "recevied Ok response for named Asset request for '" << name << "'.";
+            uint8_t decoded[kPageSize];
+            size_t decodedSize;
+            base64_decode(response.body().c_str(), response.body().size(), reinterpret_cast<char*>(decoded),
+                &decodedSize, 0);
+            RecordPtr flatList(new ClientRecord(decoded, decodedSize));
+            auto verifier = flatbuffers::Verifier(decoded, decodedSize);
+            if (Data::VerifyFlatListBuffer(verifier)) {
+                callback(flatList);
+            } else {
+                LOG(ERROR) << "failed to verify named list for request " << request;
+                callback(makeEmptyRecord());
+            }
+        } else {
+            LOG(ERROR) << "error code " << response.code() << " on named list request " << request;
+            callback(makeEmptyRecord());
+        }
+    }, Pistache::Async::NoExcept);
+
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
+}
+
+void HttpClient::getListItems(uint64_t key, uint64_t token, std::function<void(const std::string&)> callback) {
+    std::string request = m_serverAddress + "/list/items/" + Asset::keyToString(key) + "/" + Asset::keyToString(token);
+    LOG(INFO) << "issuing list items request to " << request;
+
+    auto promise = m_client->get(request).send();
+    promise.then([&callback, &request](Pistache::Http::Response response) {
+        if (response.code() == Pistache::Http::Code::Ok) {
+            LOG(INFO) << "received Ok response for list items request " << request;
+            callback(response.body());
+        } else {
+            LOG(ERROR) << "error code " << response.code() << " on list items request " << request;
+            callback("");
+        }
+    }, Pistache::Async::NoExcept);
+
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
+}
+
+uint64_t HttpClient::postList(const std::string& name) {
+    // Generate random key.
+    uint64_t key = m_distribution(m_randomDevice);
+    flatbuffers::FlatBufferBuilder builder(kPageSize);
+    auto listName = builder.CreateString(name);
+    Data::FlatListBuilder listBuilder(builder);
+    listBuilder.add_key(key);
+    listBuilder.add_name(listName);
+    auto list = listBuilder.Finish();
+    builder.Finish(list);
+
+    std::string request = m_serverAddress + "/list/id/" + Asset::keyToString(key);
+    LOG(INFO) << "sending POST for new list " << request << ", " << builder.GetSize() << " bytes";
+
+    char base64[kPageSize];
+    size_t encodedSize = 0;
+    base64_encode(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize(), base64, &encodedSize,
+        0);
+    CHECK_LT(encodedSize, kPageSize) << "encoded list larger than page size";
+
+    bool ok = true;
+    auto promise = m_client->post(request)
+        .header<Pistache::Http::Header::ContentType>(MIME(Text, Plain))
+        .header<Pistache::Http::Header::ContentLength>(encodedSize)
+        .body(std::string(base64, encodedSize))
+        .send();
+    promise.then([&request, &ok](Pistache::Http::Response response) {
+        if (response.code() == Pistache::Http::Code::Ok) {
+            LOG(INFO) << "received ok response for list post " << request;
+        } else {
+            LOG(ERROR) << "error code " << response.code() << " on list post " << request;
+            ok = false;
+        }
+    }, Pistache::Async::NoExcept);
+
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
+
+    return ok ? key : 0;
 }
 
 void HttpClient::shutdown() {

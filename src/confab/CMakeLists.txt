@@ -7,6 +7,7 @@ set(confab_schema_files
     schemas/FlatAsset.fbs
     schemas/FlatAssetData.fbs
     schemas/FlatConfig.fbs
+    schemas/FlatList.fbs
 )
 
 build_flatbuffers(
@@ -36,16 +37,12 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 set(confab_common_src_files
     Asset.cpp
     Asset.hpp
-    AssetData.cpp
-    AssetData.hpp
     AssetDatabase.cpp
     AssetDatabase.hpp
     ConfabCommon.cpp
     ConfabCommon.hpp
     Config.cpp
     Config.hpp
-    Database.cpp
-    Database.hpp
     Record.hpp
     SizedPointer.hpp
 )

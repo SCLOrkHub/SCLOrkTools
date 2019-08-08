@@ -1,0 +1,9 @@
+namespace Confab.Data;
+
+table FlatList {
+    key:ulong = 0;
+    name:string;
+}
+
+root_type FlatList;
+

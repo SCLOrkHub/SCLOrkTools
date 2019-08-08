@@ -2,6 +2,7 @@
 #define SRC_CONFAB_OSC_HANDLER_HPP_
 
 #include "Asset.hpp"
+#include "Record.hpp"
 
 #include <memory>
 #include <string>
@@ -62,17 +63,29 @@ private:
     /*! Processes an asset addition request for a given file path. Should run as a task.
      */
     void addAssetFile(Asset::Type type, int serialNumber, std::string name, uint64_t author, uint64_t deprecates,
-        std::string filePath);
+        std::string listIds, std::string filePath);
 
     /*! Processes an asset addition request for a short string. Should run as a task.
      */
     void addAssetString(Asset::Type type, int serialNumber, std::string name, uint64_t author, uint64_t deprecates,
-        std::string assetString);
+        std::string listIds, std::string assetString);
 
     /*! Utility method, sends an Asset back to SuperCollider via OSC. The requested string can either be a key or a
      * name.
      */
     void sendAsset(const std::string& requested, RecordPtr record);
+
+    /*! Add a new list with the provided name, return the created key back to SC.
+     */
+    void addList(std::string name);
+
+    /*! Looks up a list by name, returns the id to SC.
+     */
+    void findList(std::string name);
+
+    /*! Iterates through next elements in list, if any, returns to SC.
+     */
+    void nextList(uint64_t key, uint64_t token);
 
     int m_listenPort;
     int m_sendPort;

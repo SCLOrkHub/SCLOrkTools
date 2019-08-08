@@ -49,6 +49,7 @@ table::
 ## strong::label::   || name         || An optional name for the Asset.
 ## strong::label::   || author       || An optional Asset key identifying a record for an Author.
 ## strong::label::   || deprecates   || An optional Asset key that this Asset deprecates.
+## strong::string::  || lists        || An optional comma-separated concatendated string of list ids to add this asset to.
 ## strong::label::   || filePath     || Path to the filename to add to the database.
 ::
 
@@ -62,6 +63,7 @@ table::
 ## strong::label::   || name         || An optional name for the Asset.
 ## strong::label::   || author       || An optional Asset key identifying a record for an Author.
 ## strong::label::   || deprecates   || An optional Asset key that this Asset deprecates.
+## strong::string::  || lists        || An optional comma-separated concatendated string of list ids to add this asset to.
 ## strong::label::   || assetString  || The included asset data.
 ::
 
@@ -87,6 +89,31 @@ Requests that Confab retrieve this Asset, which may require communicatation over
 
 table::
 ## strong::label:: || key || An asset key string, typically a 16-digit hexadecimal number.
+::
+
+subsection:: /listAdd
+
+Requests that Confab create a new list with the provided name. Will return with either a strong::listError:: or strong::listFound:: message.
+
+table::
+## strong::label:: || name || The name of the list to create.
+::
+
+subsection:: /listFind
+
+Looks up a list by name. Will return with either a strong::listError:: or a strong::listFound:: message.
+
+table::
+## strong::label:: || name || The name of the list to look up.
+::
+
+subsection:: /listNext
+
+Gets the next token, id pairs in the list. Responds with a strong::listItems:: message.
+
+table::
+## strong::label:: || listId || The id of the list to access.
+## strong::label:: || token || The token to start iterating from.
 ::
 
 section:: Confab Response Messages
@@ -123,5 +150,27 @@ subsection:: /assetError
 
 table::
 ## strong::label:: || key || The Asset key or name associated with this error
-## strong::string:: || errorString || Some descriptive error message from the server.
+## strong::string:: || error || Some descriptive error message from the server.
 ::
+
+
+subsection:: /listError
+
+table::
+## strong::label:: || nameOrKey || Either the key or the name of the list reporting this error.
+## strong::string:: || error || Some descriptive error message from the server.
+::
+
+subsection:: /listFound
+
+table::
+## strong::label:: || name || The name of the list that was added.
+## strong::label:: || key || The key associated with this list name, to be used in list updates, additions, and queries.
+::
+
+
+subsection:: /listItems
+
+table::
+strong::label:: || key || The list id.
+strong::label:: || tokens || A string with code::<token>,<asset id>\n:: pairs.
