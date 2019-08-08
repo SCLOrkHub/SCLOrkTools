@@ -7,10 +7,14 @@ SCLOrkConfab {
 	classvar assetErrorFunc;
 	classvar assetFoundFunc;
 	classvar assetLoadedFunc;
+	classvar listFoundFunc;
+	classvar listErrorFunc;
+	classvar listItemsFunc;
 
 	classvar addCallbackMap;
 	classvar findCallbackMap;
 	classvar loadCallbackMap;
+	classvar listCallbackMap;
 
 	*start { |
 		confabBindPort = 4248,
@@ -22,20 +26,21 @@ SCLOrkConfab {
 		addCallbackMap = IdentityDictionary.new;
 		findCallbackMap = IdentityDictionary.new;
 		loadCallbackMap = IdentityDictionary.new;
+		listCallbackMap = IdentityDictionary.new;
 
 		SCLOrkConfab.prBindResponseMessages(scBindPort);
 		SCLOrkConfab.prStartConfab;
 	}
 
-	*addAssetFile { |type, name, author, deprecates, filePath, addCallback|
+	*addAssetFile { |type, name, author, deprecates, lists, filePath, addCallback|
 		addCallbackMap.put(addSerial, addCallback);
-		confab.sendMsg('/assetAddFile', addSerial, type, name, author, deprecates, filePath);
+		confab.sendMsg('/assetAddFile', addSerial, type, name, author, deprecates, lists, filePath);
 		addSerial = addSerial + 1;
 	}
 
-	*addAssetString { |type, name, author, deprecates, assetString, addCallback|
+	*addAssetString { |type, name, author, deprecates, lists, assetString, addCallback|
 		addCallbackMap.put(addSerial, addCallback);
-		confab.sendMsg('/assetAddString', addSerial, type, name, author, deprecates, assetString);
+		confab.sendMsg('/assetAddString', addSerial, type, name, author, deprecates, lists, assetString);
 		addSerial = addSerial + 1;
 	}
 
@@ -52,6 +57,21 @@ SCLOrkConfab {
 	*loadAssetById { |id, callback|
 		loadCallbackMap.put(id, callback);
 		confab.sendMsg('/assetLoad', id);
+	}
+
+	*createList { |name, callback|
+		listCallbackMap.put(name, callback);
+		confab.sendMsg('/listAdd', name);
+	}
+
+	*findListByName { |name, callback|
+		listCallbackMap.put(name, callback);
+		confab.sendMsg('/listFind', name);
+	}
+
+	*getListNext { |listId, fromToken, callback|
+		listCallbackMap.put(listId, callback);
+		confab.sendMsg('/listNext', listId, fromToken);
 	}
 
 	*isConfabRunning {
@@ -133,6 +153,46 @@ SCLOrkConfab {
 			});
 		},
 		'/assetLoaded',
+		recvPort: recvPort);
+
+		listFoundFunc = OSCFunc.new({ |msg, time, addr|
+			var listName = msg[1];
+			var listKey = msg[2];
+			var callback = listCallbackMap.at(listName);
+			if (callback.notNil, {
+				callback.value(listName, listKey);
+				listCallbackMap.removeAt(listName);
+			}, {
+				"confab /listFound got list callback on missing list name %".format(listName).postln;
+			});
+		},
+		'/listFound',
+		recvPort: recvPort);
+
+		listErrorFunc = OSCFunc.new({ |msg, time, addr|
+			var listName = msg[1]; // TODO: could be a Name *or* a key right now.
+			var listKey = msg[2];
+			var callback = listCallbackMap.at(listName);
+			if (callback.notNil, {
+				callback.value(listName, listKey);
+			}, {
+				"confab got list callback on missing item %".format(listName).postln;
+			});
+		},
+		'/listError',
+		recvPort: recvPort);
+
+		listItemsFunc = OSCFunc.new({ |msg, time, addr|
+			var listId = msg[1];
+			var tokens = msg[2];
+			var callback = listCallbackMap.at(listId);
+			if (callback.notNil, {
+				callback.value(listId, tokens);
+			}, {
+				"confab listnext got callback on missing item %".format(listId).postln;
+			});
+		},
+		'/listItems',
 		recvPort: recvPort);
 	}
 

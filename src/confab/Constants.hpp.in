@@ -30,6 +30,7 @@ constexpr size_t kMaxAssetSize = 4ull * 1024ull * 1024ull * 1024ull;
  * to this element as well as to have a way to return the last element.
  */
 static constexpr size_t kEndList = std::numeric_limits<uint64_t>::max();
+static constexpr size_t kBeginList = 0;
 
 }  // namespace Confab
 

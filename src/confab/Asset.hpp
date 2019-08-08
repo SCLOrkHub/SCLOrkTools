@@ -211,6 +211,13 @@ public:
      */
     void addToList(uint64_t listKey) { m_lists.push_back(listKey); }
 
+    /*! Parses a comma-separated concatendated string of listIds and adds all elements to Asset lists.
+     *
+     * \param listIds The string of list ids to parse.
+     * \return The number of listIds parsed.
+     */
+    size_t parseListIds(const std::string& listIds);
+
     /*! Reserves space in the backing store for an inline buffer, returning the pointer to that space for writing.
      *
      * \param size How many bytes to reserve. Should be less than or equal to kSingleChunkDataSize.

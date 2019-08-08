@@ -259,11 +259,13 @@ bool AssetDatabase::storeAsset(uint64_t key, const SizedPointer& assetData) {
         std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::high_resolution_clock::now().time_since_epoch()).count() : 0;
     for (auto i = 0; i < flatAsset->lists()->size(); ++i) {
-        char* listKey = listKeys + (i * kListEntryKeySize), kListEntryKeySize;
+        char* listKey = listKeys + (i * kListEntryKeySize);
         listKey[0]  = kListEntry;
-        std::memcpy(listKey + 1, reinterpret_cast<const char*>(flatAsset->lists()->data() + i), sizeof(uint64_t));
-        std::memcpy(listKey + 9, reinterpret_cast<const char*>(&timeStamp), sizeof(uint64_t));
-        std::memcpy(listKey + 17, reinterpret_cast<const char*>(&key), sizeof(uint64_t));
+        std::memcpy(listKey + 1, flatAsset->lists()->data() + i, sizeof(uint64_t));
+        std::memcpy(listKey + 9, &timeStamp, sizeof(uint64_t));
+        std::memcpy(listKey + 17, &key, sizeof(uint64_t));
+        LOG(INFO) << "adding asset " << Asset::keyToString(key) << " to list " << Asset::keyToString(
+            flatAsset->lists()->data()[i]);
         batch.Put(leveldb::Slice(listKey, kListEntryKeySize), leveldb::Slice());
     }
 
@@ -325,14 +327,20 @@ bool AssetDatabase::storeList(uint64_t key, const SizedPointer& listEntry) {
         batch.Put(name, leveldb::Slice(reinterpret_cast<const char*>(&key), sizeof(uint64_t)));
     }
 
-    // Make a sentinel entry which will always be the last entry in the list assuming lexigraphical ordering. This
-    // allows us to reverse iterate from this element to get the latest.
-    std::array<char, kListEntryKeySize> listEntryKey;
-    listEntryKey[0] = kListEntry;
-    std::memcpy(listEntryKey.data() + 1, &key, sizeof(char));
-    std::memcpy(listEntryKey.data() + 9, &kEndList, sizeof(char));
-    std::memcpy(listEntryKey.data() + 17, &kEndList, sizeof(char));
-    batch.Put(leveldb::Slice(listEntryKey.data(), kListEntryKeySize), leveldb::Slice());
+    // Make sentinel keys at beginning and end of the list, to allow seeking using an iterator to always valid entries.
+    std::array<char, kListEntryKeySize> listBeginKey;
+    listBeginKey[0] = kListEntry;
+    std::memcpy(listBeginKey.data() + 1, &key, sizeof(uint64_t));
+    std::memcpy(listBeginKey.data() + 9, &kBeginList, sizeof(uint64_t));
+    std::memcpy(listBeginKey.data() + 17, &kBeginList, sizeof(uint64_t));
+    batch.Put(leveldb::Slice(listBeginKey.data(), kListEntryKeySize), leveldb::Slice());
+
+    std::array<char, kListEntryKeySize> listEndKey;
+    listEndKey[0] = kListEntry;
+    std::memcpy(listEndKey.data() + 1, &key, sizeof(uint64_t));
+    std::memcpy(listEndKey.data() + 9, &kEndList, sizeof(uint64_t));
+    std::memcpy(listEndKey.data() + 17, &kEndList, sizeof(uint64_t));
+    batch.Put(leveldb::Slice(listEndKey.data(), kListEntryKeySize), leveldb::Slice());
 
     std::array<char, kListKeySize> listKey;
     makeListKey(key, listKey.data());
@@ -390,21 +398,26 @@ size_t AssetDatabase::getListNext(uint64_t listKey, uint64_t fromToken, size_t m
     // Point the iterator at the fromToken position in the list.
     std::array<char, kListEntryKeySize> listEntryKey;
     listEntryKey[0] = kListEntry;
-    std::memcpy(listEntryKey.data() + 1, reinterpret_cast<char*>(&listKey), sizeof(uint64_t));
-    std::memcpy(listEntryKey.data() + 9, reinterpret_cast<char*>(&fromToken), sizeof(uint64_t));
-    std::memset(listEntryKey.data() + 17, 0, sizeof(uint64_t));
+    std::memcpy(listEntryKey.data() + 1, &listKey, sizeof(uint64_t));
+    std::memcpy(listEntryKey.data() + 9, &fromToken, sizeof(uint64_t));
+    std::memcpy(listEntryKey.data() + 17, &kBeginList, sizeof(uint64_t));
 
     std::shared_ptr<leveldb::Iterator> iterator(m_database->NewIterator(leveldb::ReadOptions()));
     iterator->Seek(leveldb::Slice(listEntryKey.data(), kListEntryKeySize));
+    if (!iterator->Valid()) {
+        LOG(ERROR) << "error finding first element token: " << Asset::keyToString(fromToken) << " in list: "
+            << Asset::keyToString(listKey);
+        return 0;
+    }
 
     size_t pairs = 0;
     while (pairs < maxPairs) {
         iterator->Next();
-        // We only compare the first 9 bytes of the list key, to make sure the prefix and key match.
         if (!iterator->Valid()) {
             LOG(ERROR) << "error finding list " << Asset::keyToString(listKey) << " for iteration.";
             return 0;
         }
+        // We only compare the first 9 bytes of the list key, to make sure the prefix and key match.
         if (iterator->key().size() != kListEntryKeySize ||
             std::memcmp(iterator->key().data(), listEntryKey.data(), 9) != 0) {
             LOG(INFO) << "walked off end of list " << Asset::keyToString(listKey) << " after " << pairs << " pairs.";

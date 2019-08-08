@@ -59,6 +59,8 @@ public:
         Pistache::Rest::Routes::Get(m_router, "/list/name", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::getNamedList, this));
 
+        Pistache::Rest::Routes::Get(m_router, "/list/items/:key/:from", Pistache::Rest::Routes::bind(
+            &HttpEndpoint::HttpHandler::getListItems, this));
     }
 
     /*! Starts a thread that will listen on the provided TCP port and process incoming requests for storage and
@@ -213,13 +215,32 @@ private:
     }
 
     void getList(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        // TODO:
-        response.send(Pistache::Http::Code::Not_Found);
+        auto keyString = request.param(":key").as<std::string>();
+        LOG(INFO) << "processing GET request for /list/id " << keyString;
+        uint64_t key = Asset::stringToKey(keyString);
+        RecordPtr listData = m_assetDatabase->loadList(key);
+        response.headers().add<Pistache::Http::Header::Server>("confab");
+        if (listData->empty()) {
+            LOG(ERROR) << "get frequest for list " << keyString << " not found, 404.";
+            response.send(Pistache::Http::Code::Not_Found);
+        } else {
+            LOG(INFO) << "get request for list " << keyString << " returning list data.";
+            char base64[kPageSize];
+            size_t encodedSize = 0;
+            base64_encode(reinterpret_cast<const char*>(listData->data().data()), listData->data().size(), base64,
+                &encodedSize, 0);
+            if (encodedSize >= kPageSize) {
+                LOG(ERROR) << "encoded size: " << encodedSize << " exceeds buffer size " << kPageSize;
+            } else {
+                LOG(INFO) << "sending " << encodedSize << " bytes of List data.";
+            }
+            response.send(Pistache::Http::Code::Ok, std::string(base64, encodedSize), MIME(Text, Plain));
+        }
     }
 
     void postList(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto keyString = request.param(":key").as<std::string>();
-        LOG(INFO) << "processing POST request for /list/key " << keyString;
+        LOG(INFO) << "processing POST request for /list/id " << keyString;
         uint64_t key = Asset::stringToKey(keyString);
         uint8_t decoded[kPageSize];
         size_t decodedSize;
@@ -262,6 +283,29 @@ private:
                 LOG(INFO) << "sending " << encodedSize << " bytes of Asset Data.";
             }
             response.send(Pistache::Http::Code::Ok, std::string(base64, encodedSize), MIME(Text, Plain));
+        }
+    }
+
+    void getListItems(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto keyString = request.param(":key").as<std::string>();
+        auto fromString = request.param(":from").as<std::string>();
+        LOG(INFO) << "processing get /list/items/" << keyString << "/" << fromString;
+
+        uint64_t key = Asset::stringToKey(keyString);
+        uint64_t token = Asset::stringToKey(fromString);
+        std::array<uint64_t, kPageSize / 17> pairs;
+        size_t numPairs = m_assetDatabase->getListNext(key, token, pairs.size() / 2, pairs.data());
+        response.headers().add<Pistache::Http::Header::Server>("confab");
+        if (numPairs == 0) {
+            LOG(ERROR) << "error retrieving iterator pair list for " << keyString;
+            response.send(Pistache::Http::Code::Internal_Server_Error);
+        } else {
+            LOG(INFO) << "sending " << numPairs << " tokens back to client on list " << keyString;
+            std::string pairList;
+            for (auto i = 0; i < numPairs; ++i) {
+                pairList += Asset::keyToString(pairs[i * 2]) + " " + Asset::keyToString(pairs[(i * 2) + 1]) + "\n";
+            }
+            response.send(Pistache::Http::Code::Ok, pairList, MIME(Text, Plain));
         }
     }
 

@@ -65,30 +65,61 @@ public:
      */
     void getAssetData(uint64_t key, uint64_t chunk, std::function<void(uint64_t, uint64_t, RecordPtr)> callback);
 
-    /*! Uploads a new Asset with inline data to the server.
+    /*! Uploads a new Asset with inline data to the server. Blocking.
      *
      * \param type The Asset type.
      * \param name The Asset name, can be "".
      * \param author An optional Asset key.
      * \param deprecates An optional Asset key.
+     * \param listIds A comma-separated concatenated string of list ids to add this asset to.
      * \param size The size of the data pointed to by inlineData, should be smaller than kDataChunkSize
      * \param inlineData The inline Asset data to serialize.
      * \return The computed key for this Asset, or zero on error.
      */
     uint64_t postInlineAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
-            uint64_t size, const uint8_t* inlineData);
+            const std::string& listIds, uint64_t size, const uint8_t* inlineData);
 
-    /*! Uploads a new Asset along with all AssetData chunks in the file to the server.
+    /*! Uploads a new Asset along with all AssetData chunks in the file to the server. Blocking.
      *
      * \param type The Asset type.
      * \param name The Asset name, can be "".
      * \param author An optional Asset key.
      * \param deprecates An optional Asset key.
+     * \param listIds A comma-separated concatenated string of list ids to add this asset to.
      * \param assetFile The path of the file to ingest.
      * \return The computed key for this Asset, or zero on error.
      */
     uint64_t postFileAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
-            const fs::path& assetFile);
+            const std::string& listIds, const fs::path& assetFile);
+
+    /*! Requests a list metadata entry from the server. Blocking.
+     *
+     * \param key The key of the list to retrieve.
+     * \param callback The function to callback with a non-owning pointer to the FlatList structure, or empty on error.
+     */
+    void getList(uint64_t key, std::function<void(RecordPtr)> callback);
+
+    /*! Requests a list metadata entry by name from the server. Blocking.
+     *
+     * \param name The name of the requested list.
+     * \param callback The function to callback with a non-owning pointer to the FlatList structure, or empty on error.
+     */
+    void getNamedList(const std::string& name, std::function<void(RecordPtr)> callback);
+
+    /*! Requests the most recent list items from the server. Blocking.
+     *
+     * \param key The key of the list to retrieve.
+     * \param token The list token marker to start iterating from (can be 0 to start at beginning).
+     * \param callback The function to callback with list items as a string of "<token> <asset key>\n" pairs.
+     */
+    void getListItems(uint64_t key, uint64_t token, std::function<void(const std::string&)> callback);
+
+    /*! Uploads a new List to the server. Blocking.
+     *
+     * \param name The name of the list. If non-unique, will clobber old list name (but not old list).
+     * \return The key identifier of the new named list, or 0 on error.
+     */
+    uint64_t postList(const std::string& name);
 
     /*! Closes any pending requests and shuts down.
      */

@@ -121,7 +121,7 @@ public:
      *                  this token.
      * \param maxPairs The maximum number of <token, key> pairs to put into listOut.
      * \param listOut A pointer to a buffer to hold the ordered list.
-     * \return The number of elements written into listOut, or 0 on error (as at end of list will always return
+     * \return The number of pairs written into listOut, or 0 on error (as at end of list will always return
      *          the end of list pair <kEndList, kEndList>.
      */
     size_t getListNext(uint64_t listKey, uint64_t fromToken, size_t maxPairs, uint64_t* listOut);

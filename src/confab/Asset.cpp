@@ -2,6 +2,8 @@
 
 #include "Constants.hpp"
 
+#include "glog/logging.h"
+
 #include <array>
 #include <cstring>
 #include <inttypes.h>
@@ -41,7 +43,7 @@ std::string Asset::enumToTypeString(Asset::Type type) {
 // static
 std::string Asset::keyToString(uint64_t key) {
     std::array<char, 17> buf;
-    snprintf(buf.data(), 17, "%" PRIx64, key);
+    snprintf(buf.data(), 17, "%016" PRIx64, key);
     return std::string(buf.data());
 }
 
@@ -92,8 +94,8 @@ Asset::Asset(const Data::FlatAsset* flatAsset)  :
 
 void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inlineData) {
     // Create leaf objects first.
-    auto name = m_name != "" ? builder.CreateString(m_name.c_str()) : 0;
-    auto fileExtension = m_fileExtension != "" ? builder.CreateString(m_fileExtension.c_str()) : 0;
+    auto name = m_name != "" ? builder.CreateString(m_name) : 0;
+    auto fileExtension = m_fileExtension != "" ? builder.CreateString(m_fileExtension) : 0;
     auto lists = m_lists.size() > 0 ? builder.CreateVector(m_lists) : 0;
     const uint8_t* serialInline = inlineData ? inlineData : m_inlineData.get();
     // These builder Create* calls do a byte-by-byte copy in a for loop of the source data into the builder.
@@ -137,6 +139,23 @@ void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inli
 
     auto asset = assetBuilder.Finish();
     builder.Finish(asset);
+}
+
+size_t Asset::parseListIds(const std::string& listIds) {
+    size_t idsParsed = 0;
+    size_t offset = 0;
+    while (offset < listIds.size()) {
+        char* endPtr;
+        uint64_t key = strtoull(listIds.c_str() + offset, &endPtr, 16);
+        if (key == 0) {
+            LOG(ERROR) << "error parsing listIds string around '" << listIds.c_str() + offset << "'";
+            break;
+        }
+        m_lists.push_back(key);
+        ++idsParsed;
+        offset = (endPtr - listIds.c_str()) + 1;
+    }
+    return idsParsed;
 }
 
 }  // namespace Confab

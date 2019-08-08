@@ -5,12 +5,15 @@
 #include "CacheManager.hpp"
 #include "Constants.hpp"
 #include "HttpClient.hpp"
+#include "schemas/FlatAsset_generated.h"
+#include "schemas/FlatAssetData_generated.h"
+#include "schemas/FlatList_generated.h"
 
-#include <glog/logging.h>
-#include <ip/UdpSocket.h>
-#include <osc/OscOutboundPacketStream.h>
-#include <osc/OscPacketListener.h>
-#include <osc/OscReceivedElements.h>
+#include "glog/logging.h"
+#include "ip/UdpSocket.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscPacketListener.h"
+#include "osc/OscReceivedElements.h"
 
 #include <cstring>
 #include <future>
@@ -97,6 +100,7 @@ public:
                 if (deprecatesString.size() > 0) {
                     uint64_t deprecats = Asset::stringToKey(deprecatesString);
                 }
+                std::string listIds((arguments++)->AsString());
                 std::string filePath((arguments++)->AsString());
                 if (arguments != message.ArgumentsEnd()) {
                     throw osc::ExcessArgumentException();
@@ -109,8 +113,9 @@ public:
                 if (type == Asset::kInvalid) {
                     LOG(ERROR) << "/assetAddFile got bad type string: " << typeString;
                 } else {
-                    std::async(std::launch::async, [this, type, serialNumber, name, author, deprecates, filePath] {
-                        m_handler->addAssetFile(type, serialNumber, name, author, deprecates, filePath);
+                    std::async(std::launch::async, [this, type, serialNumber, name, author, deprecates, listIds,
+                            filePath] {
+                        m_handler->addAssetFile(type, serialNumber, name, author, deprecates, listIds, filePath);
                     });
                 }
             } else if (std::strcmp("/assetAddString", message.AddressPattern()) == 0) {
@@ -128,6 +133,7 @@ public:
                 if (deprecatesString.size() > 0) {
                     deprecates = Asset::stringToKey(deprecatesString);
                 }
+                std::string listIds((arguments++)->AsString());
                 std::string assetString((arguments++)->AsString());
                 if (arguments != message.ArgumentsEnd()) {
                     throw osc::ExcessArgumentException();
@@ -140,10 +146,47 @@ public:
                 if (type == Asset::kInvalid) {
                     LOG(ERROR) << "/assetAddString got bad type string: " << typeString;
                 } else {
-                    std::async(std::launch::async, [this, type, serialNumber, name, author, deprecates, assetString] {
-                        m_handler->addAssetString(type, serialNumber, name, author, deprecates, assetString);
+                    std::async(std::launch::async, [this, type, serialNumber, name, author, deprecates, listIds,
+                            assetString] {
+                        m_handler->addAssetString(type, serialNumber, name, author, deprecates, listIds, assetString);
                     });
                 }
+            } else if (std::strcmp("/listAdd", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                std::string name((arguments++)->AsString());
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
+
+                LOG(INFO) << "processing [/listAdd, " << name << "]";
+
+                std::async(std::launch::async, [this, name] {
+                    m_handler->addList(name);
+                });
+            } else if (std::strcmp("/listFind", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                std::string name((arguments++)->AsString());
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
+
+                LOG(INFO) << "processing [/listFind, " << name << "]";
+
+                std::async(std::launch::async, [this, name] {
+                    m_handler->findList(name);
+                });
+            } else if (std::strcmp("/listNext", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                std::string keyString((arguments++)->AsString());
+                uint64_t key = Asset::stringToKey(keyString);
+                std::string tokenString((arguments++)->AsString());
+                uint64_t token = Asset::stringToKey(tokenString);
+
+                LOG(INFO) << "processing [/listNext, " << keyString << ", " << tokenString << "]";
+
+                std::async(std::launch::async, [this, key, token] {
+                    m_handler->nextList(key, token);
+                });
             } else {
                 LOG(ERROR) << "OSC unknown message: " << message.AddressPattern();
             }
@@ -231,7 +274,6 @@ void OscHandler::findNamedAsset(std::string name) {
             sendAsset(name, record);
         }
     });
-
 }
 
 void OscHandler::loadAsset(uint64_t key) {
@@ -291,8 +333,8 @@ void OscHandler::loadAsset(uint64_t key) {
 }
 
 void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string name, uint64_t author,
-    uint64_t deprecates, std::string filePath) {
-    uint64_t key = m_httpClient->postFileAsset(type, name, author, deprecates, filePath);
+    uint64_t deprecates, std::string listIds, std::string filePath) {
+    uint64_t key = m_httpClient->postFileAsset(type, name, author, deprecates, listIds, filePath);
     char buffer[kPageSize];
     osc::OutboundPacketStream p(buffer, kPageSize);
     p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
@@ -301,8 +343,8 @@ void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string na
 }
 
 void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string name, uint64_t author,
-    uint64_t deprecates, std::string assetString) {
-    uint64_t key = m_httpClient->postInlineAsset(type, name, author, deprecates, assetString.size(),
+    uint64_t deprecates, std::string listIds, std::string assetString) {
+    uint64_t key = m_httpClient->postInlineAsset(type, name, author, deprecates, listIds, assetString.size(),
         reinterpret_cast<const uint8_t*>(assetString.c_str()));
 
     // Regardless of success or failure of Asset add we return the key and serial number.
@@ -334,6 +376,44 @@ void OscHandler::sendAsset(const std::string& requested, RecordPtr record) {
     }
     p << osc::EndMessage;
     m_transmitSocket->Send(p.Data(), p.Size());
+}
+
+void OscHandler::addList(std::string name) {
+    uint64_t key = m_httpClient->postList(name);
+    char buffer[kPageSize];
+    osc::OutboundPacketStream p(buffer, kPageSize);
+    if (key != 0) {
+        p << osc::BeginMessage("/listFound") << name.c_str() << Asset::keyToString(key).c_str() << osc::EndMessage;
+    } else {
+        p << osc::BeginMessage("/listError") << name.c_str() << "error adding new list." << osc::EndMessage;
+    }
+    m_transmitSocket->Send(p.Data(), p.Size());
+}
+
+void OscHandler::findList(std::string name) {
+    // We never cache these named entries, or really anything to do with lists (outside of Assets), for freshness
+    // concerns.
+    m_httpClient->getNamedList(name, [this, &name](RecordPtr record) {
+        char buffer[kPageSize];
+        osc::OutboundPacketStream p(buffer, kPageSize);
+        if (record->empty()) {
+            p << osc::BeginMessage("/listError") << name.c_str() << "error finding list." << osc::EndMessage;
+        } else {
+            const Data::FlatList* flatList = Data::GetFlatList(record->data().data());
+            p << osc::BeginMessage("/listFound") << name.c_str() << Asset::keyToString(flatList->key()).c_str()
+                << osc::EndMessage;
+        }
+        m_transmitSocket->Send(p.Data(), p.Size());
+    });
+}
+
+void OscHandler::nextList(uint64_t key, uint64_t token) {
+    m_httpClient->getListItems(key, token, [this, &key](const std::string& tokens) {
+        char buffer[kPageSize];
+        osc::OutboundPacketStream p(buffer, kPageSize);
+        p << osc::BeginMessage("/listItems") << Asset::keyToString(key).c_str() << tokens.c_str() << osc::EndMessage;
+        m_transmitSocket->Send(p.Data(), p.Size());
+    });
 }
 
 }  // namespace Confab
