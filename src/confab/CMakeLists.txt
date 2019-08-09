@@ -8,6 +8,7 @@ set(confab_schema_files
     schemas/FlatAssetData.fbs
     schemas/FlatConfig.fbs
     schemas/FlatList.fbs
+    schemas/FlatState.fbs
 )
 
 build_flatbuffers(
@@ -44,6 +45,8 @@ set(confab_common_src_files
     Config.cpp
     Config.hpp
     Record.hpp
+    State.cpp
+    State.hpp
     SizedPointer.hpp
 )
 

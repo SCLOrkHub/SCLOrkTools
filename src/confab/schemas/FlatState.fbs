@@ -1,0 +1,18 @@
+namespace Confab.Data;
+
+table FlatState {
+    hostname:string;
+    scidePid:int;
+    sclangPid:int;
+    scsynthPid:int;
+    jackdPid:int;
+    cpuUsage:float;
+    memoryFree:ulong;
+    memoryTotal:ulong;
+    user:ulong;
+    localTime:ulong;
+
+}
+
+root_type FlatState;
+

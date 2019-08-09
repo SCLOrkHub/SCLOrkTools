@@ -111,52 +111,6 @@ bool ConfabCommon::openDatabase() {
         FLAGS_database_cache_size_mb * 1024 * 1024)) {
         return false;
     }
-
-    /*
-    // If a new database we write the configuration information for the first time. If an existing database we validate
-    // that the version written is equal to or older than our current version.
-    if (FLAGS_create_new_database) {
-        // Verify that no existing configuration information is present.
-        auto configRecord = m_assetDatabase->load(Confab::Config::getConfigKey());
-        if (!configRecord->empty()) {
-            LOG(ERROR) << "Create new database specified by database has an existing config key.";
-            return false;
-        }
-
-        Confab::Config config(Confab::confabVersion);
-
-        if (!m_assetDatabase->store(Confab::Config::getConfigKey(), config.flatten())) {
-            LOG(ERROR) << "Error writing config information to database.";
-            return false;
-        } else {
-            LOG(INFO) << "Wrote new config record to database.";
-        }
-    } else {
-        auto configRecord = m_assetDatabase->load(Confab::Config::getConfigKey());
-        if (configRecord->empty()) {
-            LOG(ERROR) << "Error reaading configuration information from database.";
-            return false;
-        }
-        auto config = Confab::Config::LoadConfig(configRecord);
-
-        if (config.version() > Confab::confabVersion) {
-            LOG(ERROR) << "Database records confab version " << config.version().toString() << " which is newer than "
-                << "confab version " << Confab::confabVersion.toString();
-            return false;
-        }
-
-        if (config.version() < Confab::confabVersion) {
-            LOG(INFO) << "Updating confab version in database " << config.version().toString()
-                << " to confab version " << Confab::confabVersion.toString();
-            Confab::Config currentConfig(Confab::confabVersion);
-            if (!m_assetDatabase->store(Confab::Config::getConfigKey(), currentConfig.flatten())) {
-                LOG(ERROR) << "Error writing updated Config record to database.";
-                return false;
-            }
-        }
-    }
-    */
-
     return true;
 }
 

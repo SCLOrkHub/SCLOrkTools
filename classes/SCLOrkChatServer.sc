@@ -1,4 +1,6 @@
 SCLOrkChatServer {
+	// TODO: class may be deprecated, not needed anymore.
+
 	const <defaultBindPort = 8000;
 	var bindPort;
 
