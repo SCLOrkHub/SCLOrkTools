@@ -3,7 +3,11 @@
 
 #include "Record.hpp"
 
+#include <experimental/filesystem>
 #include <string>
+#include <unordered_set>
+
+namespace fs = std::experimental::filesystem;
 
 namespace Confab {
 
@@ -25,14 +29,14 @@ public:
     void init();
 
     /*! Updates all tracking and returns latest serialized state.
-     *
-     * \return A FlatState object.
      */
-    RecordPtr update();
+    void update();
 
     /*! Release any system resources.
      */
     void shutdown();
+
+
 
 private:
     /*! Linux-only, parses the /proc/stat file to get CPU usage info.
@@ -43,12 +47,28 @@ private:
      */
     void updateMemStats();
 
+    /*! Adds any new running commands, and removes any that are no longer running.
+     */
+    void updatePids();
+
+    /*! Returns true if the provided pid directory still exists, meaning process is still running.
+     */
+    bool stillRunning(int pid);
+
     std::string m_hostname;
-    uint64_t m_user;
 
     uint64_t m_cpuTicksBusy;
     uint64_t m_cpuTicksIdle;
     float m_cpuPercentBusy;
+
+    uint64_t m_memoryTotal;
+    uint64_t m_memoryFree;
+
+    std::unordered_set<int> m_usedPids;
+    int m_jackdPid;
+    int m_sclangPid;
+    int m_scidePid;
+    int m_scsynthPid;
 };
 
 }
