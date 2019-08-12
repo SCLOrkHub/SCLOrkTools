@@ -32,22 +32,64 @@ public:
      */
     void update();
 
-    /*! Release any system resources.
+    /*! Get the hostname.
+     *
+     * \return A string with this machine's hostname.
      */
-    void shutdown();
+    const std::string& hostname() const { return m_hostname; }
 
+    /*! Get the percentage CPU load between this and last call to update().
+     *
+     * \return A number within [0.0, 100.0] reflecting current CPU load.
+     */
+    float cpuPercentBusy() const { return m_cpuPercentBusy; }
 
+    /*! Get the total memory of the machine in KB.
+     *
+     * \return A number of KB the machine has in total.
+     */
+    uint64_t memoryTotal() const { return m_memoryTotal; }
+
+    /*! Get the free memory of the machine in KB.
+     *
+     * \return A number of KB the machine has unused.
+     */
+    uint64_t memoryFree() const { return m_memoryFree; }
+
+    /*! Returns the pid of the jackd process, or 0 if not detected.
+     *
+     * \return A pid.
+     */
+    int jackdPid() const { return m_jackdPid; }
+
+    /*! Returns the pid of the sclang process, or 0 if not detected.
+     *
+     * \return A pid.
+     */
+    int sclangPid() const { return m_sclangPid; }
+
+    /*! Returns the pid of the scide process, or 0 if not detected.
+     *
+     * \return A pid.
+     */
+    int scidePid() const { return m_scidePid; }
+
+    /*! Returns the pid of the scsynth process, or 0 if not detected.
+     *
+     * \return A pid.
+     */
+    int scsynthPid() const { return m_scsynthPid; }
 
 private:
-    /*! Linux-only, parses the /proc/stat file to get CPU usage info.
+    /*! Linux only, parses the /proc/stat file to get CPU usage info.
      */
     void updateCPUStats();
 
-    /*! Linux-only, parses the /proc/meminfo file to get memory usage info.
+    /*! Linux only, parses the /proc/meminfo file to get memory usage info.
      */
     void updateMemStats();
 
-    /*! Adds any new running commands, and removes any that are no longer running.
+    /*! Linux only. Adds any new running commands, and removes any that are no longer running.
      */
     void updatePids();
 

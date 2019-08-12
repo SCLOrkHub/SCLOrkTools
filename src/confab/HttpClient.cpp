@@ -3,9 +3,11 @@
 #include "Asset.hpp"
 #include "Constants.hpp"
 #include "Record.hpp"
-#include "schemas/FlatAsset_generated.h"
+#include "State.hpp"
 #include "schemas/FlatAssetData_generated.h"
+#include "schemas/FlatAsset_generated.h"
 #include "schemas/FlatList_generated.h"
+#include "schemas/FlatState_generated.h"
 
 #include "glog/logging.h"
 #include "libbase64.h"
@@ -75,7 +77,10 @@ private:
 HttpClient::HttpClient(const std::string& serverAddress) :
     m_serverAddress(serverAddress),
     m_client(new Pistache::Http::Client),
-    m_distribution(0, std::numeric_limits<uint64_t>::max()) {
+    m_distribution(0, std::numeric_limits<uint64_t>::max()),
+    m_state(new State),
+    m_quit(false),
+    m_stateThread([this]{ updateStateLoop(); }) {
     auto opts = Pistache::Http::Client::options()
         .keepAlive(true)
         .maxConnectionsPerHost(4)
@@ -518,7 +523,49 @@ uint64_t HttpClient::postList(const std::string& name) {
 }
 
 void HttpClient::shutdown() {
+    {
+        std::lock_guard<std::mutex> lock(m_quitMutex);
+        m_quit = true;
+    }
+    m_quitCV.notify_all();
+    m_stateThread.join();
+
     m_client->shutdown();
+}
+
+void HttpClient::updateStateLoop() {
+    LOG(INFO) << "client state update thread loop started.";
+    m_state->init();
+
+    while (true) {
+        std::unique_lock<std::mutex> lock(m_quitMutex);
+        if (m_quitCV.wait_for(lock, std::chrono::seconds(2), [this]{ return m_quit; })) {
+            break;
+        } else {
+            // Must have timed out (or spurious wakeup), normal operation.
+            m_state->update();
+            // Construct a FlatState record and ship it to the server.
+            flatbuffers::FlatBufferBuilder builder(kPageSize);
+            auto hostname = builder.CreateString(m_state->hostname());
+            Data::FlatStateBuilder stateBuilder(builder);
+            stateBuilder.add_hostname(hostname);
+            stateBuilder.add_scidePid(m_state->scidePid());
+            stateBuilder.add_sclangPid(m_state->sclangPid());
+            stateBuilder.add_scsynthPid(m_state->scsynthPid());
+            stateBuilder.add_jackdPid(m_state->jackdPid());
+            stateBuilder.add_cpuPercentBusy(m_state->cpuPercentBusy());
+            stateBuilder.add_memoryFree(m_state->memoryFree());
+            stateBuilder.add_memoryTotal(m_state->memoryTotal());
+            // Make room for the IPv4 address to be set on the server side by just sending loopback adapter address.
+            stateBuilder.add_ipv4(0x0000007f);
+            // user??
+            auto state = stateBuilder.Finish();
+            builder.Finish(state);
+            // Encode into string and send to server.
+        }
+    }
+
+    LOG(INFO) << "client state update thread loop terminated.";
 }
 
 }  // namespace Confab

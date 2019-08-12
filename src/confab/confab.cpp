@@ -3,7 +3,6 @@
 #include "Constants.hpp"
 #include "HttpClient.hpp"
 #include "OscHandler.hpp"
-#include "State.hpp"
 #include "common/Version.hpp"
 
 #include "gflags/gflags.h"
@@ -31,16 +30,6 @@ int main(int argc, char* argv[]) {
 
     LOG(INFO) << "Starting confab v" << Confab::confabVersion.toString() << " on pid " << getpid();
 
-    Confab::State state;
-    state.init();
-    // This should be a thread.
-    std::async(std::launch::async, [&state] {
-        while (true) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            state.update();
-        }
-    });
-
     std::shared_ptr<Confab::HttpClient> httpClient(new Confab::HttpClient(FLAGS_server_url));
     uint64_t maxCache = static_cast<uint64_t>(FLAGS_max_cache_size_gb) * 1024ULL * 1024ULL * 1024ULL;
     std::shared_ptr<Confab::CacheManager> cacheManager(new Confab::CacheManager(FLAGS_data_directory + "/cache",
@@ -55,13 +44,11 @@ int main(int argc, char* argv[]) {
         cacheManager);
     osc.run();
 
-
     common.waitForTerminationSignal();
 
     LOG(INFO) << "Termination signal caught, stopping confab normally.";
     osc.shutdown();
     httpClient->shutdown();
-    state.shutdown();
     common.shutdown();
     return 0;
 }

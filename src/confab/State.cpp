@@ -12,7 +12,6 @@
 namespace Confab {
 
 State::State() :
-    m_user(0),
     m_cpuTicksBusy(0),
     m_cpuTicksIdle(0),
     m_cpuPercentBusy(0.0f),
@@ -39,9 +38,6 @@ void State::update() {
     updateCPUStats();
     updateMemStats();
     updatePids();
-}
-
-void State::shutdown() {
 }
 
 void State::updateCPUStats() {

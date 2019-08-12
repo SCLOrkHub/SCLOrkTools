@@ -6,7 +6,7 @@ table FlatState {
     sclangPid:int;
     scsynthPid:int;
     jackdPid:int;
-    cpuUsage:float;
+    cpuPercentBusy:float;
     memoryFree:ulong;
     memoryTotal:ulong;
     user:ulong;

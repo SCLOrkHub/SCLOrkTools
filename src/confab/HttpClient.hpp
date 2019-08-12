@@ -4,11 +4,14 @@
 #include "Asset.hpp"
 #include "Record.hpp"
 
+#include <condition_variable>
 #include <experimental/filesystem>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
+#include <thread>
 
 namespace fs = std::experimental::filesystem;
 
@@ -19,6 +22,8 @@ class Client;
 }   // namespace Pistache
 
 namespace Confab {
+
+class State;
 
 /*! Class responsible for communication with upstream confab instances.
  */
@@ -126,10 +131,19 @@ public:
     void shutdown();
 
 private:
+    /*! Function to run on m_stateThread, updates state on server every update interval.
+     */
+    void updateStateLoop();
+
     const std::string m_serverAddress;
     std::unique_ptr<Pistache::Http::Client> m_client;
     std::random_device m_randomDevice;
     std::uniform_int_distribution<uint64_t> m_distribution;
+    std::unique_ptr<State> m_state;
+    std::mutex m_quitMutex;
+    std::condition_variable m_quitCV;
+    bool m_quit;
+    std::thread m_stateThread;
 };
 
 }  // namespace Confab
