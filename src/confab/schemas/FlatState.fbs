@@ -10,7 +10,6 @@ table FlatState {
     memoryFree:ulong;
     memoryTotal:ulong;
     user:ulong;
-    ipv4:uint;
 }
 
 root_type FlatState;

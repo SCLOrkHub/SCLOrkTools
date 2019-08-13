@@ -536,12 +536,14 @@ void HttpClient::shutdown() {
 void HttpClient::updateStateLoop() {
     LOG(INFO) << "client state update thread loop started.";
     m_state->init();
+    std::string request = m_serverAddress + "/status/" + m_state->hostname();
 
     while (true) {
         std::unique_lock<std::mutex> lock(m_quitMutex);
-        if (m_quitCV.wait_for(lock, std::chrono::seconds(2), [this]{ return m_quit; })) {
+        if (m_quitCV.wait_for(lock, std::chrono::milliseconds(kStatusUpdatePeriodMs), [this]{ return m_quit; })) {
             break;
         } else {
+            LOG(INFO) << "sending state update to server.";
             // Must have timed out (or spurious wakeup), normal operation.
             m_state->update();
             // Construct a FlatState record and ship it to the server.
@@ -556,12 +558,28 @@ void HttpClient::updateStateLoop() {
             stateBuilder.add_cpuPercentBusy(m_state->cpuPercentBusy());
             stateBuilder.add_memoryFree(m_state->memoryFree());
             stateBuilder.add_memoryTotal(m_state->memoryTotal());
-            // Make room for the IPv4 address to be set on the server side by just sending loopback adapter address.
-            stateBuilder.add_ipv4(0x0000007f);
-            // user??
+            // TODO: user??
             auto state = stateBuilder.Finish();
             builder.Finish(state);
             // Encode into string and send to server.
+            char base64[kPageSize];
+            size_t encodedSize = 0;
+            base64_encode(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize(), base64,
+                &encodedSize, 0);
+            CHECK_LT(encodedSize, kPageSize) << "encoded list larger than page size";
+            auto promise = m_client->post(request)
+                .header<Pistache::Http::Header::ContentType>(MIME(Text, Plain))
+                .header<Pistache::Http::Header::ContentLength>(encodedSize)
+                .body(std::string(base64, encodedSize))
+                .send();
+            promise.then([&request](Pistache::Http::Response response) {
+                if (response.code() != Pistache::Http::Code::Ok) {
+                    LOG(ERROR) << "error code " << response.code() << " on status post " << request;
+                }
+            }, Pistache::Async::NoExcept);
+
+            Pistache::Async::Barrier barrier(promise);
+            barrier.wait();
         }
     }
 

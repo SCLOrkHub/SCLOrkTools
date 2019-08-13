@@ -32,6 +32,10 @@ constexpr size_t kMaxAssetSize = 4ull * 1024ull * 1024ull * 1024ull;
 static constexpr size_t kEndList = std::numeric_limits<uint64_t>::max();
 static constexpr size_t kBeginList = 0;
 
+/*! Time period in milliseconds between sending state updates to the server.
+ */
+constexpr size_t kStatusUpdatePeriodMs = 2000;
+
 }  // namespace Confab
 
 #endif  // SRC_CONFAB_CONFAB_VERSION_H_

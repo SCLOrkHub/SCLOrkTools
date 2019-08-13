@@ -187,6 +187,7 @@ fs::path CacheManager::download(uint64_t key, size_t fileSize, uint64_t chunks, 
 }
 
 void CacheManager::makeRoomFor(size_t addedBytes) {
+    CHECK_GT(m_maxSize, 0) << "bad maximum size";
     while (m_currentSize + addedBytes > m_maxSize) {
         fs::path fileToRemove;
         {
@@ -199,7 +200,7 @@ void CacheManager::makeRoomFor(size_t addedBytes) {
                 size_t oldestSize = fs::file_size(oldest.second);
                 LOG(INFO) << "evicting " << oldest.second << " from cache, " << oldestSize << " bytes.";
                 m_currentSize = m_currentSize - oldestSize;
-                fileToRemove = oldest.second; 
+                fileToRemove = oldest.second;
                 // Also remove this cached asset from the map.
                 m_extensionMap.erase(Asset::stringToKey(oldest.second.stem()));
             } else {
