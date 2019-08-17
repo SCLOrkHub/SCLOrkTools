@@ -536,7 +536,7 @@ void HttpClient::shutdown() {
 void HttpClient::updateStateLoop() {
     LOG(INFO) << "client state update thread loop started.";
     m_state->init();
-    std::string request = m_serverAddress + "/status/" + m_state->hostname();
+    std::string request = m_serverAddress + "/state";
 
     while (true) {
         std::unique_lock<std::mutex> lock(m_quitMutex);

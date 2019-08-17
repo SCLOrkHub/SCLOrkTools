@@ -71,7 +71,7 @@ public:
 
         Pistache::Rest::Routes::Get(m_router, "/state", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::getState, this));
-        Pistache::Rest::Routes::Post(m_router, "/state/:name", Pistache::Rest::Routes::bind(
+        Pistache::Rest::Routes::Post(m_router, "/state", Pistache::Rest::Routes::bind(
             &HttpEndpoint::HttpHandler::postState, this));
 
     }
@@ -364,12 +364,8 @@ private:
     }
 
     void postState(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto name = request.param(":name").as<std::string>();
-        // TODO: unfortunately Pistache does not currently support returning peer information so the peer() function is
-        // compiled out. See https://github.com/oktal/pistache/issues/239 for more information.
-        // auto address = request.peer().address().host();
-        auto address = name;
-        LOG(INFO) << "processing state update for /state/" << name << " from " << address;
+        auto address = request.address().host();
+        LOG(INFO) << "processing state update for /state from " << address;
         // Verify the data before saving the encoded string.
         uint8_t decoded[kPageSize];
         size_t decodedSize;
@@ -391,7 +387,7 @@ private:
                 m_stateMap.insert(std::make_pair(address, request.body()));
             }
         } else {
-            LOG(ERROR) << "posted data did not verify for state " << name;
+            LOG(ERROR) << "posted data did not verify for state report from " << address;
         }
 
         response.headers().add<Pistache::Http::Header::Server>("confab");
