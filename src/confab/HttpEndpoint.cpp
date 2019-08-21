@@ -6,7 +6,6 @@
 #include "schemas/FlatAsset_generated.h"
 #include "schemas/FlatAssetData_generated.h"
 #include "schemas/FlatList_generated.h"
-#include "schemas/FlatState_generated.h"
 
 #include "glog/logging.h"
 #include "libbase64.h"
@@ -18,6 +17,29 @@
 #include <mutex>
 #include <deque>
 #include <unordered_map>
+
+namespace {
+
+inline uint32_t packIpv4(const std::string& ip) {
+    uint32_t packedIp = 0;
+    const char* startChar = ip.data();
+    char* endChar = nullptr;
+    while (startChar - ip.data() < ip.size()) {
+        int digit = strtol(startChar, &endChar, 10);
+        packedIp = (packedIp << 8) | static_cast<uint8_t>(digit);
+        startChar = endChar + 1;
+    }
+
+    return packedIp;
+}
+
+inline std::string unpackIpv4(uint32_t ip) {
+    std::array<char, 24> buffer;
+    snprintf(buffer.data(), 24, "%u.%u.%u.%u", (ip >> 24) & 0xff, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff);
+    return std::string(buffer.data());
+}
+
+}  // namespace
 
 namespace Confab {
 
@@ -324,11 +346,11 @@ private:
 
     void getState(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         LOG(INFO) << "processing get /state";
-        // The state response is encoded as a series of <address>: <base64blob>\n string pairs.
+        // The state response is encoded as a series of <address>\t<status string>\n string pairs.
         std::string statePairs;
         size_t numPairs = 0;
-        auto now = std::chrono::system_clock::now();
-        auto dropTime = now - std::chrono::milliseconds(2 * kStatusUpdatePeriodMs);
+        auto now = std::chrono::steady_clock::now();
+        auto dropTime = now - std::chrono::milliseconds((3 * kStatusUpdatePeriodMs) / 2);
         {
             std::lock_guard<std::mutex> lock(m_stateMutex);
             // First groom the state queue to only recent updates.
@@ -338,16 +360,16 @@ private:
                 oldest = m_stateQueue.size() ? m_stateQueue.front().first : now;
             }
             // It is likely there are duplicates in the state update queue, so we de-dupe them.
-            std::unordered_set<std::string> current;
+            std::unordered_set<uint32_t> current;
             for (auto pair : m_stateQueue) {
                 current.insert(pair.second);
             }
-            std::vector<std::string> outdated;
+            std::vector<uint32_t> outdated;
             // We now iterate through the map, to groom old entries from it as well.
             for (auto pair : m_stateMap) {
                 // If in current we append the address and serialized state to our return string.
                 if (current.count(pair.first)) {
-                    statePairs += pair.first + ": " + pair.second + "\n";
+                    statePairs += unpackIpv4(pair.first) + "\t" + pair.second + "\n";
                     ++numPairs;
                 } else {
                     outdated.push_back(pair.first);
@@ -355,6 +377,7 @@ private:
             }
             // Lastly drop all of the outdated data from the map, to keep it lean.
             for (auto old : outdated) {
+                LOG(INFO) << "dropping stale ip " << unpackIpv4(old) << " from status map.";
                 m_stateMap.erase(old);
             }
         }
@@ -363,19 +386,17 @@ private:
         response.send(Pistache::Http::Code::Ok, statePairs, MIME(Text, Plain));
     }
 
+    // Note this function doesn't log due to excessive logspam.
     void postState(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto address = request.address().host();
-        LOG(INFO) << "processing state update for /state from " << address;
-        // Verify the data before saving the encoded string.
-        uint8_t decoded[kPageSize];
-        size_t decodedSize;
-        base64_decode(request.body().data(), request.body().size(), reinterpret_cast<char*>(decoded), &decodedSize, 0);
-        auto verifier = flatbuffers::Verifier(decoded, decodedSize);
-        bool status = Data::VerifyFlatStateBuffer(verifier);
-        if (status) {
-            // Drop everything older than twice as long as our update period.
-            auto now = std::chrono::system_clock::now();
-            auto dropTime = now - std::chrono::milliseconds(2 * kStatusUpdatePeriodMs);
+        uint32_t address = packIpv4(request.address().host());
+        if (address == 0) {
+            LOG(WARNING) << "state update error parsing address " << request.address().host();
+            response.headers().add<Pistache::Http::Header::Server>("confab");
+            response.send(Pistache::Http::Code::Internal_Server_Error);
+        } else {
+            // Drop everything older than 1.5 times as long as our update period.
+            auto now = std::chrono::steady_clock::now();
+            auto dropTime = now - std::chrono::milliseconds((3 * kStatusUpdatePeriodMs) / 2);
             {
                 std::lock_guard<std::mutex> lock(m_stateMutex);
                 auto oldest = m_stateQueue.size() ? m_stateQueue.front().first : now;
@@ -384,19 +405,11 @@ private:
                     oldest = m_stateQueue.size() ? m_stateQueue.front().first : now;
                 }
                 m_stateQueue.push_back(std::make_pair(now, address));
-                m_stateMap.insert(std::make_pair(address, request.body()));
+                m_stateMap.insert_or_assign(address, request.body());
             }
-        } else {
-            LOG(ERROR) << "posted data did not verify for state report from " << address;
-        }
 
-        response.headers().add<Pistache::Http::Header::Server>("confab");
-        if (status) {
-            LOG(INFO) << "sending OK response after updating state " << address;
+            response.headers().add<Pistache::Http::Header::Server>("confab");
             response.send(Pistache::Http::Code::Ok);
-        } else {
-            LOG(ERROR) << "sending error response after failure to update state " << address;
-            response.send(Pistache::Http::Code::Internal_Server_Error);
         }
     }
 
@@ -406,11 +419,10 @@ private:
     std::shared_ptr<Pistache::Http::Endpoint> m_server;
     Pistache::Rest::Router m_router;
 
-    // TODO: wouldn't it be great if the addresses were converted to uint32_t, making comparisons constant time?
     std::mutex m_stateMutex;
-    using TimeName = std::pair<std::chrono::system_clock::time_point, std::string>;
+    using TimeName = std::pair<std::chrono::steady_clock::time_point, uint32_t>;
     std::deque<TimeName> m_stateQueue;
-    std::unordered_map<std::string, std::string> m_stateMap;
+    std::unordered_map<uint32_t, std::string> m_stateMap;
 };
 
 HttpEndpoint::HttpEndpoint(int listenPort, int numThreads, std::shared_ptr<AssetDatabase> assetDatabase) :

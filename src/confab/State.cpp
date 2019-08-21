@@ -34,10 +34,20 @@ void State::init() {
     LOG(INFO) << "got machine hostname of: " << m_hostname;
 }
 
-void State::update() {
+const std::string& State::update() {
     updateCPUStats();
     updateMemStats();
     updatePids();
+    return toString();
+}
+
+const std::string& State::toString() {
+    std::array<char, 128> buffer;
+    snprintf(buffer.data(), 128, "%s|%c%c%c%c|%d|%d", m_hostname.c_str(), m_jackdPid > 0 ? 'J' : 'j',
+        m_sclangPid > 0 ? 'L' : 'l', m_scidePid > 0 ? 'I' : 'i', m_scsynthPid > 0 ? 'S' : 's',
+        static_cast<int>(m_cpuPercentBusy), static_cast<int>((100 * m_memoryFree) / m_memoryTotal));
+    m_state = std::string(buffer.data());
+    return m_state;
 }
 
 void State::updateCPUStats() {

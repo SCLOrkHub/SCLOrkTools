@@ -87,6 +87,10 @@ private:
      */
     void nextList(uint64_t key, uint64_t token);
 
+    /*! Returns an enumerated list of networked machine states to SC.
+     */
+    void state();
+
     int m_listenPort;
     int m_sendPort;
     std::shared_ptr<AssetDatabase> m_assetDatabase;

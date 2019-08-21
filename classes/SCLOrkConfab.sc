@@ -10,6 +10,7 @@ SCLOrkConfab {
 	classvar listFoundFunc;
 	classvar listErrorFunc;
 	classvar listItemsFunc;
+	classvar statesFunc;
 
 	classvar addCallbackMap;
 	classvar findCallbackMap;
@@ -72,6 +73,10 @@ SCLOrkConfab {
 	*getListNext { |listId, fromToken, callback|
 		listCallbackMap.put(listId, callback);
 		confab.sendMsg('/listNext', listId, fromToken);
+	}
+
+	*getStates { |callback|
+		confab.sendMsg('/state');
 	}
 
 	*isConfabRunning {
@@ -193,6 +198,12 @@ SCLOrkConfab {
 			});
 		},
 		'/listItems',
+		recvPort: recvPort);
+
+		statesFunc = OSCFunc.new({ |msg, time, addr|
+			msg.postln;
+		},
+		'/states',
 		recvPort: recvPort);
 	}
 

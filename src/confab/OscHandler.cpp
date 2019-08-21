@@ -181,11 +181,25 @@ public:
                 uint64_t key = Asset::stringToKey(keyString);
                 std::string tokenString((arguments++)->AsString());
                 uint64_t token = Asset::stringToKey(tokenString);
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
 
                 LOG(INFO) << "processing [/listNext, " << keyString << ", " << tokenString << "]";
 
                 std::async(std::launch::async, [this, key, token] {
                     m_handler->nextList(key, token);
+                });
+            } else if (std::strcmp("/state", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
+
+                LOG(INFO) << "processing [/state]";
+
+                std::async(std::launch::async, [this] {
+                    m_handler->state();
                 });
             } else {
                 LOG(ERROR) << "OSC unknown message: " << message.AddressPattern();
@@ -412,6 +426,24 @@ void OscHandler::nextList(uint64_t key, uint64_t token) {
         char buffer[kPageSize];
         osc::OutboundPacketStream p(buffer, kPageSize);
         p << osc::BeginMessage("/listItems") << Asset::keyToString(key).c_str() << tokens.c_str() << osc::EndMessage;
+        m_transmitSocket->Send(p.Data(), p.Size());
+    });
+}
+
+void OscHandler::state() {
+    m_httpClient->getClientStatusPairs([this](const std::string& statePairs) {
+        char buffer[kPageSize];
+        osc::OutboundPacketStream p(buffer, kPageSize);
+        p << osc::BeginMessage("/states");
+        // There will always be at least one state in here (this computer).
+        auto end = statePairs.find_first_of("\t\n");
+        auto start = 0;
+        while (end != std::string::npos) {
+            p << statePairs.substr(start, end - start).c_str();
+            start = end + 1;
+            end = statePairs.find_first_of("\t\n", start);
+        }
+        p << osc::EndMessage;
         m_transmitSocket->Send(p.Data(), p.Size());
     });
 }

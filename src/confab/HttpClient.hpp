@@ -126,6 +126,12 @@ public:
      */
     uint64_t postList(const std::string& name);
 
+    /*! Gets latest status list of all clients on the network from the server.
+     *
+     * \param callback A function to call with a string of "<address>\t<status string>\n" pairs.
+     */
+    void getClientStatusPairs(std::function<void(const std::string&)> callback);
+
     /*! Closes any pending requests and shuts down.
      */
     void shutdown();

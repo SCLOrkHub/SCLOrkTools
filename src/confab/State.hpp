@@ -29,8 +29,24 @@ public:
     void init();
 
     /*! Updates all tracking and returns latest serialized state.
+     *
+     * \return The stringified version of the current State.
      */
-    void update();
+    const std::string& update();
+
+    /*! Converts current state to a compact string representation suitable for sending over network.
+     *
+     * Current State string format:
+     *
+     * hostname|jlis|CPU|MEM
+     *
+     * Hostname is a string. The next field is the state of the different processes, in order Jackd, scLang, scIde, and
+     * finally scSynth. If the character is lowercase the process is not detected, if upper case it is running. the CPU
+     * and MEM fields are decimal percentage values from 0-100.
+     *
+     * \return The string format of State.
+     */
+    const std::string& toString();
 
     /*! Get the hostname.
      *
@@ -111,6 +127,8 @@ private:
     int m_sclangPid;
     int m_scidePid;
     int m_scsynthPid;
+
+    std::string m_state;
 };
 
 }

@@ -7,7 +7,6 @@
 #include "schemas/FlatAssetData_generated.h"
 #include "schemas/FlatAsset_generated.h"
 #include "schemas/FlatList_generated.h"
-#include "schemas/FlatState_generated.h"
 
 #include "glog/logging.h"
 #include "libbase64.h"
@@ -522,6 +521,25 @@ uint64_t HttpClient::postList(const std::string& name) {
     return ok ? key : 0;
 }
 
+void HttpClient::getClientStatusPairs(std::function<void(const std::string&)> callback) {
+    std::string request = m_serverAddress + "/state";
+    LOG(INFO) << "issuing state request to " << request;
+
+    auto promise = m_client->get(request).send();
+    promise.then([&callback, &request](Pistache::Http::Response response) {
+        if (response.code() == Pistache::Http::Code::Ok) {
+            LOG(INFO) << "received ok response for state request " << request;
+            callback(response.body());
+        } else {
+            LOG(ERROR) << "error code " << response.code() << " on state request " << request;
+            callback("");
+        }
+    }, Pistache::Async::NoExcept);
+
+    Pistache::Async::Barrier barrier(promise);
+    barrier.wait();
+}
+
 void HttpClient::shutdown() {
     {
         std::lock_guard<std::mutex> lock(m_quitMutex);
@@ -536,41 +554,19 @@ void HttpClient::shutdown() {
 void HttpClient::updateStateLoop() {
     LOG(INFO) << "client state update thread loop started.";
     m_state->init();
-    std::string request = m_serverAddress + "/state";
+    const std::string request = m_serverAddress + "/state";
 
     while (true) {
         std::unique_lock<std::mutex> lock(m_quitMutex);
         if (m_quitCV.wait_for(lock, std::chrono::milliseconds(kStatusUpdatePeriodMs), [this]{ return m_quit; })) {
             break;
         } else {
-            LOG(INFO) << "sending state update to server.";
-            // Must have timed out (or spurious wakeup), normal operation.
-            m_state->update();
-            // Construct a FlatState record and ship it to the server.
-            flatbuffers::FlatBufferBuilder builder(kPageSize);
-            auto hostname = builder.CreateString(m_state->hostname());
-            Data::FlatStateBuilder stateBuilder(builder);
-            stateBuilder.add_hostname(hostname);
-            stateBuilder.add_scidePid(m_state->scidePid());
-            stateBuilder.add_sclangPid(m_state->sclangPid());
-            stateBuilder.add_scsynthPid(m_state->scsynthPid());
-            stateBuilder.add_jackdPid(m_state->jackdPid());
-            stateBuilder.add_cpuPercentBusy(m_state->cpuPercentBusy());
-            stateBuilder.add_memoryFree(m_state->memoryFree());
-            stateBuilder.add_memoryTotal(m_state->memoryTotal());
+            // Must have timed out (or spurious wakeup), normal operation, ship an update to the server.
+            const std::string& state = m_state->update();
             // TODO: user??
-            auto state = stateBuilder.Finish();
-            builder.Finish(state);
-            // Encode into string and send to server.
-            char base64[kPageSize];
-            size_t encodedSize = 0;
-            base64_encode(reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize(), base64,
-                &encodedSize, 0);
-            CHECK_LT(encodedSize, kPageSize) << "encoded list larger than page size";
             auto promise = m_client->post(request)
                 .header<Pistache::Http::Header::ContentType>(MIME(Text, Plain))
-                .header<Pistache::Http::Header::ContentLength>(encodedSize)
-                .body(std::string(base64, encodedSize))
+                .body(state)
                 .send();
             promise.then([&request](Pistache::Http::Response response) {
                 if (response.code() != Pistache::Http::Code::Ok) {
