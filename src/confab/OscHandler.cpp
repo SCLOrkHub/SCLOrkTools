@@ -90,16 +90,6 @@ public:
                 int serialNumber = (arguments++)->AsInt32();
                 std::string typeString((arguments++)->AsString());
                 std::string name((arguments++)->AsString());
-                std::string authorString((arguments++)->AsString());
-                uint64_t author = 0;
-                if (authorString.size() > 0) {
-                    author = Asset::stringToKey(authorString);
-                }
-                std::string deprecatesString((arguments++)->AsString());
-                uint64_t deprecates = 0;
-                if (deprecatesString.size() > 0) {
-                    uint64_t deprecats = Asset::stringToKey(deprecatesString);
-                }
                 std::string listIds((arguments++)->AsString());
                 std::string filePath((arguments++)->AsString());
                 if (arguments != message.ArgumentsEnd()) {
@@ -107,15 +97,14 @@ public:
                 }
 
                 LOG(INFO) << "processing [/assetAddFile " << typeString << ", " << serialNumber << ", " << name << ", "
-                    << authorString << ", " << deprecatesString << ", " << filePath << "]";
+                    << filePath << "]";
 
                 Asset::Type type = Asset::typeStringToEnum(typeString);
                 if (type == Asset::kInvalid) {
                     LOG(ERROR) << "/assetAddFile got bad type string: " << typeString;
                 } else {
-                    std::async(std::launch::async, [this, type, serialNumber, name, author, deprecates, listIds,
-                            filePath] {
-                        m_handler->addAssetFile(type, serialNumber, name, author, deprecates, listIds, filePath);
+                    std::async(std::launch::async, [this, type, serialNumber, name, listIds, filePath] {
+                        m_handler->addAssetFile(type, serialNumber, name, listIds, filePath);
                     });
                 }
             } else if (std::strcmp("/assetAddString", message.AddressPattern()) == 0) {
@@ -123,16 +112,6 @@ public:
                 int serialNumber = (arguments++)->AsInt32();
                 std::string typeString((arguments++)->AsString());
                 std::string name((arguments++)->AsString());
-                std::string authorString((arguments++)->AsString());
-                uint64_t author = 0;
-                if (authorString.size() > 0) {
-                    author = Asset::stringToKey(authorString);
-                }
-                std::string deprecatesString((arguments++)->AsString());
-                uint64_t deprecates = 0;
-                if (deprecatesString.size() > 0) {
-                    deprecates = Asset::stringToKey(deprecatesString);
-                }
                 std::string listIds((arguments++)->AsString());
                 std::string assetString((arguments++)->AsString());
                 if (arguments != message.ArgumentsEnd()) {
@@ -140,15 +119,14 @@ public:
                 }
 
                 LOG(INFO) << "processing [/assetAddString " << typeString << ", " << serialNumber << ", " << name
-                    << ", " << authorString << ", " << deprecatesString << ", " << assetString << "]";
+                    << ", " << assetString << "]";
 
                 Asset::Type type = Asset::typeStringToEnum(typeString);
                 if (type == Asset::kInvalid) {
                     LOG(ERROR) << "/assetAddString got bad type string: " << typeString;
                 } else {
-                    std::async(std::launch::async, [this, type, serialNumber, name, author, deprecates, listIds,
-                            assetString] {
-                        m_handler->addAssetString(type, serialNumber, name, author, deprecates, listIds, assetString);
+                    std::async(std::launch::async, [this, type, serialNumber, name, listIds, assetString] {
+                        m_handler->addAssetString(type, serialNumber, name, listIds, assetString);
                     });
                 }
             } else if (std::strcmp("/listAdd", message.AddressPattern()) == 0) {
@@ -346,9 +324,9 @@ void OscHandler::loadAsset(uint64_t key) {
     m_transmitSocket->Send(p.Data(), p.Size());
 }
 
-void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string name, uint64_t author,
-    uint64_t deprecates, std::string listIds, std::string filePath) {
-    uint64_t key = m_httpClient->postFileAsset(type, name, author, deprecates, listIds, filePath);
+void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string name, std::string listIds,
+    std::string filePath) {
+    uint64_t key = m_httpClient->postFileAsset(type, name, listIds, filePath);
     char buffer[kPageSize];
     osc::OutboundPacketStream p(buffer, kPageSize);
     p << osc::BeginMessage("/assetAdded") << serialNumber << Asset::keyToString(key).c_str()
@@ -356,9 +334,9 @@ void OscHandler::addAssetFile(Asset::Type type, int serialNumber, std::string na
     m_transmitSocket->Send(p.Data(), p.Size());
 }
 
-void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string name, uint64_t author,
-    uint64_t deprecates, std::string listIds, std::string assetString) {
-    uint64_t key = m_httpClient->postInlineAsset(type, name, author, deprecates, listIds, assetString.size(),
+void OscHandler::addAssetString(Asset::Type type, int serialNumber, std::string name, std::string listIds,
+    std::string assetString) {
+    uint64_t key = m_httpClient->postInlineAsset(type, name, listIds, assetString.size(),
         reinterpret_cast<const uint8_t*>(assetString.c_str()));
 
     // Regardless of success or failure of Asset add we return the key and serial number.
@@ -378,9 +356,6 @@ void OscHandler::sendAsset(const std::string& requested, RecordPtr record) {
     p << Asset::keyToString(asset->key()).c_str();
     p << Asset::enumToTypeString(static_cast<Asset::Type>(asset->type())).c_str();
     p << asset->name()->c_str();
-    p << Asset::keyToString(asset->author()).c_str();
-    p << Asset::keyToString(asset->deprecatedBy()).c_str();
-    p << Asset::keyToString(asset->deprecates()).c_str();
     if (asset->inlineData()) {
         osc::Blob blob(asset->inlineData()->data(), asset->inlineData()->size());
         p << blob;

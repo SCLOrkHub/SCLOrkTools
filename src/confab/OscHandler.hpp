@@ -62,13 +62,12 @@ private:
 
     /*! Processes an asset addition request for a given file path. Should run as a task.
      */
-    void addAssetFile(Asset::Type type, int serialNumber, std::string name, uint64_t author, uint64_t deprecates,
-        std::string listIds, std::string filePath);
+    void addAssetFile(Asset::Type type, int serialNumber, std::string name, std::string listIds, std::string filePath);
 
     /*! Processes an asset addition request for a short string. Should run as a task.
      */
-    void addAssetString(Asset::Type type, int serialNumber, std::string name, uint64_t author, uint64_t deprecates,
-        std::string listIds, std::string assetString);
+    void addAssetString(Asset::Type type, int serialNumber, std::string name, std::string listIds,
+        std::string assetString);
 
     /*! Utility method, sends an Asset back to SuperCollider via OSC. The requested string can either be a key or a
      * name.

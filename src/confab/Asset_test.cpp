@@ -20,9 +20,6 @@ TEST(AssetTest, MinimalSerialization) {
     EXPECT_EQ(0, testAsset.key());
     EXPECT_EQ("", testAsset.name());
     EXPECT_EQ("", testAsset.fileExtension());
-    EXPECT_EQ(0, testAsset.author());
-    EXPECT_EQ(0, testAsset.deprecatedBy());
-    EXPECT_EQ(0, testAsset.deprecates());
     EXPECT_EQ(0, testAsset.size());
     EXPECT_EQ(0, testAsset.chunks());
     EXPECT_EQ(0, testAsset.salt());
@@ -34,9 +31,6 @@ TEST(AssetTest, AllFieldsSet) {
     asset.setKey(0xdeadbeef1bad1dea);
     asset.setName("test asset not for serialization");
     asset.setFileExtension("scd");
-    asset.setAuthor(1);
-    asset.setDeprecatedBy(2);
-    asset.setDeprecates(3);
     asset.setSalt(12345678);
     uint8_t* inlineData = asset.setInlineData(100);
     for (auto i = 0; i < 100; ++i) {
@@ -58,9 +52,6 @@ TEST(AssetTest, AllFieldsSet) {
     EXPECT_EQ(asset.key(), testAsset.key());
     EXPECT_EQ(asset.name(), testAsset.name());
     EXPECT_EQ(asset.fileExtension(), testAsset.fileExtension());
-    EXPECT_EQ(asset.author(), testAsset.author());
-    EXPECT_EQ(asset.deprecatedBy(), testAsset.deprecatedBy());
-    EXPECT_EQ(asset.deprecates(), testAsset.deprecates());
     EXPECT_EQ(asset.salt(), testAsset.salt());
     EXPECT_EQ(asset.chunks(), testAsset.chunks());
     ASSERT_EQ(asset.size(), testAsset.size());
