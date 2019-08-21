@@ -33,15 +33,15 @@ SCLOrkConfab {
 		SCLOrkConfab.prStartConfab;
 	}
 
-	*addAssetFile { |type, name, author, deprecates, lists, filePath, addCallback|
+	*addAssetFile { |type, name, lists, filePath, addCallback|
 		addCallbackMap.put(addSerial, addCallback);
-		confab.sendMsg('/assetAddFile', addSerial, type, name, author, deprecates, lists, filePath);
+		confab.sendMsg('/assetAddFile', addSerial, type, name, lists, filePath);
 		addSerial = addSerial + 1;
 	}
 
-	*addAssetString { |type, name, author, deprecates, lists, assetString, addCallback|
+	*addAssetString { |type, name, lists, assetString, addCallback|
 		addCallbackMap.put(addSerial, addCallback);
-		confab.sendMsg('/assetAddString', addSerial, type, name, author, deprecates, lists, assetString);
+		confab.sendMsg('/assetAddString', addSerial, type, name, lists, assetString);
 		addSerial = addSerial + 1;
 	}
 
@@ -123,13 +123,9 @@ SCLOrkConfab {
 			var returnedKey = msg[2];
 			var assetType = msg[3];
 			var name = msg[4];
-			var author = msg[5];
-			var deprecatedBy = msg[6];
-			var deprecates = msg[7];
 			var inlineData = msg[8];
 
-			var asset = SCLOrkAsset.newFromArgs(returnedKey, assetType, name, author, deprecatedBy,
-				deprecates, inlineData);
+			var asset = SCLOrkAsset.newFromArgs(returnedKey, assetType, name, inlineData);
 
 			var callback = findCallbackMap.at(requestedKey);
 

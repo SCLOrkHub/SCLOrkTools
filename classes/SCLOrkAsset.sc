@@ -32,17 +32,3 @@ SCLOrkInlineAsset {
 
 SCLOrkFileAsset {
 }
-
-// What if SCLOrkAssets were all either YAML strings or files? Maybe AssetType is just a label?
-SCLOrkPerson : SCLOrkAsset {
-	var <realName;
-	var <defaultNick;
-
-	*newFromParse { |parse|
-
-	}
-
-	asYAML {
-
-	}
-}
