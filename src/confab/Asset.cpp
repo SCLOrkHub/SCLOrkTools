@@ -55,9 +55,6 @@ uint64_t Asset::stringToKey(const std::string& keyString) {
 Asset::Asset(Asset::Type type) :
     m_type(type),
     m_key(0),
-    m_author(0),
-    m_deprecatedBy(0),
-    m_deprecates(0),
     m_size(0),
     m_chunks(0),
     m_salt(0),
@@ -67,9 +64,6 @@ Asset::Asset(Asset::Type type) :
 Asset::Asset(const Data::FlatAsset* flatAsset)  :
     m_type(static_cast<Asset::Type>(flatAsset->type())),
     m_key(flatAsset->key()),
-    m_author(flatAsset->author()),
-    m_deprecatedBy(flatAsset->deprecatedBy()),
-    m_deprecates(flatAsset->deprecates()),
     m_size(flatAsset->size()),
     m_chunks(flatAsset->chunks()),
     m_salt(flatAsset->salt()) {
@@ -117,15 +111,6 @@ void Asset::flatten(flatbuffers::FlatBufferBuilder& builder, const uint8_t* inli
     }
     if (!lists.IsNull()) {
         assetBuilder.add_lists(lists);
-    }
-    if (m_author) {
-        assetBuilder.add_author(m_author);
-    }
-    if (m_deprecatedBy) {
-        assetBuilder.add_deprecatedBy(m_deprecatedBy);
-    }
-    if (m_deprecates) {
-        assetBuilder.add_deprecates(m_deprecates);
     }
     if (m_chunks) {
         assetBuilder.add_chunks(m_chunks);

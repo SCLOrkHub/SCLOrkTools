@@ -8,19 +8,24 @@ description::
 
 classmethods::
 
-method:: startConfab
+method:: start
 Starts the confab service.
+
+argument:: confabBindPort
+The UDP port that the confab binary is listening on for incoming commands from sclang.
+
+argument:: scBindPort
+The UDP port that sclang should listen on for responses from the confab binary.
 
 argument:: pathToConfabBinary
 An override path to the confab binary. If not provided, SCLOrkConfab will look in the default path inside the Quark directory.
 
-argument:: pathToConfabDatabase
+argument:: pathToConfabDataDir
 An override path to the confab database directory. If not provided, SCLOrkConfab will look in the default '/data/confab/db' path inside the Quark directory.
 
 returns:: true on success, false on failure.
 
-
-method:: findAsset
+method:: findAssetById
 Looks up the Asset record associated with the provided id.
 
 argument:: id
@@ -30,8 +35,16 @@ argument:: callback
 A function to call back with the asset and status, when determined. Called with two arguments, the first is the asset id provided in the original call, and the second is either a SCLOrkAsset object or nil if no asset was found associated with that id. Note that the returned SCLOrkAsset object can have a different key than the one originally requested, usually in the case of deprecation of the original Asset.
 
 
-instancemethods::
+method:: createList
+Creates a new list with the provided name. If a list already exists with this name it will still exist but will lose the relationship to this name.
 
+argument:: name
+The name to use in creating the new list.
+
+argument:: callback
+The function to callback with the results. The callback will have two arguments, first the list name and second the id of the created list, or '0' on error.
+
+instancemethods::
 
 examples::
 

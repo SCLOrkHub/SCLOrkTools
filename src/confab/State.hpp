@@ -38,9 +38,9 @@ public:
      *
      * Current State string format:
      *
-     * hostname|jlis|CPU|MEM
+     * hostname|iljs|CPU|MEM
      *
-     * Hostname is a string. The next field is the state of the different processes, in order Jackd, scLang, scIde, and
+     * Hostname is a string. The next field is the state of the different processes, in order scIde, scLang, Jackd, and
      * finally scSynth. If the character is lowercase the process is not detected, if upper case it is running. the CPU
      * and MEM fields are decimal percentage values from 0-100.
      *

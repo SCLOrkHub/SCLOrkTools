@@ -186,8 +186,8 @@ void HttpClient::getAssetData(uint64_t key, uint64_t chunk,
     barrier.wait();
 }
 
-uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
-        const std::string& listIds, uint64_t size, const uint8_t* inlineData) {
+uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, const std::string& listIds,
+    uint64_t size, const uint8_t* inlineData) {
     if (size > kSingleChunkDataSize) {
         LOG(ERROR) << "attempt to post inline Asset of size " << size << " greater than max of "
             << kSingleChunkDataSize;
@@ -196,8 +196,6 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
 
     Asset asset(type);
     asset.setName(name);
-    asset.setAuthor(author);
-    asset.setDeprecates(deprecates);
     // For short assets we add some random salt to the hash, to help avoid hash collisions.
     asset.setSalt(m_distribution(m_randomDevice));
     uint64_t key = XXH64(inlineData, size, asset.salt());
@@ -237,8 +235,8 @@ uint64_t HttpClient::postInlineAsset(Asset::Type type, const std::string& name, 
     return ok ? key : 0;
 }
 
-uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
-        const std::string& listIds, const fs::path& assetFile) {
+uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, const std::string& listIds,
+    const fs::path& assetFile) {
     // Some Assets like images make sense to serialize to a file, regardless of size, because SuperCollider has no
     // concept of loading an image from a binary blob of memory.
     size_t fileSize = fs::file_size(assetFile);
@@ -293,8 +291,6 @@ uint64_t HttpClient::postFileAsset(Asset::Type type, const std::string& name, ui
     asset.setKey(key);
     asset.setName(name);
     asset.setFileExtension(assetFile.extension());
-    asset.setAuthor(author);
-    asset.setDeprecates(deprecates);
     asset.setSize(fileSize);
     asset.setChunks((fileSize / kDataChunkSize) + 1);
     asset.parseListIds(listIds);

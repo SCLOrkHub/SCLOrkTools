@@ -126,42 +126,6 @@ public:
      */
     const std::string& fileExtension() const { return m_fileExtension; }
 
-    /*! Sets a key for an Author entry.
-     *
-     * \param authorKey The key for the author data entry.
-     */
-    void setAuthor(uint64_t authorKey) { m_author = authorKey; }
-
-    /*! Key of a YAML Asset describing a person who made this content, if present.
-     *
-     * \return Asset key for the Author entity, or 0 if not present.
-     */
-    uint64_t author() const { return m_author; }
-
-    /*! Provides an optional key that represents a newer version of this Asset.
-     *
-     * \param deprecatedByKey The key to the Asset that deprecates this one.
-     */
-    void setDeprecatedBy(uint64_t deprecatedByKey) { m_deprecatedBy = deprecatedByKey; }
-
-    /*! Key of a newer Asset to use in place of this one, if present.
-     *
-     * \return The key for an Asset that deprecates this one.
-     */
-    uint64_t deprecatedBy() const { return m_deprecatedBy; }
-
-    /*! Sets the key for the older Asset this one replaces.
-     *
-     * \param deprecatesKey The key that this asset replaces.
-     */
-    void setDeprecates(uint64_t deprecatesKey) { m_deprecates = deprecatesKey; }
-
-    /*! Key of an older Asset this Asset replaces, if present.
-     *
-     * \return Asset key deprecated by this one.
-     */
-    uint64_t deprecates() const { return m_deprecates; }
-
     /*! Sets the size in bytes of the data associated with this Asset.
      *
      * \param size The size in bytes of the Asset.
@@ -250,9 +214,6 @@ private:
     uint64_t m_key;
     std::string m_name;
     std::string m_fileExtension;
-    uint64_t m_author;
-    uint64_t m_deprecatedBy;
-    uint64_t m_deprecates;
     uint64_t m_size;
     uint64_t m_chunks;
     std::vector<uint64_t> m_lists;

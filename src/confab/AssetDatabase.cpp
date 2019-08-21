@@ -204,6 +204,7 @@ RecordPtr AssetDatabase::findAsset(uint64_t key) {
         return makeEmptyRecord();
     }
 
+    /*
     uint64_t loadedKey = key;
     auto flatAsset = Data::GetFlatAsset(iterator->value().data());
     while (flatAsset->deprecatedBy()) {
@@ -221,6 +222,8 @@ RecordPtr AssetDatabase::findAsset(uint64_t key) {
     }
     LOG(INFO) << "Loaded Asset " << Asset::keyToString(loadedKey) << " upon request to load original asset "
         << Asset::keyToString(key);
+    */
+
     return RecordPtr(new DatabaseRecord(iterator));
 }
 

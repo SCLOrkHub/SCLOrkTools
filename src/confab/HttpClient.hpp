@@ -74,28 +74,24 @@ public:
      *
      * \param type The Asset type.
      * \param name The Asset name, can be "".
-     * \param author An optional Asset key.
-     * \param deprecates An optional Asset key.
      * \param listIds A comma-separated concatenated string of list ids to add this asset to.
      * \param size The size of the data pointed to by inlineData, should be smaller than kDataChunkSize
      * \param inlineData The inline Asset data to serialize.
      * \return The computed key for this Asset, or zero on error.
      */
-    uint64_t postInlineAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
-            const std::string& listIds, uint64_t size, const uint8_t* inlineData);
+    uint64_t postInlineAsset(Asset::Type type, const std::string& name, const std::string& listIds, uint64_t size,
+        const uint8_t* inlineData);
 
     /*! Uploads a new Asset along with all AssetData chunks in the file to the server. Blocking.
      *
      * \param type The Asset type.
      * \param name The Asset name, can be "".
-     * \param author An optional Asset key.
-     * \param deprecates An optional Asset key.
      * \param listIds A comma-separated concatenated string of list ids to add this asset to.
      * \param assetFile The path of the file to ingest.
      * \return The computed key for this Asset, or zero on error.
      */
-    uint64_t postFileAsset(Asset::Type type, const std::string& name, uint64_t author, uint64_t deprecates,
-            const std::string& listIds, const fs::path& assetFile);
+    uint64_t postFileAsset(Asset::Type type, const std::string& name, const std::string& listIds,
+        const fs::path& assetFile);
 
     /*! Requests a list metadata entry from the server. Blocking.
      *
