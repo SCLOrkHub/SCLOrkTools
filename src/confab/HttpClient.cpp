@@ -536,6 +536,10 @@ void HttpClient::getClientStatusPairs(std::function<void(const std::string&)> ca
     barrier.wait();
 }
 
+void HttpClient::setUser(uint64_t key) {
+    m_state->setUser(key);
+}
+
 void HttpClient::shutdown() {
     {
         std::lock_guard<std::mutex> lock(m_quitMutex);

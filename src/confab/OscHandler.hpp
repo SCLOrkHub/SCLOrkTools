@@ -90,6 +90,10 @@ private:
      */
     void state();
 
+    /*! Sets the userId on the state report sent to the server.
+     */
+    void setUser(uint64_t key);
+
     int m_listenPort;
     int m_sendPort;
     std::shared_ptr<AssetDatabase> m_assetDatabase;

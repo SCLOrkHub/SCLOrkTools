@@ -15,7 +15,7 @@ SCLOrkLoginWindow {
 	}
 
 	prUpdateUsersList {
-		c = Condition.new;
+		var c = Condition.new;
 		Routine.new({}).play;
 	}
 }

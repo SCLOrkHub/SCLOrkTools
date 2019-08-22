@@ -44,3 +44,25 @@ Routine.new({
 	"got % for bruno id".format(brunoUser).postln;
 }).play;
 )
+
+
+(
+SCLOrkConfab.getStates({|w|
+	w.keysValuesDo({|address, state|
+		var user = state.asString.split($|)[0].asSymbol;
+		user.postln;
+	});
+});
+)
+
+(
+SCLOrkConfab.setUser('d961ab8e2d631abe');
+)
+
+(
+Routine.new({
+	var c = SCLOrkChatClient.new;
+	3.wait;
+	c.userMap.postln;
+}).play;
+)

@@ -16,6 +16,7 @@ SCLOrkConfab {
 	classvar findCallbackMap;
 	classvar loadCallbackMap;
 	classvar listCallbackMap;
+	classvar statesCallbackQueue;
 
 	*start { |
 		confabBindPort = 4248,
@@ -28,6 +29,7 @@ SCLOrkConfab {
 		findCallbackMap = IdentityDictionary.new;
 		loadCallbackMap = IdentityDictionary.new;
 		listCallbackMap = IdentityDictionary.new;
+		statesCallbackQueue = List.new;
 
 		SCLOrkConfab.prBindResponseMessages(scBindPort);
 		SCLOrkConfab.prStartConfab;
@@ -76,7 +78,13 @@ SCLOrkConfab {
 	}
 
 	*getStates { |callback|
+		// States callbacks are handled first-come-first-serve.
+		statesCallbackQueue.add(callback);
 		confab.sendMsg('/state');
+	}
+
+	*setUser { |userId|
+		confab.sendMsg('/setUser', userId);
 	}
 
 	*isConfabRunning {
@@ -84,6 +92,14 @@ SCLOrkConfab {
 			^confabPid.pidRunning;
 		});
 		^false;
+	}
+
+	*idValid { |id|
+		^(
+			id.class.asSymbol === 'Symbol'
+			and: { id !== '0000000000000000' }
+			and: { id !== 'ffffffffffffffff' }
+		);
 	}
 
 	*prBindResponseMessages { | recvPort |
@@ -197,7 +213,9 @@ SCLOrkConfab {
 		recvPort: recvPort);
 
 		statesFunc = OSCFunc.new({ |msg, time, addr|
-			msg.postln;
+			var states = msg[1..].asDict;
+			var callback = statesCallbackQueue.pop();
+			callback.value(states);
 		},
 		'/states',
 		recvPort: recvPort);

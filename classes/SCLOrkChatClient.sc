@@ -1,4 +1,139 @@
 SCLOrkChatClient {
+	const clientUpdatePeriodSeconds = 30.0;
+
+	var <userId;  // signed-in userId
+	var <userMap;  // userId -> immutable Asset.
+	var <nameMap;  // Current nickname, subject to change.
+	var <currentUsers;
+
+	var quitTasks;
+	var clientUpdateTask;
+
+	var <>onConnected;  // called on connection status change with bool argument
+	var <>onMessageReceived;  // called with chatMessage object on receipt
+	var <>onUserChanged;  // called with user changes, type, userid, nickname.
+
+	*new {
+		^super.new.init;
+	}
+
+	init {
+		quitTasks = false;
+		userMap = IdentityDictionary.new;
+		nameMap = IdentityDictionary.new;
+		currentUsers = IdentitySet.new;
+
+		this.getUsers();
+	}
+
+	getUsers {
+		Routine.new({
+			var c = Condition.new;
+			var userListId, userIds;
+
+			c.test = false;
+			SCLOrkConfab.findListByName('Users', { |name, key|
+				userListId = key;
+				c.test = true;
+				c.signal;
+			});
+			c.wait;
+
+			// Now we get all the users on the list.
+			c.test = false;
+			SCLOrkConfab.getListNext(userListId, '0', { |id, tokens|
+				userIds = tokens.asString.split($\n).collect({|pair| pair.split($ )[1].asSymbol; });
+				c.test = true;
+				c.signal;
+			});
+			c.wait;
+
+			// Look up everybody who is not in the current userMap.
+			userIds.do({ |id, index|
+				"id: %".format(id).postln;
+				if (SCLOrkConfab.idValid(id) and: { userMap.at(id).isNil }, {
+					"lookup: %".format(id).postln;
+					c.test = false;
+					SCLOrkConfab.findAssetById(id, { |id, asset|
+						userMap.put(id, asset.inlineData);
+						c.test = true;
+						c.signal;
+					});
+					c.wait;
+				});
+			});
+		}).play;
+	}
+
+	connect { |withUserId|
+		userId = withUserId;
+		SCLOrkConfab.setUser(userId);
+	}
+
+	// ok do we even care about online status? Like everything is immutable. If necessary/interested a
+	// person can monitor state of current network environment. But really the chat is a lot more like
+	// low-latency email these days, meaning that "who's online" is a much less important concept for
+	// typical users, perhaps only relevant to the director/sysadmin types. So fidelity can be fairly
+	// low, perhaps even emulated with some message last sent kind of thing. Or by a very occasional call
+	// on the SCLOrkChat directly to the status thing. The list of users should just grow monotonically.
+	prStartClientUpdate {
+		clientUpdateTask = SkipJack.new({
+			var c = Condition.new;
+			Routine.new({
+				var states;
+				var newUsers, droppedUsers;
+				var latestUsers = IdentitySet.new;
+
+				c.test = false;
+
+				SCLOrkConfab.getStates({ |newStates|
+					states = newStates;
+					c.test = true;
+					c.signal;
+				});
+				c.wait;
+
+				// Extract non-zero userIds from the status values.
+				states.keysValuesDo({ |address, state|
+					var user = state.asString.split($|)[0].asSymbol;
+					if (user !== '0000000000000000', {
+						latestUsers.add(user);
+					});
+				});
+
+				// New users are the ones present in the new set but not in the current one.
+				newUsers = latestUsers - currentUsers;
+				droppedUsers = currentUsers - latestUsers;
+				currentUsers = latestUsers;
+
+				droppedUsers.do({ |id, index|
+					var name = nameMap.at(id);
+					onUserChanged.value(\remove, id, name, name);
+				});
+
+				newUsers.do({ |id, index|
+					if (userMap.at(id).isNil, {
+						c.test = false;
+						SCLOrkConfab.findAssetById(id, { |id, asset|
+							userMap.put(id, asset.inlineData);
+							c.test = true;
+							c.signal;
+						});
+						c.wait;
+					});
+				});
+			});
+		},
+		dt: clientUpdatePeriodSeconds,
+		stopTest: { quitTasks },
+		name: "ChatClientUpdate",
+		clock: SystemClock,
+		autostart: true
+		);
+	}
+}
+
+SCLOrkChatClientOld {
 	var serverAddress;
 	var serverPort;
 	var listenPort;

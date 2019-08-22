@@ -168,6 +168,19 @@ public:
                 std::async(std::launch::async, [this, key, token] {
                     m_handler->nextList(key, token);
                 });
+            } else if (std::strcmp("/setUser", message.AddressPattern()) == 0) {
+                osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
+                std::string userIdString = ((arguments++)->AsString());
+                uint64_t userId = Asset::stringToKey(userIdString);
+                if (arguments != message.ArgumentsEnd()) {
+                    throw osc::ExcessArgumentException();
+                }
+
+                LOG(INFO) << "processing [/setUser " << userIdString << "]";
+
+                std::async(std::launch::async, [this, userId] {
+                    m_handler->setUser(userId);
+                });
             } else if (std::strcmp("/state", message.AddressPattern()) == 0) {
                 osc::ReceivedMessage::const_iterator arguments = message.ArgumentsBegin();
                 if (arguments != message.ArgumentsEnd()) {
@@ -421,6 +434,10 @@ void OscHandler::state() {
         p << osc::EndMessage;
         m_transmitSocket->Send(p.Data(), p.Size());
     });
+}
+
+void OscHandler::setUser(uint64_t key) {
+    m_httpClient->setUser(key);
 }
 
 }  // namespace Confab

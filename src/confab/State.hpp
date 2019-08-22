@@ -38,15 +38,28 @@ public:
      *
      * Current State string format:
      *
-     * hostname|iljs|CPU|MEM
+     * userId|hostname|iljs|CPU|MEM
      *
-     * Hostname is a string. The next field is the state of the different processes, in order scIde, scLang, Jackd, and
-     * finally scSynth. If the character is lowercase the process is not detected, if upper case it is running. the CPU
-     * and MEM fields are decimal percentage values from 0-100.
+     * UserId is a 64-bit hexadecimal number as a string. Hostname is a string. The next field is the state of the
+     * different processes, in order scIde, scLang, Jackd, and finally scSynth. If the character is lowercase the
+     * process is not detected, if upper case it is running. the CPU and MEM fields are decimal percentage values from
+     * 0-100.
      *
      * \return The string format of State.
      */
     const std::string& toString();
+
+    /*! Gets the user key.
+     *
+     * \return The value of the key provided in setUser().
+     */
+    uint64_t user() const { return m_user; }
+
+    /*! Sets the user key.
+     *
+     * \param key The asset key to associate as the user of this computer.
+     */
+    void setUser(uint64_t key) { m_user = key; }
 
     /*! Get the hostname.
      *
@@ -112,6 +125,8 @@ private:
     /*! Returns true if the provided pid directory still exists, meaning process is still running.
      */
     bool stillRunning(int pid);
+
+    uint64_t m_user;
 
     std::string m_hostname;
 

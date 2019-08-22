@@ -128,6 +128,12 @@ public:
      */
     void getClientStatusPairs(std::function<void(const std::string&)> callback);
 
+    /*! Sets the userId, to be included in the state report.
+     *
+     * \param key The asset id of the user to reference as "signed in" to this computer.
+     */
+    void setUser(uint64_t key);
+
     /*! Closes any pending requests and shuts down.
      */
     void shutdown();

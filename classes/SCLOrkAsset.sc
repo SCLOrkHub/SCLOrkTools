@@ -2,13 +2,10 @@ SCLOrkAsset {
 	var <key;
 	var <type;
 	var <name;
-	var <author;
-	var <deprecatedBy;
-	var <deprecates;
 	var <inlineData;
 
-	*newFromArgs { |key, type, name, author, deprecatedBy, deprecates, inlineData|
-		^super.newCopyArgs(key, type, name, author, deprecatedBy, deprecates, inlineData).init;
+	*newFromArgs { |key, type, name, author, inlineData|
+		^super.newCopyArgs(key, type, name, author, inlineData).init;
 	}
 
 	init {
@@ -18,17 +15,11 @@ SCLOrkAsset {
 				var chars = Array.fill(inlineData.size, { |i| inlineData[i].asAscii });
 				inlineData = String.newFrom(chars);
 			});
+			if (type === \yaml, {
+				var chars = Array.fill(inlineData.size, { |i| inlineData[i].asAscii });
+				var dataString = String.newFrom(chars);
+				inlineData = dataString.parseYAML;
+			});
 		});
 	}
-
-	// base class,
-	asYAML {
-
-	}
-}
-
-SCLOrkInlineAsset {
-}
-
-SCLOrkFileAsset {
 }
