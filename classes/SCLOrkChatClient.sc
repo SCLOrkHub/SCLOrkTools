@@ -42,7 +42,12 @@ SCLOrkChatClient {
 			// Now we get all the users on the list.
 			c.test = false;
 			SCLOrkConfab.getListNext(userListId, '0', { |id, tokens|
-				userIds = tokens.asString.split($\n).collect({|pair| pair.split($ )[1].asSymbol; });
+				userIds = tokens.asString
+				.split($\n)
+				.collect({|p| p.split($ )})
+				.reject({|p| p.size != 2 })
+				.collect({|p| p[1].asSymbol })
+				.select({|p| SCLOrkConfab.idValid(p) });
 				c.test = true;
 				c.signal;
 			});
@@ -50,11 +55,9 @@ SCLOrkChatClient {
 
 			// Look up everybody who is not in the current userMap.
 			userIds.do({ |id, index|
-				"id: %".format(id).postln;
-				if (SCLOrkConfab.idValid(id) and: { userMap.at(id).isNil }, {
-					"lookup: %".format(id).postln;
+				if (userMap.at(id).isNil, {
 					c.test = false;
-					SCLOrkConfab.findAssetById(id, { |id, asset|
+					SCLOrkConfab.findAssetById(id, { |foundId, asset|
 						userMap.put(id, asset.inlineData);
 						c.test = true;
 						c.signal;

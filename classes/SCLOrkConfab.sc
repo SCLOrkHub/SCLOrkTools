@@ -139,7 +139,7 @@ SCLOrkConfab {
 			var returnedKey = msg[2];
 			var assetType = msg[3];
 			var name = msg[4];
-			var inlineData = msg[8];
+			var inlineData = msg[5];
 
 			var asset = SCLOrkAsset.newFromArgs(returnedKey, assetType, name, inlineData);
 
