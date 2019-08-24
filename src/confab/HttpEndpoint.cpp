@@ -338,7 +338,7 @@ private:
             LOG(INFO) << "sending " << numPairs << " tokens back to client on list " << keyString;
             std::string pairList;
             for (auto i = 0; i < numPairs; ++i) {
-                pairList += Asset::keyToString(pairs[i * 2]) + " " + Asset::keyToString(pairs[(i * 2) + 1]) + "\n";
+                pairList += Asset::keyToString(pairs[i * 2]) + "\t" + Asset::keyToString(pairs[(i * 2) + 1]) + "\n";
             }
             response.send(Pistache::Http::Code::Ok, pairList, MIME(Text, Plain));
         }

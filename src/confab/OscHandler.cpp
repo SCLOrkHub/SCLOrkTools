@@ -18,6 +18,22 @@
 #include <cstring>
 #include <future>
 
+namespace {
+
+/*! Utility method for sending pairs of "<token>\t<token>\n" to a Osc packet stream.
+ */
+void streamPairs(const std::string& tokens, osc::OutboundPacketStream& p) {
+    auto end = tokens.find_first_of("\t\n");
+    auto start = 0;
+    while (end != std::string::npos) {
+        p << tokens.substr(start, end - start).c_str();
+        start = end + 1;
+        end = tokens.find_first_of("\t\n", start);
+    }
+}
+
+}  // namespace
+
 namespace Confab {
 
 /*! Handler class for processing incoming OSC messages.
@@ -413,7 +429,9 @@ void OscHandler::nextList(uint64_t key, uint64_t token) {
     m_httpClient->getListItems(key, token, [this, &key](const std::string& tokens) {
         char buffer[kPageSize];
         osc::OutboundPacketStream p(buffer, kPageSize);
-        p << osc::BeginMessage("/listItems") << Asset::keyToString(key).c_str() << tokens.c_str() << osc::EndMessage;
+        p << osc::BeginMessage("/listItems") << Asset::keyToString(key).c_str();
+        streamPairs(tokens, p);
+        p << osc::EndMessage;
         m_transmitSocket->Send(p.Data(), p.Size());
     });
 }
@@ -423,14 +441,7 @@ void OscHandler::state() {
         char buffer[kPageSize];
         osc::OutboundPacketStream p(buffer, kPageSize);
         p << osc::BeginMessage("/states");
-        // There will always be at least one state in here (this computer).
-        auto end = statePairs.find_first_of("\t\n");
-        auto start = 0;
-        while (end != std::string::npos) {
-            p << statePairs.substr(start, end - start).c_str();
-            start = end + 1;
-            end = statePairs.find_first_of("\t\n", start);
-        }
+        streamPairs(statePairs, p);
         p << osc::EndMessage;
         m_transmitSocket->Send(p.Data(), p.Size());
     });

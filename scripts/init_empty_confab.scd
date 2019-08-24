@@ -7,6 +7,7 @@ c = Condition.new;
 
 Routine.new({
 	var userList;
+	var lukenImage;
 	var lukenUser;
 	var brunoUser;
 	var chatMessageList;
@@ -23,7 +24,7 @@ Routine.new({
 
 	c.test = false;
 	SCLOrkConfab.addAssetString('yaml', "luken", userList,
-		"name: \"Luke Nihlen\"\nnick: \"luken\"", { |id|
+		"name: \"Luke Nihlen\"\nshort: \"luken\"\ndirector: false", { |id|
 			lukenUser = id;
 			c.test = true;
 			c.signal;
@@ -33,7 +34,7 @@ Routine.new({
 
 	c.test = false;
 	SCLOrkConfab.addAssetString('yaml', "bruno", userList,
-		"name: \"Bruno Ruviaro\"\nnick: \"bruno\"", { |id|
+		"name: \"Bruno Ruviaro\"\nshort: \"bruno\"\ndirector: true", { |id|
 			brunoUser = id;
 			c.test = true;
 			c.signal;
@@ -50,34 +51,5 @@ Routine.new({
 	});
 	c.wait;
 	"got % for chat messages list".format(chatMessageList).postln;
-}).play;
-)
-
-
-(
-SCLOrkConfab.getStates({|w|
-	w.keysValuesDo({|address, state|
-		var user = state.asString.split($|)[0].asSymbol;
-		user.postln;
-	});
-});
-)
-
-(
-SCLOrkConfab.setUser('d961ab8e2d631abe');
-)
-
-SCLOrkConfab.idValid('nil');
-
-nil.asSymbol;
-
-nil.class.asSymbol === 'Symbol'
-'d961ab8e2d631abe'.class.asSymbol === 'Symbol'
-(
-SCLOrkConfab.start;
-Routine.new({
-	var c = SCLOrkChatClient.new;
-	3.wait;
-	c.userMap.postln;
 }).play;
 )

@@ -130,9 +130,6 @@ table::
 ## strong::label:: || returnedKey || The key of the actually returned Asset.
 ## strong::label:: || assetType || The type of the asset as one of the enumerated type labels.
 ## strong::label:: || name || The name of the Asset, if any.
-## strong::label:: || author || A key for an author Asset.
-## strong::label:: || deprecatedBy || A key for an Asset that deprecates this one.
-## strong::label:: || deprecates || A key for an Asset that this Asset deprecates, if there is one.
 ## strong::Int8Array:: || inlineData || inlineData for the Asset, if any.
 ::
 
@@ -169,4 +166,5 @@ subsection:: /listItems
 
 table::
 strong::label:: || key || The list id.
-strong::label:: || tokens || A string with code::<token>,<asset id>\n:: pairs.
+token, asset label 1 or more pairs.
+::

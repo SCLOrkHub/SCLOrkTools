@@ -111,7 +111,7 @@ public:
      *
      * \param key The key of the list to retrieve.
      * \param token The list token marker to start iterating from (can be 0 to start at beginning).
-     * \param callback The function to callback with list items as a string of "<token> <asset key>\n" pairs.
+     * \param callback The function to callback with list items as a string of "<token>\t<asset key>\n" pairs.
      */
     void getListItems(uint64_t key, uint64_t token, std::function<void(const std::string&)> callback);
 

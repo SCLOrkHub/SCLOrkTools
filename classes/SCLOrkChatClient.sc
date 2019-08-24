@@ -1,17 +1,20 @@
 SCLOrkChatClient {
 	const clientUpdatePeriodSeconds = 30.0;
+	const messageUpdatePeriodSeconds = 1.0;
 
 	var <userId;  // signed-in userId
 	var <userMap;  // userId -> immutable Asset.
-	var <nameMap;  // Current nickname, subject to change.
-	var <currentUsers;
+	var <currentUsers;  // IdentitySet of userIds, updated slowly (clientUpdatePeriodSeconds)
+	var <lastToken;  // the list token of the last message loaded from the server.
+	var messageListId;
 
 	var quitTasks;
 	var clientUpdateTask;
+	var messageUpdateTask;
 
 	var <>onConnected;  // called on connection status change with bool argument
 	var <>onMessageReceived;  // called with chatMessage object on receipt
-	var <>onUserChanged;  // called with user changes, type, userid, nickname.
+	var <>onUserChanged;  // called on user changes, type (\offline or \online), userid.
 
 	*new {
 		^super.new.init;
@@ -20,13 +23,26 @@ SCLOrkChatClient {
 	init {
 		quitTasks = false;
 		userMap = IdentityDictionary.new;
-		nameMap = IdentityDictionary.new;
 		currentUsers = IdentitySet.new;
+		lastToken = SCLOrkConfab.startToken;
 
-		this.getUsers();
+		this.prGetUsers();
+		this.prStartClientUpdate();
+		this.prStartMessageUpdate();
 	}
 
-	getUsers {
+	connect { |withUserId|
+		userId = withUserId;
+		SCLOrkConfab.setUser(userId);
+	}
+
+	sendMessage { |message|
+		SCLOrkConfab.addAssetString('yaml', "", [ messageListId ], message.toYAML, { |id|
+			// right now these just go into a void.
+		});
+	}
+
+	prGetUsers {
 		Routine.new({
 			var c = Condition.new;
 			var userListId, userIds;
@@ -42,12 +58,8 @@ SCLOrkChatClient {
 			// Now we get all the users on the list.
 			c.test = false;
 			SCLOrkConfab.getListNext(userListId, '0', { |id, tokens|
-				userIds = tokens.asString
-				.split($\n)
-				.collect({|p| p.split($ )})
-				.reject({|p| p.size != 2 })
-				.collect({|p| p[1].asSymbol })
-				.select({|p| SCLOrkConfab.idValid(p) });
+				// We only want the odd indices (actual ids, not list index), and strip off the terminator.
+				userIds = tokens.select({|p, i| (i % 2 == 1) and: { SCLOrkConfab.idValid(p) }});
 				c.test = true;
 				c.signal;
 			});
@@ -68,21 +80,10 @@ SCLOrkChatClient {
 		}).play;
 	}
 
-	connect { |withUserId|
-		userId = withUserId;
-		SCLOrkConfab.setUser(userId);
-	}
-
-	// ok do we even care about online status? Like everything is immutable. If necessary/interested a
-	// person can monitor state of current network environment. But really the chat is a lot more like
-	// low-latency email these days, meaning that "who's online" is a much less important concept for
-	// typical users, perhaps only relevant to the director/sysadmin types. So fidelity can be fairly
-	// low, perhaps even emulated with some message last sent kind of thing. Or by a very occasional call
-	// on the SCLOrkChat directly to the status thing. The list of users should just grow monotonically.
 	prStartClientUpdate {
 		clientUpdateTask = SkipJack.new({
-			var c = Condition.new;
 			Routine.new({
+				var c = Condition.new;
 				var states;
 				var newUsers, droppedUsers;
 				var latestUsers = IdentitySet.new;
@@ -99,7 +100,7 @@ SCLOrkChatClient {
 				// Extract non-zero userIds from the status values.
 				states.keysValuesDo({ |address, state|
 					var user = state.asString.split($|)[0].asSymbol;
-					if (user !== '0000000000000000', {
+					if (SCLOrkConfab.idValid(user), {
 						latestUsers.add(user);
 					});
 				});
@@ -110,8 +111,7 @@ SCLOrkChatClient {
 				currentUsers = latestUsers;
 
 				droppedUsers.do({ |id, index|
-					var name = nameMap.at(id);
-					onUserChanged.value(\remove, id, name, name);
+					onUserChanged.value(\offline, id);
 				});
 
 				newUsers.do({ |id, index|
@@ -124,8 +124,9 @@ SCLOrkChatClient {
 						});
 						c.wait;
 					});
+					onUserChanged.value(\online, id);
 				});
-			});
+			}).play;
 		},
 		dt: clientUpdatePeriodSeconds,
 		stopTest: { quitTasks },
@@ -133,6 +134,59 @@ SCLOrkChatClient {
 		clock: SystemClock,
 		autostart: true
 		);
+	}
+
+	prStartMessageUpdate {
+		// Note autostart is false onn this task, to avoid a race condition around trying to look
+		// up new messages for the messageListId when it is undefined.
+		messageUpdateTask = SkipJack.new({
+			Routine.new({
+				var c = Condition.new;
+				var messages;
+
+				c.test = false;
+				SCLOrkConfab.getListNext(messageListId, lastToken, { |id, tokens|
+					messages = tokens.reject({|t| t === SCLOrkConfab.endToken });
+					c.test = true;
+					c.signal;
+				});
+				c.wait;
+
+				messages.pairsDo({ |token, messageId|
+					var message;
+					// Request full message Asset and provide as update.
+					c.test = false;
+					SCLOrkConfab.findAssetById(messageId, { |id, asset|
+						message = SCLOrkChatMessage.newFromDictionary(asset.inlineData);
+						c.test = true;
+						c.signal;
+					});
+					c.wait;
+					lastToken = token;
+					onMessageReceived(message);
+				});
+			}).play;
+		},
+		dt: messageUpdatePeriodSeconds,
+		stopTest: { quitTasks },
+		name: "ChatMessageUpdate",
+		clock: SystemClock,
+		autostart: false
+		);
+
+		Routine.new({
+			var c = Condition.new;
+			c.test = false;
+			SCLOrkConfab.findListByName('Chat Messages', { |name, key|
+				messageListId = key;
+				c.test = true;
+				c.signal;
+			});
+			c.wait;
+
+			// Now that we have messageListId defined we can start the update loop.
+			messageUpdateTask.start;
+		}).play;
 	}
 }
 

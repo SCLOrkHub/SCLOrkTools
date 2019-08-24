@@ -1,5 +1,5 @@
 // Wrapper class around message format, for (de)-serializing messages
-// from/to OSC messages, with access to data members.
+// from/to YAML, with access to data members.
 SCLOrkChatMessage {
 	// Server-assigned unique sender identifier.
 	var <>senderId;
@@ -8,7 +8,7 @@ SCLOrkChatMessage {
 	var <>recipientIds;
 
 	// One of:
-	//   \plain - normal chat message, broadcast
+	//   \plain - normal chat message
 	//   \system - a system message
 	//   \shout - a message with special highlighting (blinking until clicked)
 	//   \code - source code sharing
@@ -32,8 +32,30 @@ SCLOrkChatMessage {
 		^super.newCopyArgs(senderId, recipientIds, type, contents, senderName, isEcho);
 	}
 
+	*newFromDictionary { |dict, isEcho = false|
+		^SCLOrkChatMessage.new(
+			dict.at("senderId").asSymbol,
+			dict.at("recipientIds").collect({|r| r.asSymbol }),
+			dict.at("type").asSymbol,
+			dict.at("contents"),
+			dict.at("senderName"),
+			isEcho);
+	}
+
 	postln {
-		"senderId: %, recipientIds: %, type: %, contents: %".format(
-			senderId, recipientIds, type, contents).postln;
+		"senderId: %, recipientIds: %, type: %, contents: %, senderName: %".format(
+			senderId, recipientIds, type, contents, senderName).postln;
+	}
+
+	toYAML {
+		var y = "senderId: \"%\"\n".format(senderId);
+		y = y ++ "recipientIds:\n";
+		recipientIds.do({ |id|
+			y = y ++ "  - \"%\"\n".format(id);
+		});
+		y = y ++ "type: \"%\"\n".format(type);
+		y = y ++ "contents: %\n".format(contents.escapeChar($").replace("\n", "\\n").quote);
+		y = y ++ "senderName: %".format(senderName.quote);
+		^y;
 	}
 }

@@ -1,4 +1,7 @@
 SCLOrkConfab {
+	const startToken = '0000000000000000';
+	const endToken = 'ffffffffffffffff';
+
 	classvar confabPid;
 	classvar addSerial = 1;
 
@@ -97,8 +100,8 @@ SCLOrkConfab {
 	*idValid { |id|
 		^(
 			id.class.asSymbol === 'Symbol'
-			and: { id !== '0000000000000000' }
-			and: { id !== 'ffffffffffffffff' }
+			and: { id !== startToken }
+			and: { id !== endToken }
 		);
 	}
 
@@ -201,7 +204,7 @@ SCLOrkConfab {
 
 		listItemsFunc = OSCFunc.new({ |msg, time, addr|
 			var listId = msg[1];
-			var tokens = msg[2];
+			var tokens = msg[2..];
 			var callback = listCallbackMap.at(listId);
 			if (callback.notNil, {
 				callback.value(listId, tokens);
