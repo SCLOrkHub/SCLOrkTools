@@ -1,21 +1,25 @@
 SCLOrkLoginWindow {
-	classvar <instance = nil;
+	var callback;
+	var users;
+	var window;
 
-	var userListId;
-
-	*new {
-		if (instance.isNil, {
-			instance = super.new.init;
-		});
-		^instance;
+	*new { |callback|
+		^super.newCopyArgs(callback).init;
 	}
 
-	init {
-		this.prUpdateUsersList();
+	init { |callback|
+		users = SCLOrkUsers.new;
+		window = SCLOrkWindow.new(
+			"Login to SCLOrk",
+			Rect.new(0, 0, 500, 500),
+		);
+		window.alwaysOnTop = true;
+		window.userCanClose = false;
+
+		window.layout  = VLayout.new(
+
+		);
 	}
 
-	prUpdateUsersList {
-		var c = Condition.new;
-		Routine.new({}).play;
-	}
+
 }

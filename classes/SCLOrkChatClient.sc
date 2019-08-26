@@ -3,8 +3,9 @@ SCLOrkChatClient {
 	const messageUpdatePeriodSeconds = 1.0;
 
 	var <userId;  // signed-in userId
-	var <userMap;  // userId -> immutable Asset.
+	var users;  // reference to SCLOrkUsers singleton instance.
 	var <currentUsers;  // IdentitySet of userIds, updated slowly (clientUpdatePeriodSeconds)
+
 	var <lastToken;  // the list token of the last message loaded from the server.
 	var messageListId;
 
@@ -22,11 +23,11 @@ SCLOrkChatClient {
 
 	init {
 		quitTasks = false;
-		userMap = IdentityDictionary.new;
 		currentUsers = IdentitySet.new;
 		lastToken = SCLOrkConfab.startToken;
+		users = SCLOrkUsers.new;
+		users.update();
 
-		this.prGetUsers();
 		this.prStartClientUpdate();
 		this.prStartMessageUpdate();
 	}
@@ -38,46 +39,8 @@ SCLOrkChatClient {
 
 	sendMessage { |message|
 		SCLOrkConfab.addAssetString('yaml', "", [ messageListId ], message.toYAML, { |id|
-			// right now these just go into a void.
+			// right now these callbacks just go into a void.
 		});
-	}
-
-	prGetUsers {
-		Routine.new({
-			var c = Condition.new;
-			var userListId, userIds;
-
-			c.test = false;
-			SCLOrkConfab.findListByName('Users', { |name, key|
-				userListId = key;
-				c.test = true;
-				c.signal;
-			});
-			c.wait;
-
-			// Now we get all the users on the list.
-			c.test = false;
-			SCLOrkConfab.getListNext(userListId, '0', { |id, tokens|
-				// We only want the odd indices (actual ids, not list index), and strip off the terminator.
-				userIds = tokens.select({|p, i| (i % 2 == 1) and: { SCLOrkConfab.idValid(p) }});
-				c.test = true;
-				c.signal;
-			});
-			c.wait;
-
-			// Look up everybody who is not in the current userMap.
-			userIds.do({ |id, index|
-				if (userMap.at(id).isNil, {
-					c.test = false;
-					SCLOrkConfab.findAssetById(id, { |foundId, asset|
-						userMap.put(id, asset.inlineData);
-						c.test = true;
-						c.signal;
-					});
-					c.wait;
-				});
-			});
-		}).play;
 	}
 
 	prStartClientUpdate {
@@ -115,10 +78,9 @@ SCLOrkChatClient {
 				});
 
 				newUsers.do({ |id, index|
-					if (userMap.at(id).isNil, {
+					if (users.userMap.at(id).isNil, {
 						c.test = false;
-						SCLOrkConfab.findAssetById(id, { |id, asset|
-							userMap.put(id, asset.inlineData);
+						users.lookupUser(id, {
 							c.test = true;
 							c.signal;
 						});
