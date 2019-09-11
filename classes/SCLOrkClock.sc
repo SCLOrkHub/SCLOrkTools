@@ -128,7 +128,7 @@ SCLOrkClock {
 		serverName = "sclork-s01.local" |
 		var clock;
 
-		if (syncStarted.not, {
+		if (syncStarted.isNil or: { syncStarted.not }, {
 			SCLOrkClock.startSync(serverName);
 		});
 

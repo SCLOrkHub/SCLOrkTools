@@ -1,6 +1,6 @@
 (
 ~chatServer = SCLOrkChatServer.new;
-~timeServer = SCLOrkTimeServer.new;
+~timeServer = SCLOrkClockServer.new;
 
 ~chatBot = SCLOrkChatClient.new("127.0.0.1");
 ~chatBot.onMessageReceived = { | chatMessage |
