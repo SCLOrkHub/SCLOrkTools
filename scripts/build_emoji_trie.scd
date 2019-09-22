@@ -214,7 +214,7 @@ outFile.write("
 \t}
 
 \t*prLoadMap {
-\t\tmap = IdentityDictionary.new;
+\t\tmap = TwoWayIdentityDictionary.new;
 ");
 
 descMap.keysValuesDo({ |uni, desc|

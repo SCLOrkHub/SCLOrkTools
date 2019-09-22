@@ -16062,7 +16062,7 @@ SCLOrkEmoji {
 	}
 
 	*prLoadMap {
-		map = IdentityDictionary.new;
+		map = TwoWayIdentityDictionary.new;
 
 		map.put('👨🏿‍⚖️', "man judge: dark skin tone");
 		map.put('👨‍🏫', "man teacher");
