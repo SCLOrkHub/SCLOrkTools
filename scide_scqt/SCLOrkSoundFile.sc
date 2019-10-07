@@ -35,8 +35,8 @@ SCLOrkSoundFile {
 				Ndef('SCLOrkSoundFile', {
 					var env, snd;
 					env = Env(
-						levels: [0, 1, 0],
-						times: [0.001, soundDuration, 0.001],
+						levels: [0, 1, 1, 0],
+						times: [0.001, soundDuration - 0.002, 0.001],
 					);
 					snd = PlayBuf.ar(
 						soundFile.numChannels,
@@ -86,6 +86,8 @@ SCLOrkSoundFile {
 		);
 
 		soundFileView.action = { this.updateSelectionInfo };
+		soundFileView.gridOn = false;
+		soundFileView.setSelectionColor(0, Color.white);
 
 		openFileButton.action = {
 			FileDialog.new({ |paths| this.openFile(paths[0]) }, { });
@@ -129,10 +131,10 @@ SCLOrkSoundFile {
 		}, {
 			var selection = soundFileView.selection(0);
 			// Selection is array of [ start, length ] where both units are in frames.
-			var startTime = selection[0] / soundFile.sampleRate;
-			var startNorm = selection[0] / soundFile.numFrames;
-			var durationTime = selection[1] / soundFile.sampleRate;
-			var durationNorm = selection[1] / soundFile.numFrames;
+			var startTime = (selection[0] / soundFile.sampleRate).round(0.01);
+			var startNorm = (selection[0] / soundFile.numFrames).round(0.001);
+			var durationTime = (selection[1] / soundFile.sampleRate).round(0.01);
+			var durationNorm = (selection[1] / soundFile.numFrames).round(0.001);
 			if (durationTime > 0.0, {
 				startLabel.string = "% s, % norm".format(startTime, startNorm);
 				durationLabel.string = "% s, % norm".format(durationTime, durationNorm);

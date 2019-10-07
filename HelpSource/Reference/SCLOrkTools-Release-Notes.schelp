@@ -5,6 +5,17 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.3 - 7 October 2019
+
+Small improvements to SCLOrkSoundFile.new
+
+list::
+## Grid on SoundFileView disabled.
+## Set sample selection color to white.
+## Rounding selection and duration numbers to two or three decimal places for seconds or normals respectively.
+## Fixed the envelope to not fade out over the sample playback. Thanks to Bruno for this fix.
+::
+
 subsection:: 0.0.2 - 22 September 2019
 
 Incremental patch release, to add support for SCLOrkSoundFile, a rudimentary sound file visualizer and explorer.
