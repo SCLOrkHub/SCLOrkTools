@@ -83,6 +83,7 @@ SCLOrkClock {
 			wire.onConnected = { | wire, status |
 				switch (status,
 					\connected, {
+						"*** connected to clock server.".postln;
 						// Request curent list of all clocks.
 						wire.sendMsg('/clockGetAll');
 					},
