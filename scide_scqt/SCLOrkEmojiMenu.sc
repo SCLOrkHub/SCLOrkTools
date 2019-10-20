@@ -17,6 +17,7 @@ SCLOrkEmojiMenu : Menu {
 		};
 		var menu = super.new.init.prInit(trieNode, searchString, callback, prepopulate);
 
+		menu.font = Font.new("Noto Color Emoji");
 		menu.addDependant(f);
 		menu.onClose_({ menu.removeDependant(f) });
 		^menu;
