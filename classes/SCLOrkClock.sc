@@ -311,9 +311,10 @@ SCLOrkClock {
 	}
 
 	tempo_ { | newTempo |
-		if (currentState.tempo != newTempo, {
-			var nextBeat = this.beats.roundUp;
-			this.setTempoAtBeat(newTempo, nextBeat);
+		var floatTempo = newTempo.asFloat;
+		if (currentState.tempo != floatTempo, {
+			var nextBeat = this.beats.roundUp.asFloat;
+			this.setTempoAtBeat(floatTempo, nextBeat);
 		});
 	}
 
@@ -368,7 +369,7 @@ SCLOrkClock {
 	timeToNextBeat { | qunat = 1.0 |
 	}
 
-	nextTimeOnGrid { | quant = 1.0, phase = 0 |
+	nextTimeOnGrid { | quant = 1.0, phase = 0.0 |
 		if (quant == 0.0, { ^(this.beats + phase); });
 		if (quant < 0.0, { quant = currentState.beatsPerBar * quant.neq });
 		if (phase < 0.0, { phase = phase % quant });
