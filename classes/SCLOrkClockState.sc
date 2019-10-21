@@ -72,19 +72,27 @@ SCLOrkClockState {
 	setTempoAtBeat { | newTempo, beats |
 		var state = SCLOrkClockState.new(
 			cohortName: cohortName,
-			applyAtBeat: beats,
+			applyAtBeat: beats.asFloat,
 			// Local clocks will compute and attach a server time to their copy
 			// of this state, so it will set to a valid value when becoming current.
 			applyAtTime: 0.0,
-			tempo: newTempo,
-			beatsPerBar: beatsPerBar,
-			baseBar: baseBar,
-			baseBarBeat: baseBarBeat);
+			tempo: newTempo.asFloat,
+			beatsPerBar: beatsPerBar.asFloat,
+			baseBar: baseBar.asFloat,
+			baseBarBeat: baseBarBeat.asFloat);
 		^state;
 	}
 
 	toMessage {
 		var msg = Array.newClear(14);
+		// Sanitize numbers to floats before serializing.
+		applyAtBeat = applyAtBeat.asFloat;
+		applyAtTime = applyAtTime.asFloat;
+		tempo = tempo.asFloat;
+		beatsPerBar = beatsPerBar.asFloat;
+		baseBar = baseBar.asFloat;
+		baseBarBeat = baseBarBeat.asFloat;
+
 		msg[0] = nil;   // Leave blank for sender to populate
 		msg[1] = cohortName;
 		msg[2] = applyAtBeat.high32Bits;
