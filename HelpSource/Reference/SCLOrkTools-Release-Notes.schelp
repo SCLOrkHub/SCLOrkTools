@@ -5,6 +5,10 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.4 - 20 October 2019
+
+Some fixes to SCLOrkClock, allowing it to work with Pattern descendants like Pbindef. This required support for scheduling tasks that return with a ^ symbol, as well as setting the thread clock correctly to the SCLOrkClock instance.
+
 subsection:: 0.0.3 - 7 October 2019
 
 Small improvements to SCLOrkSoundFile.new
