@@ -1,4 +1,4 @@
-SCLOrkClock {
+SCLOrkClock : Clock {
 	const historySize = 60;
 	const <syncPort = 4249;
 
@@ -227,27 +227,34 @@ SCLOrkClock {
 	prAdvance {
 		var sec = Main.elapsedTime;
 		var beat = this.beats;
-		var topBeat;
+		var threadClock, topBeat, next;
 		while ({
 			topBeat = queue.topPriority;
 			topBeat.notNil and: { topBeat <= beat }}, {
 			var task = queue.pop;
-			// Little bit of fudging going on here where we are sending
-			// the scheduled beat count instead of the actual current
-			// beat timing. Some beats can be a bit off due to clock drift
-			// updates from the server.
-			var repeat = task.awake(topBeat, sec, this);
-			if (repeat.isNumber, {
-				queue.put(topBeat + repeat, task);
-			});
+			try {
+				var repeat;
+				threadClock = thisThread.clock;
+				thisThread.clock = this;
+				// Little bit of fudging going on here where we are sending
+				// the scheduled beat count instead of the actual current
+				// beat timing. Some beats can be a bit off due to clock drift
+				// updates from the server.
+				repeat = task.awake(topBeat, sec, this);
+				thisThread.clock = threadClock;
+				if (repeat.isNumber, {
+					queue.put(topBeat + repeat, task);
+				});
+			} {
+				"*** clock scheduling exception".postln;
+			}
 		});
 
 		if (topBeat.notNil, {
-			var next = max(this.beats2secs(topBeat) - sec, 0.05);
-			^next;
-		}, {
-			^nil;
+			next = max(this.beats2secs(topBeat) - sec, 0.05);
 		});
+
+		^next;
 	}
 
 	// Coupla key differences - using the stateQueue, always
@@ -322,7 +329,7 @@ SCLOrkClock {
 		^currentState.secs2beats(Main.elapsedTime, timeDiff);
 	}
 
-	schedAbs { | beats, item |
+	schedAbs { |beats, item|
 		queue.put(beats, item);
 		this.prScheduleTop;
 	}
@@ -331,7 +338,8 @@ SCLOrkClock {
 		this.schedAbs(this.beats + delta, item);
 	}
 
-	play { | task, quant = 1 |
+	play { |task, quant = 1|
+		"*** play called".postln;
 		this.schedAbs(quant.nextTimeOnGrid(this), task);
 	}
 
@@ -354,22 +362,28 @@ SCLOrkClock {
 		^currentState.beats2bars(this.beats);
 	}
 
-	nextBar { | beat |
+	nextBar { |beat|
+		if (beat.isNil, { beat = this.beats });
+		^this.bars2beats(this.beats2bars(beat).ceil);
 	}
 
 	beatInBar {
+		^this.beats - this.bars2beats(this.bar);
 	}
 
-	beats2bars { | beats |
+	beats2bars { |beats|
+		^currentState.beats2bars(beats);
 	}
 
-	bars2beats { | bars |
+	bars2beats { |bars|
+		^currentState.bars2beats(bars);
 	}
 
-	timeToNextBeat { | qunat = 1.0 |
+	timeToNextBeat { |quant = 1.0|
+		^quant.nextTimeOnGrid(this) - this.beats;
 	}
 
-	nextTimeOnGrid { | quant = 1.0, phase = 0.0 |
+	nextTimeOnGrid { |quant = 1.0, phase = 0.0|
 		if (quant == 0.0, { ^(this.beats + phase); });
 		if (quant < 0.0, { quant = currentState.beatsPerBar * quant.neq });
 		if (phase < 0.0, { phase = phase % quant });
@@ -378,6 +392,7 @@ SCLOrkClock {
 	}
 
 	elapsedBeats {
+		this.secs2beats(Main.elapsedTime);
 	}
 
 	seconds {
