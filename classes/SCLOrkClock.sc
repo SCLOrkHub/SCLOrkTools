@@ -339,7 +339,6 @@ SCLOrkClock : Clock {
 	}
 
 	play { |task, quant = 1|
-		"*** play called".postln;
 		this.schedAbs(quant.nextTimeOnGrid(this), task);
 	}
 
