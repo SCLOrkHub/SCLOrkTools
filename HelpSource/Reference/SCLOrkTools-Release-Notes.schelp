@@ -5,6 +5,10 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.5 - 3 November 2019
+
+Additional fix to SCLOrkClock on creation of an already existing clock. There is a current issue where the automatic calling of SCLOrkClock.startSync, where there's a race on clock creation. Will require further testing.
+
 subsection:: 0.0.4 - 20 October 2019
 
 Some fixes to SCLOrkClock, allowing it to work with Pattern descendants like Pbindef. This required support for scheduling tasks that return with a ^ symbol, as well as setting the thread clock correctly to the SCLOrkClock instance.

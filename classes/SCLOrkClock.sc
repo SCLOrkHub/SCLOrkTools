@@ -102,7 +102,8 @@ SCLOrkClock : Clock {
 						var state = SCLOrkClockState.newFromMessage(msg);
 						var clock = clockMap.at(state.cohortName);
 						if (clock.isNil, {
-							clock = super.newCopyArgs(state).init;
+							clock = super.new.init;
+							clock.prForceState(state);
 							clockMap.put(state.cohortName, clock);
 						}, {
 							clock.prUpdate(state);
@@ -227,21 +228,21 @@ SCLOrkClock : Clock {
 	prAdvance {
 		var sec = Main.elapsedTime;
 		var beat = this.beats;
-		var threadClock, topBeat, next;
+		var topBeat, next;
+		var threadClock = thisThread.clock;
+		thisThread.clock = this;
+
 		while ({
 			topBeat = queue.topPriority;
 			topBeat.notNil and: { topBeat <= beat }}, {
 			var task = queue.pop;
+
 			try {
-				var repeat;
-				threadClock = thisThread.clock;
-				thisThread.clock = this;
 				// Little bit of fudging going on here where we are sending
 				// the scheduled beat count instead of the actual current
 				// beat timing. Some beats can be a bit off due to clock drift
 				// updates from the server.
-				repeat = task.awake(topBeat, sec, this);
-				thisThread.clock = threadClock;
+				var repeat = task.awake(topBeat, sec, this);
 				if (repeat.isNumber, {
 					queue.put(topBeat + repeat, task);
 				});
@@ -249,6 +250,8 @@ SCLOrkClock : Clock {
 				"*** clock scheduling exception".postln;
 			}
 		});
+
+		thisThread.clock = threadClock;
 
 		if (topBeat.notNil, {
 			next = max(this.beats2secs(topBeat) - sec, 0.05);
