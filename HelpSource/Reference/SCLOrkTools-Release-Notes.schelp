@@ -5,6 +5,10 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.6 - 4 November 2019
+
+Added a few more hotfixes to SCLOrkClock, namely ensuring that all calls converting seconds to beats and back use the server-client time difference. Also a few tweaks to the server startup script, to enable logging to files, with a timestamp for startup.
+
 subsection:: 0.0.5 - 3 November 2019
 
 Additional fix to SCLOrkClock on creation of an already existing clock. There is a current issue where the automatic calling of SCLOrkClock.startSync, where there's a race on clock creation. Will require further testing.

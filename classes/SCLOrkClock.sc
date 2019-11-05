@@ -185,7 +185,7 @@ SCLOrkClock : Clock {
 			// If newState is for a later beat count, it goes into the stateQueue,
 			// and we schedule a task for later to promote it to the current state.
 			if (newState.applyAtBeat <= this.beats, {
-				newState.applyAtTime = currentState.beats2secs(newState.applyAtBeat);
+				newState.applyAtTime = this.beats2secs(newState.applyAtBeat);
 				currentState = newState;
 				// Change in state can mean change in timing of items in the
 				// queue, re-schedule the next task.
@@ -269,7 +269,7 @@ SCLOrkClock : Clock {
 		while ({
 			topBeat = stateQueue.topPriority;
 			topBeat.notNil and: { topBeat <= this.beats }}, {
-			var applyAtTime = currentState.beats2secs(topBeat);
+			var applyAtTime = this.beats2secs(topBeat);
 			currentState = stateQueue.pop;
 			currentState.applyAtTime = applyAtTime;
 
@@ -329,7 +329,7 @@ SCLOrkClock : Clock {
 	}
 
 	beats {
-		^currentState.secs2beats(Main.elapsedTime, timeDiff);
+		^this.secs2beats(Main.elapsedTime);
 	}
 
 	schedAbs { |beats, item|

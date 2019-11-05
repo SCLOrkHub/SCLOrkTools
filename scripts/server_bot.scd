@@ -1,4 +1,6 @@
 (
+"*** server startup %".format(Date.localtime).postln;
+
 ~chatServer = SCLOrkChatServer.new;
 ~timeServer = SCLOrkClockServer.new;
 

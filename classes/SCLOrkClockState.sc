@@ -61,11 +61,11 @@ SCLOrkClockState {
 		^(baseBarBeat + ((bars - baseBar) * beatsPerBar));
 	}
 
-	beats2secs { | beats, timeDiff = 0.0 |
+	beats2secs { | beats, timeDiff |
 		^(applyAtTime + ((beats - applyAtBeat) / tempo)) + timeDiff;
 	}
 
-	secs2beats { | secs, timeDiff = 0.0 |
+	secs2beats { | secs, timeDiff |
 		^(applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime)));
 	}
 

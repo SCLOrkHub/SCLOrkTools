@@ -8,7 +8,8 @@
 # automatically at boot.
 
 command=/usr/local/bin/sclang
-command_args="/usr/local/share/SuperCollider/Extensions/SCLOrkTools/scripts/server_bot.scd"
+quark_path="/usr/local/share/SuperCollider/Extensions/SCLOrkTools"
+command_args="${quark_path}/scripts/server_bot.scd"
 pidfile=/var/run/sclork-server.pid
 
 description="Runs a few SCLOrkTools Quark objects for SCLOrk."
@@ -22,7 +23,7 @@ depend() {
 
 start() {
 	ebegin "Starting SCLOrk Server Daemon"
-	start-stop-daemon --user luken --background --make-pidfile --pidfile ${pidfile} --start --exec ${command} -- ${command_args}
+	start-stop-daemon --user luken --background --make-pidfile --pidfile ${pidfile} --start -1 ${quark_path}/data/server/log.stdio.txt -2 ${quark_path}/data/server/log.stderr.txt --exec ${command} -- ${command_args}
 	eend $?
 }
 
