@@ -38,7 +38,7 @@ SCLOrkWatch {
 		// blinkList stores *blink start times*, not target times
 		// blink start time is (target - blinkDuration)
 
-		// new blink list function
+		// new blink list array
 		blinkList = {
 			var min, sec, target, start;
 			list.collect({ arg item;
@@ -55,17 +55,6 @@ SCLOrkWatch {
 		}.value;
 
 		blinkList.postln;
-
-		/*	blinkList = {
-		var min, sec, target, start;
-		list.collect({ arg string;
-		min = string.split($:).at(0).asInteger;
-		sec = string.split($:).at(1).asInteger;
-		target = min * 60 + sec;
-		start = target - blinkDuration;
-		});
-		}.value;
-		*/
 
 		font = Font("Courier", 130);
 		t = TempoClock.new(1).permanent_(true);
@@ -110,10 +99,6 @@ SCLOrkWatch {
 		minutesView.string = formatString.value(mm);
 		separatorView.string = ":";
 		secondsView.string = formatString.value(ss);
-
-		// minutesView.background = Color.rand;
-		// separatorView.background = Color.rand;
-		// secondsView.background = Color.rand;
 
 		updateMinSec = {
 			mm = (timeInSeconds / 60).floor;
