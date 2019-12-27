@@ -71,13 +71,11 @@ SCLOrkClockState {
 		^s2b;
 	}
 
-	setTempoAtBeat { | newTempo, beats |
+	setTempoAtBeat { | newTempo, beats, timeDiff |
 		var state = SCLOrkClockState.new(
 			cohortName: cohortName,
 			applyAtBeat: beats.asFloat,
-			// Local clocks will compute and attach a server time to their copy
-			// of this state, so it will set to a valid value when becoming current.
-			applyAtTime: 0.0,
+			applyAtTime: this.beats2secs(beats, 0.0),  // time is server-relative, so no diff.
 			tempo: newTempo.asFloat,
 			beatsPerBar: beatsPerBar.asFloat,
 			baseBar: baseBar.asFloat,
