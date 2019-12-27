@@ -2,7 +2,7 @@ SCLOrkClockState {
 	var <>cohortName;
 	var <>applyAtBeat;
 	// Time only needs to be valid for the initial and current state.
-	var <>applyAtTime;
+	var <>applyAtTime;  // This time is always serverTime
 	var <>tempo;
 	var <>beatsPerBar;
 	var <>baseBar;
@@ -63,13 +63,11 @@ SCLOrkClockState {
 
 	beats2secs { | beats, timeDiff |
 		var b2s = (applyAtTime + ((beats - applyAtBeat) / tempo)) + timeDiff;
-		"beats: %, b2s: %, timeDiff: %".format(beats, b2s, timeDiff).postln;
 		^b2s;
 	}
 
 	secs2beats { | secs, timeDiff |
-		var s2b = (applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime)));
-		"secs: %, s2b: %, timeDiff: %".format(secs, s2b, timeDiff).postln;
+		var s2b = applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime));
 		^s2b;
 	}
 
@@ -112,5 +110,11 @@ SCLOrkClockState {
 		msg[12] = baseBarBeat.high32Bits;
 		msg[13] = baseBarBeat.low32Bits;
 		^msg;
+	}
+
+	toString {
+		^("cohortName: %, applyAtBeat: %, applyAtTime: %," +
+			"tempo: %, beatsPerBar: %, baseBar: %, baseBarBeat: %").format(
+			cohortName, applyAtBeat, applyAtTime, tempo, beatsPerBar, baseBar, baseBarBeat);
 	}
 }

@@ -105,8 +105,10 @@ SCLOrkClock : Clock {
 							clock = super.new.init;
 							clock.prForceState(state);
 							clockMap.put(state.cohortName, clock);
+							"added new clock with state %".format(state.toString()).postln;
 						}, {
 							clock.prUpdate(state);
+							"updated clock with state %".format(state.toString()).postln;
 						});
 					},
 				);
