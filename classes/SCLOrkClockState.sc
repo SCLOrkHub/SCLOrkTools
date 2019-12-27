@@ -62,11 +62,15 @@ SCLOrkClockState {
 	}
 
 	beats2secs { | beats, timeDiff |
-		^(applyAtTime + ((beats - applyAtBeat) / tempo)) + timeDiff;
+		var b2s = (applyAtTime + ((beats - applyAtBeat) / tempo)) + timeDiff;
+		"beats: %, b2s: %, timeDiff: %".format(beats, b2s, timeDiff).postln;
+		^b2s;
 	}
 
 	secs2beats { | secs, timeDiff |
-		^(applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime)));
+		var s2b = (applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime)));
+		"secs: %, s2b: %, timeDiff: %".format(secs, s2b, timeDiff).postln;
+		^s2b;
 	}
 
 	setTempoAtBeat { | newTempo, beats |
