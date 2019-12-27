@@ -35,10 +35,10 @@ SCLOrkClockServer {
 						wireMap.put(wire.id, wire);
 					},
 					\failureTimeout, {
-						wireMap.remove(wire.id);
+						wireMap.removeAt(wire.id);
 					},
 					\disconnected, {
-						wireMap.remove(wire.id);
+						wireMap.removeAt(wire.id);
 					}
 				);
 			},
