@@ -5,6 +5,10 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.8 - 28 December 2019
+
+Additional repairs to SCLOrkClock, including the addition of a diagnostic tool to look at clock performance across the network.
+
 subsection:: 0.0.7 - 4 November 2019
 
 Added SCLOrkWatch, written by Bruno Ruviaro.
