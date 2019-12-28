@@ -130,29 +130,29 @@ SCLOrkClock : Clock {
 		tempo = 1.0,
 		beatsPerBar = 4.0,
 		serverName = "sclork-s01.local" |
-		var clock;
+		var clock = nil;
 
-		if (syncStarted.isNil or: { syncStarted.not }, {
-			SCLOrkClock.startSync(serverName);
-		});
+		if (syncStarted.isNil or: { syncStarted.not } or: { timeDiffs.size < 5 }, {
+			"*** call SCLOrkClock.startSync first.".postln;
+		}, {
+			clock = clockMap.at(name);
+			if (clock.isNil, {
+				var msg;
+				var state = SCLOrkClockState.new(
+					cohortName: name,
+					applyAtTime: SCLOrkClock.localToServerTime(Main.elapsedTime),
+					tempo: tempo,
+					beatsPerBar: beatsPerBar);
 
-		clock = clockMap.at(name);
-		if (clock.isNil, {
-			var msg;
-			var state = SCLOrkClockState.new(
-				cohortName: name,
-				applyAtTime: SCLOrkClock.localToServerTime(Main.elapsedTime),
-				tempo: tempo,
-				beatsPerBar: beatsPerBar);
+				clock = super.new.init;
+				clock.prForceState(state);
+				clockMap.put(name, clock);
 
-			clock = super.new.init;
-			clock.prForceState(state);
-			clockMap.put(name, clock);
-
-			// Inform server of clock creation.
-			msg = state.toMessage;
-			msg[0] = '/clockCreate';
-			wire.sendMsg(*msg);
+				// Inform server of clock creation.
+				msg = state.toMessage;
+				msg[0] = '/clockCreate';
+				wire.sendMsg(*msg);
+			});
 		});
 		^clock;
 	}
@@ -417,5 +417,17 @@ SCLOrkClock : Clock {
 	setTempoAtBeat { | newTempo, beats |
 		var state = currentState.setTempoAtBeat(newTempo, beats);
 		this.prSendChange(state);
+	}
+
+	sendDiagnostic { |netAddr|
+		var localTime = Main.elapsedTime;
+		var serverTime = SCLOrkClock.localToServerTime(localTime);
+		var localBeats = this.secs2beats(localTime);
+		netAddr.sendMsg('/sclorkClockDiag',
+			currentState.cohortName,
+			localBeats.high32Bits, localBeats.low32Bits,
+			localTime.high32Bits, localTime.low32Bits,
+			serverTime.high32Bits, serverTime.low32Bits,
+			timeDiff.high32Bits, timeDiff.low32Bits);
 	}
 }
