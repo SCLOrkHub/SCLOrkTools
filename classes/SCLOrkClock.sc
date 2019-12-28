@@ -25,7 +25,7 @@ SCLOrkClock : Clock {
 
 	var queue;
 
-	*startSync { | serverName = "sclork-s01.local" |
+	*startSync { |serverName = "sclork-s01.local"|
 		if (syncStarted.isNil, {
 			syncStarted = true;
 			clockMap = Dictionary.new;
@@ -125,11 +125,7 @@ SCLOrkClock : Clock {
 		^(localTime - timeDiff);
 	}
 
-	*new { |  // TODO: trivial to support adding initial values for beats and seconds.
-		name = \default,
-		tempo = 1.0,
-		beatsPerBar = 4.0,
-		serverName = "sclork-s01.local" |
+	*new { |name = \default, tempo = 1.0, beatsPerBar = 4.0|
 		var clock = nil;
 
 		if (syncStarted.isNil or: { syncStarted.not } or: { timeDiffs.size < 5 }, {
