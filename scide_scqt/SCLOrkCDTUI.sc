@@ -3,19 +3,29 @@ SCLOrkCDTUIClockView : View {
 	var localTime;
 	var serverTime;
 	var timeDiff;
+	var bar;
+	var beatInBar;
+	var applyAtTime;
+	var applyAtBeat;
 
 	*new { |ip, diag|
 		^super.new.init(ip, diag);
 	}
 
 	init { |ip, diag|
-		this.layout = HLayout(
+		this.layout = VLayout(
 			StaticText.new.string_(ip.asString),
-			StaticText.new.string_("beats:"), beat = StaticText.new,
-			StaticText.new.string_("local time:"), localTime = StaticText.new,
-			StaticText.new.string_("server time:"), serverTime = StaticText.new,
-			StaticText.new.string_("time diff:"), timeDiff = StaticText.new
-		);
+			HLayout(
+				StaticText.new.string_("beats:"), beat = StaticText.new,
+				StaticText.new.string_("local time:"), localTime = StaticText.new,
+				StaticText.new.string_("server time:"), serverTime = StaticText.new,
+				StaticText.new.string_("time diff:"), timeDiff = StaticText.new
+			), HLayout(
+				StaticText.new.string_("bar:"), bar = StaticText.new,
+				StaticText.new.string_("beat in bar:"), beatInBar = StaticText.new,
+				StaticText.new.string_("apply at time:"), applyAtTime = StaticText.new,
+				StaticText.new.string_("apply at beat:"), applyAtBeat = StaticText.new
+		));
 		this.updateClockView(diag);
 	}
 
@@ -29,6 +39,10 @@ SCLOrkCDTUIClockView : View {
 		serverTime.stringColor = Color.white;
 		timeDiff.string = diag.at(\timeDiff).round(0.1);
 		timeDiff.stringColor = Color.white;
+		bar.string  = diag.at(\bar).round(0.1);
+		beatInBar.string = diag.at(\beatInBar).round(0.1);
+		applyAtTime.string = diag.at(\applyAtTime).round(0.1);
+		applyAtBeat.string = diag.at(\applyAtBeat).round(0.1);
 		AppClock.sched(0.1, {
 			this.background = Color.white;
 			beat.stringColor = Color.black;

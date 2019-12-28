@@ -18,13 +18,21 @@ SCLOrkCDT {
 			var localTime = Float.from64Bits(msg[4], msg[5]);
 			var serverTime = Float.from64Bits(msg[6], msg[7]);
 			var timeDiff = Float.from64Bits(msg[8], msg[9]);
+			var bar = Float.from64Bits(msg[10], msg[11]);
+			var beatInBar = Float.from64Bits(msg[12], msg[13]);
+			var applyAtTime = Float.from64Bits(msg[14], msg[15]);
+			var applyAtBeat = Float.from64Bits(msg[16], msg[17]);
 			var diag = IdentityDictionary.newFrom([
+				\address, addr,
 				\cohortName, cohortName,
 				\beat, beat,
 				\localTime, localTime,
 				\serverTime, serverTime,
 				\timeDiff, timeDiff,
-				\address, addr
+				\bar, bar,
+				\beatInBar, beatInBar,
+				\applyAtTime, applyAtTime,
+				\applyAtBeat, applyAtBeat
 			]);
 			diagCallback.value(time, diag);
 			if (cohortPQMap.includesKey(cohortName).not, {
