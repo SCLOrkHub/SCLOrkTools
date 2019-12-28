@@ -25,7 +25,7 @@ SCLOrkClock : Clock {
 
 	var queue;
 
-	*startSync { | serverName = "sclork-s01.local" |
+	*startSync { |serverName = "sclork-s01.local"|
 		if (syncStarted.isNil, {
 			syncStarted = true;
 			clockMap = Dictionary.new;
@@ -105,8 +105,10 @@ SCLOrkClock : Clock {
 							clock = super.new.init;
 							clock.prForceState(state);
 							clockMap.put(state.cohortName, clock);
+							"/clockUpdate got new clock with state %".format(state.toString()).postln;
 						}, {
 							clock.prUpdate(state);
+							"/clockUpdate updated clock with state %".format(state.toString()).postln;
 						});
 					},
 				);
@@ -123,34 +125,31 @@ SCLOrkClock : Clock {
 		^(localTime - timeDiff);
 	}
 
-	*new { |  // TODO: trivial to support adding initial values for beats and seconds.
-		name = \default,
-		tempo = 1.0,
-		beatsPerBar = 4.0,
-		serverName = "sclork-s01.local" |
-		var clock;
+	*new { |name = \default, tempo = 1.0, beatsPerBar = 4.0|
+		var clock = nil;
 
-		if (syncStarted.isNil or: { syncStarted.not }, {
-			SCLOrkClock.startSync(serverName);
-		});
+		if (syncStarted.isNil or: { syncStarted.not } or: { timeDiffs.size < 5 }, {
+			"*** call SCLOrkClock.startSync first.".postln;
+		}, {
+			clock = clockMap.at(name);
+			if (clock.isNil, {
+				var msg;
+				var state = SCLOrkClockState.new(
+					cohortName: name,
+					applyAtTime: SCLOrkClock.localToServerTime(Main.elapsedTime),
+					tempo: tempo,
+					beatsPerBar: beatsPerBar);
 
-		clock = clockMap.at(name);
-		if (clock.isNil, {
-			var msg;
-			var state = SCLOrkClockState.new(
-				cohortName: name,
-				applyAtTime: SCLOrkClock.localToServerTime(Main.elapsedTime),
-				tempo: tempo,
-				beatsPerBar: beatsPerBar);
+				clock = super.new.init;
+				clock.prForceState(state);
+				clockMap.put(name, clock);
 
-			clock = super.new.init;
-			clock.prForceState(state);
-			clockMap.put(name, clock);
-
-			// Inform server of clock creation.
-			msg = state.toMessage;
-			msg[0] = '/clockCreate';
-			wire.sendMsg(*msg);
+				// Inform server of clock creation.
+				msg = state.toMessage;
+				msg[0] = '/clockCreate';
+				wire.sendMsg(*msg);
+				"sent /clockCreate for %".format(name).postln;
+			});
 		});
 		^clock;
 	}
@@ -185,7 +184,7 @@ SCLOrkClock : Clock {
 			// If newState is for a later beat count, it goes into the stateQueue,
 			// and we schedule a task for later to promote it to the current state.
 			if (newState.applyAtBeat <= this.beats, {
-				newState.applyAtTime = this.beats2secs(newState.applyAtBeat);
+				"clobbering current state with new state for cohort %".format(newState.cohortName).postln;
 				currentState = newState;
 				// Change in state can mean change in timing of items in the
 				// queue, re-schedule the next task.
@@ -269,9 +268,7 @@ SCLOrkClock : Clock {
 		while ({
 			topBeat = stateQueue.topPriority;
 			topBeat.notNil and: { topBeat <= this.beats }}, {
-			var applyAtTime = this.beats2secs(topBeat);
 			currentState = stateQueue.pop;
-			currentState.applyAtTime = applyAtTime;
 
 			// Tempo change could mean new timing for tasks, reschedule
 			// task processing.
@@ -415,5 +412,24 @@ SCLOrkClock : Clock {
 	setTempoAtBeat { | newTempo, beats |
 		var state = currentState.setTempoAtBeat(newTempo, beats);
 		this.prSendChange(state);
+	}
+
+	sendDiagnostic { |netAddr|
+		var localTime = Main.elapsedTime;
+		var serverTime = SCLOrkClock.localToServerTime(localTime);
+		var localBeats = this.secs2beats(localTime);
+		var bar = this.bar;
+		var beatInBar = this.beatInBar;
+		netAddr.sendMsg('/sclorkClockDiag',
+			currentState.cohortName,
+			localBeats.high32Bits, localBeats.low32Bits,
+			localTime.high32Bits, localTime.low32Bits,
+			serverTime.high32Bits, serverTime.low32Bits,
+			timeDiff.high32Bits, timeDiff.low32Bits,
+			bar.high32Bits, bar.low32Bits,
+			beatInBar.high32Bits, beatInBar.low32Bits,
+			currentState.applyAtTime.high32Bits, currentState.applyAtTime.low32Bits,
+			currentState.applyAtBeat.high32Bits, currentState.applyAtBeat.low32Bits
+		);
 	}
 }

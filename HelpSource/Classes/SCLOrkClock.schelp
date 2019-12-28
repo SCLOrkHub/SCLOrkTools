@@ -1,65 +1,59 @@
 TITLE:: SCLOrkClock
-summary:: FIXME
+summary:: Network-based TempoClock for use in SCLOrk performance and composition.
 categories:: Quarks>SCLOrkTools
 related:: Classes/TempoClock
 
 DESCRIPTION::
-SCLOrkClock can be used as a link::Classes/TempoClock:: but takes its synchronization information from a link::Classes/SCLOrkTimeClient::, so will be synchronized in time to all other clocks connected to the same link::Classes/SCLOrkTimeServer::. This means that the code::beats:: value of each SCLOrkClock talking to the same time server, and with the same tempo, is synchronized. This allows for patterns and events to be played with the same quantization or scheduling on different computers in synchronicity.
+SCLOrkClock can be used as a link::Classes/TempoClock:: but takes its synchronization information from a link::Classes/SCLOrkClockServer::, so will be synchronized in time to all other clocks connected to the same link::Classes/SCLOrkClockServer::. This means that the code::beats:: value of each SCLOrkClock talking to the same time server, and with the same name, is synchronized. This allows for patterns and events to be played with the same quantization or scheduling on different computers in synchronicity.
 
 CLASSMETHODS::
+
+METHOD::startSync
+Call before creating clocks. Establishes a connection with the link::Classes/SCLOrkClockServer::, starts to compute timing information, and gathers list of current active clocks.
+
+ARGUMENT::serverName
+A name or IP address of the link::Classes/SCLOrkClockServer::.
 
 METHOD:: new
 Create and return a new SCLOrkClock object. The first argument is for the network synchronization, and the remaining arguments are passed on to link::Classes/TempoClock#new::.
 
-ARGUMENT:: timeClient
-Required link::Classes/SCLOrkTimeClient:: object, used by all SCLOrkClocks on the computer to synchronize with the server.
+ARGUMENT:: name
+A symbol describing a unique name of the clock. Any clocks created with the same name will share all information over the network.
+
+note::If a clock of this name already exists, all of the rest of the parameters will be ignored in favor of the existing clock parameters.::
 
 ARGUMENT:: tempo
 Starting tempo for the clock.
 
-ARGUMENT:: beats
-Starting beats value. Note that beats will be quickly overriden by the server synchronization code.
+ARGUMENT:: beatsPerBar
+How many beats per bar at the start of the clock.
 
-ARGUMENT:: seconds
-Starting seconds value. Note that seconds will be quickly overriden by the server synchronization code.
-
-ARGUMENT:: queueSize
-Size of storage of the TempoClock scheduling queue.
+ARGUMENT:: serverName
+The name of the clock server to consult.
 
 returns:: A newly initialized SCLOrkClock.
+
+private:: clockMap, localToServerTime, serverToLocalTime, stopClock, syncPort, timeDiff
 
 INSTANCEMETHODS::
 private:: setVars, prInit, cmdPeriod
 
 METHOD:: beats
-Allows for reading, but not changing, of the TempoClock beats count. The SCLOrkClock computes its beats value from the link::Classes/SCLOrkTimeClient:: time value.
+Allows for reading, but not changing, of the curent beat count.
 
 METHOD:: seconds
-Allows for reading, but not changing, of the TempoClock beats count. The SCLOrkClock computes its seconds value from the link::Classes/SCLOrkTimeClient:: time value.
+Allows for reading, but not changing, of the current seconds count.
 
 METHOD:: permanent
-If true, the clock will survive calls to command+period. strong::Note:: that the default is true, unlike link::Classes/TempoClock::, for which the default is false.
-
-METHOD:: free
-Stops and destroys the SCLOrkClock.
+If true, the clock will survive calls to command+period.
 
 EXAMPLES::
 
 code::
-// Create a new time client with defaults.
-~timeClient = SCLOrkTimeClient.new;
-
-// Print a notification with our best estimate of the server clock.
-~clock = SCLOrkClock.new(~timeClient);
-~clock.play({ "server beats: %".format(~clock.beats).postln; ^1 });
-)
-
-// ... Let some time pass ...
+SCLOrkClock.startSync;
 
 (
-~clock.stop;
-
-// Release the client. All dependent clocks still running will break.
-~timeClient.free;
+~clock = SCLOrkClock.new;
+~clock.play({ ~clock.beats.postln; 1; });
 )
 ::

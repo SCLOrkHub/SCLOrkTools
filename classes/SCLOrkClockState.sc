@@ -2,7 +2,7 @@ SCLOrkClockState {
 	var <>cohortName;
 	var <>applyAtBeat;
 	// Time only needs to be valid for the initial and current state.
-	var <>applyAtTime;
+	var <>applyAtTime;  // This time is always serverTime
 	var <>tempo;
 	var <>beatsPerBar;
 	var <>baseBar;
@@ -62,20 +62,20 @@ SCLOrkClockState {
 	}
 
 	beats2secs { | beats, timeDiff |
-		^(applyAtTime + ((beats - applyAtBeat) / tempo)) + timeDiff;
+		var b2s = (applyAtTime + ((beats - applyAtBeat) / tempo)) + timeDiff;
+		^b2s;
 	}
 
 	secs2beats { | secs, timeDiff |
-		^(applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime)));
+		var s2b = applyAtBeat + (tempo * ((secs - timeDiff) - applyAtTime));
+		^s2b;
 	}
 
-	setTempoAtBeat { | newTempo, beats |
+	setTempoAtBeat { | newTempo, beats, timeDiff |
 		var state = SCLOrkClockState.new(
 			cohortName: cohortName,
 			applyAtBeat: beats.asFloat,
-			// Local clocks will compute and attach a server time to their copy
-			// of this state, so it will set to a valid value when becoming current.
-			applyAtTime: 0.0,
+			applyAtTime: this.beats2secs(beats, 0.0),  // time is server-relative, so no diff.
 			tempo: newTempo.asFloat,
 			beatsPerBar: beatsPerBar.asFloat,
 			baseBar: baseBar.asFloat,
@@ -108,5 +108,11 @@ SCLOrkClockState {
 		msg[12] = baseBarBeat.high32Bits;
 		msg[13] = baseBarBeat.low32Bits;
 		^msg;
+	}
+
+	toString {
+		^("cohortName: %, applyAtBeat: %, applyAtTime: %," +
+			"tempo: %, beatsPerBar: %, baseBar: %, baseBarBeat: %").format(
+			cohortName, applyAtBeat, applyAtTime, tempo, beatsPerBar, baseBar, baseBarBeat);
 	}
 }

@@ -1,7 +1,7 @@
 TITLE:: SCLOrkWatch
 summary:: a basic stopwatch with optional blink and action functionality.
 categories:: Quarks>SCLOrkTools
-related::
+related:: link::Classes/SCLOrkClock::
 
 DESCRIPTION::
 A basic stopwatch that starts immediately. User can define optional target times for blinking (blinking starts 5 seconds before target time), and actions (functions) to be automatically evaluated at target times.

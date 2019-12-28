@@ -159,7 +159,7 @@ code::
 ~clock = SCLOrkClock.new;
 
 // Pulls state from network, tempo is currently 100/60.
-~clock.tempo.println;
+~clock.tempo.postln;
 
 ~clock.play({ ~clock.beats.postln; 1; });  // starts counting from 0
 
