@@ -45,4 +45,10 @@ SCLOrkCDT {
 		name: "SCLOrkCDT Jitter"
 		);
 	}
+
+	free {
+		diagCallback = {};
+		jitterTask.stop;
+		diagOSCFunc.disable;
+	}
 }

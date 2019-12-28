@@ -55,6 +55,7 @@ SCLOrkClockServer {
 						var cohortState = cohortStateMap.at(cohortName);
 						if (cohortState.isNil, {
 							var initialState = SCLOrkClockState.newFromMessage(msg);
+							"/clockCreate adding new clock %".format(cohortName).postln;
 							cohortState = ();
 							cohortState.put(\current, initialState);
 							cohortState.put(\stateQueue, PriorityQueue.new);
@@ -63,6 +64,7 @@ SCLOrkClockServer {
 							msg[0] = '/clockUpdate';
 							this.prSendAll(msg);
 						}, {
+							"/clockCreate called on existing clock %".format(cohortName).postln;
 							// Clock already exists, ignore provided state,
 							// groom existing state, then send it.
 							this.prGroomState(cohortState);
@@ -136,7 +138,7 @@ SCLOrkClockServer {
 		wire.sendMsg(*msg);
 		// Queue will be sent out-of-order but doesn't matter, as receiving
 		// clocks will re-assemble correct order in their own queues.
-		cohortState.at(\stateQueue).do({ | item, index |
+		cohortState.at(\stateQueue).do({ |item, index|
 			msg = item.toMessage;
 			msg[0] = '/clockUpdate';
 			wire.sendMsg(*msg);

@@ -83,6 +83,7 @@ SCLOrkCDTUI {
 	prConstructUIElements {
 		window = SCLOrkWindow.new("SCLOrkCDTUI", Rect.new(0, 0, 800, 600));
 		window.layout = VLayout.new();
+		window.onClose = { this.free; };
 		window.front;
 	}
 
@@ -96,5 +97,9 @@ SCLOrkCDTUI {
 			});
 			cohortViewMap.at(cohortName).clockTick(time, diag);
 		});
+	}
+
+	free {
+		cdt.free;
 	}
 }

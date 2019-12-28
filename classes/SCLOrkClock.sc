@@ -105,10 +105,10 @@ SCLOrkClock : Clock {
 							clock = super.new.init;
 							clock.prForceState(state);
 							clockMap.put(state.cohortName, clock);
-							"added new clock with state %".format(state.toString()).postln;
+							"/clockUpdate got new clock with state %".format(state.toString()).postln;
 						}, {
 							clock.prUpdate(state);
-							"updated clock with state %".format(state.toString()).postln;
+							"/clockUpdate updated clock with state %".format(state.toString()).postln;
 						});
 					},
 				);
@@ -152,6 +152,7 @@ SCLOrkClock : Clock {
 				msg = state.toMessage;
 				msg[0] = '/clockCreate';
 				wire.sendMsg(*msg);
+				"sent /clockCreate for %".format(name).postln;
 			});
 		});
 		^clock;
@@ -187,7 +188,7 @@ SCLOrkClock : Clock {
 			// If newState is for a later beat count, it goes into the stateQueue,
 			// and we schedule a task for later to promote it to the current state.
 			if (newState.applyAtBeat <= this.beats, {
-				newState.applyAtTime = this.beats2secs(newState.applyAtBeat);
+				"clobbering current state with new state for cohort %".newState.cohortName.postln;
 				currentState = newState;
 				// Change in state can mean change in timing of items in the
 				// queue, re-schedule the next task.
