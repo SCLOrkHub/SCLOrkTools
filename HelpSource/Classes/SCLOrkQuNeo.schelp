@@ -1,7 +1,7 @@
 TITLE:: SCLOrkQuNeo
 summary:: User interface mirroring the QuNeo MIDI controller
 categories:: Undocumented classes
-related:: Classes/SomeRelatedClass, Reference/SomeRelatedStuff, etc.
+related::
 
 DESCRIPTION::
 Graphical User Interface mirroring the QuNeo MIDI controller. It can be used as a standalone GUI in SuperCollider, or in conjunction with an actual QuNeo hardware. When used with the hardware, GUI and QuNeo mirror each other (ie, pushing a button on the device will be reflected on the GUI and vice-versa).
