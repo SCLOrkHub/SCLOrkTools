@@ -1,0 +1,183 @@
+TITLE:: SCLOrkQuNeo
+summary:: User interface mirroring the QuNeo MIDI controller
+categories:: Undocumented classes
+related:: Classes/SomeRelatedClass, Reference/SomeRelatedStuff, etc.
+
+DESCRIPTION::
+Graphical User Interface mirroring the QuNeo MIDI controller. It can be used as a standalone GUI in SuperCollider, or in conjunction with an actual QuNeo hardware. When used with the hardware, GUI and QuNeo mirror each other (ie, pushing a button on the device will be reflected on the GUI and vice-versa).
+
+
+CLASSMETHODS::
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: action
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+METHOD:: prSendOtherLEDs
+(describe method here)
+
+ARGUMENT:: number
+(describe argument here)
+
+ARGUMENT:: value
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: onSliderChange
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prSendKnobLED
+(describe method here)
+
+ARGUMENT:: ccNum
+(describe argument here)
+
+ARGUMENT:: knobValue
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: onButtonChange
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prAllLEDsOff
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: onUIButtonChange
+(describe method here)
+
+ARGUMENT:: velocity
+(describe argument here)
+
+ARGUMENT:: midinote
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: onUISliderChange
+(describe method here)
+
+ARGUMENT:: ccValue
+(describe argument here)
+
+ARGUMENT:: ccNum
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: onConnectMIDI
+(describe method here)
+
+ARGUMENT:: doConnect
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prSendSliderLED
+(describe method here)
+
+ARGUMENT:: ccNum
+(describe argument here)
+
+ARGUMENT:: sliderValue
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: init
+(describe method here)
+
+ARGUMENT:: argAction
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isPhysicalDeviceConnected
+(describe method here)
+
+ARGUMENT:: verbose
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: connectQuNeo
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prAllPadLEDsOff
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: changeSliderLabel
+(describe method here)
+
+ARGUMENT:: ccNum
+(describe argument here)
+
+ARGUMENT:: string
+(describe argument here)
+
+ARGUMENT:: keepNumber
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prSendPadLEDs
+(describe method here)
+
+ARGUMENT:: midinote
+(describe argument here)
+
+ARGUMENT:: color
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: changeButtonLabel
+(describe method here)
+
+ARGUMENT:: midinote
+(describe argument here)
+
+ARGUMENT:: string
+(describe argument here)
+
+ARGUMENT:: keepNumber
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: midiChannel
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prRedrawPadLEDsAtBankSwitch
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+q = SCLOrkQuNeo.new;
+q.onButtonChange = { |velocity, midinote| ["BUTTON!", velocity, midinote].postln };
+q.onSliderChange = { |ccValue, ccNum| ["SLIDING...", ccValue, ccNum].postln };
+::
