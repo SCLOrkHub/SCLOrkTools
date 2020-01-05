@@ -1,181 +1,111 @@
 TITLE:: SCLOrkQuNeo
 summary:: User interface mirroring the QuNeo MIDI controller
+categories:: Quarks>SCLOrkTools
 
 DESCRIPTION::
 Graphical User Interface mirroring the QuNeo MIDI controller. It can be used as a standalone GUI in SuperCollider, or in conjunction with an actual QuNeo hardware. When used with the hardware, GUI and QuNeo mirror each other (ie, pushing a button on the device will be reflected on the GUI and vice-versa).
+
+The class assumes SuperCollider is running on a Linux computer with the Jack Audio Connection Kit handling both audio and MIDI (the default setup in the Santa Clara Laptop Orchestra). MIDI functionality will need some tweaking to work as expected on other systems (Mac OS and Windows).
+
+The class is designed to work with a custom QuNeo Preset (a set of mappings for MIDI note numbers and control messages). The preset file is included with SCLOrkTools.
+
+When used with the QuNeo controller, SCLOrkQuNeo will send back LED update information to the device so that changes on the GUI are also reflected on the hardware.
 
 
 CLASSMETHODS::
 
 METHOD:: new
-(describe method here)
+Creates a new instance of the SCLOrkQuNeo Graphical User Interface.
 
-ARGUMENT:: action
-(describe argument here)
-
-returns:: (describe returnvalue here)
+returns:: an instance of SCLOrkQuNeo.
 
 
 INSTANCEMETHODS::
 
-METHOD:: prSendOtherLEDs
-(describe method here)
-
-ARGUMENT:: number
-(describe argument here)
-
-ARGUMENT:: value
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: onSliderChange
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: prSendKnobLED
-(describe method here)
-
-ARGUMENT:: ccNum
-(describe argument here)
-
-ARGUMENT:: knobValue
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: onButtonChange
-(describe method here)
 
-returns:: (describe returnvalue here)
+Methods onSliderChange and onButtonChange allow users to define custom action for sliders and buttons. The function receives two arguments: ccValue and ccNum for sliders; velocity and midinote for buttons. GUI will show the control number or midinote for each slider or button. The two rotary knobs are considered sliders (ccNum 4 and 5).
 
-METHOD:: prAllLEDsOff
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: onUIButtonChange
-(describe method here)
-
-ARGUMENT:: velocity
-(describe argument here)
-
-ARGUMENT:: midinote
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: onUISliderChange
-(describe method here)
-
-ARGUMENT:: ccValue
-(describe argument here)
-
-ARGUMENT:: ccNum
-(describe argument here)
-
-returns:: (describe returnvalue here)
+Note: When playing buttons from the QuNeo, velocity will be a value between 0 and 127. When playing buttons from the GUI, velocity will be either 127 (button push) or 0 (button release).
 
 METHOD:: onConnectMIDI
-(describe method here)
 
-ARGUMENT:: doConnect
-(describe argument here)
+This method is called when the user presses the "MIDI  ON/OFF" button. There is no need to call it directly.  The method will initialize MIDICLient and check whether there is a QuNeo connected.
 
-returns:: (describe returnvalue here)
-
-METHOD:: prSendSliderLED
-(describe method here)
-
-ARGUMENT:: ccNum
-(describe argument here)
-
-ARGUMENT:: sliderValue
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: init
-(describe method here)
-
-ARGUMENT:: argAction
-(describe argument here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: isPhysicalDeviceConnected
-(describe method here)
+Linux-specific. This method accesses the command line to check whether QuNeo is plugged in (amidi). It also checks whether the QuNeo is visible in the MIDIClient.destinations list.
 
 ARGUMENT:: verbose
-(describe argument here)
-
-returns:: (describe returnvalue here)
+true or false.
 
 METHOD:: connectQuNeo
-(describe method here)
+Linux-specific. Connects QuNeo MIDI In to SuperCollider MIDI Out and vice versa. This is done through Jack, so it assumes QuNeo is visible to Jack (e.g. using a2jmidid).
 
-returns:: (describe returnvalue here)
-
-METHOD:: prAllPadLEDsOff
-(describe method here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: changeSliderLabel
-(describe method here)
+
+Customize the label (string of characters) shown on each slider.
 
 ARGUMENT:: ccNum
-(describe argument here)
+The number of the slider you want to change the label.
 
 ARGUMENT:: string
-(describe argument here)
+The new label (a string of characters between double quotes).
 
 ARGUMENT:: keepNumber
-(describe argument here)
+true or false. If true, original number label (eg. "cc9") will be kept, prepended to the new label.
 
-returns:: (describe returnvalue here)
-
-METHOD:: prSendPadLEDs
-(describe method here)
-
-ARGUMENT:: midinote
-(describe argument here)
-
-ARGUMENT:: color
-(describe argument here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: changeButtonLabel
-(describe method here)
+Same as above but for buttons.
 
 ARGUMENT:: midinote
-(describe argument here)
+Midinote number of the button you want to re-label.
 
 ARGUMENT:: string
-(describe argument here)
+New label.
 
 ARGUMENT:: keepNumber
-(describe argument here)
+true or false. If true, original number label  will be kept prepended to the new label.
 
-returns:: (describe returnvalue here)
+Strings that are too long will not fit nicely on button. One or two short words are best. You can force a line break in the string using \n if needed.
 
 METHOD:: midiChannel
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: prRedrawPadLEDsAtBankSwitch
-(describe method here)
-
-returns:: (describe returnvalue here)
-
+The MIDI channel used to communicate with the QuNeo. In the preset used by SCLOrk, this is channel 12 (11 in SuperCollider). No need to use this method directly.
 
 EXAMPLES::
-
 code::
 q = SCLOrkQuNeo.new;
+
+// Defining custom actions for buttons and sliders:
+
 q.onButtonChange = { |velocity, midinote| ["BUTTON!", velocity, midinote].postln };
+
 q.onSliderChange = { |ccValue, ccNum| ["SLIDING...", ccValue, ccNum].postln };
+
+// Changing slider labels
+(
+q.changeSliderLabel(ccNum: 0, string: "tomatos");
+q.changeSliderLabel(ccNum: 1, string: "carrots");
+q.changeSliderLabel(ccNum: 2, string: "onions");
+q.changeSliderLabel(ccNum: 3, string: "garlic");
+
+q.changeSliderLabel(ccNum: 6, string: "\nwow\nmany\nlines");
+q.changeSliderLabel(ccNum: 7, string: "\noops");
+q.changeSliderLabel(ccNum: 8, string: "hi", keepNumber: false);
+q.changeSliderLabel(ccNum: 9, string: "bye", keepNumber: false);
+
+q.changeSliderLabel(ccNum: 10, string: "maybe this is master volume", keepNumber: false);
+);
+
+// Changing button labels:
+(
+q.changeButtonLabel(midinote: 36, string: "POPCORN \n WOW");
+q.changeButtonLabel(midinote: 37, string: "REVERB");
+q.changeButtonLabel(midinote: 45, string: "A LOT OF \n DELAY", keepNumber: false);
+q.changeButtonLabel(midinote: 56, string: "meny \n echoes...");
+q.changeButtonLabel(midinote: 67, string: "A BIT OF \n DELAY", keepNumber: false);
+);
 ::
