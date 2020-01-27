@@ -321,6 +321,11 @@ SCLOrkChat {
 						sendType = \plain;
 						sendString = sendString[firstSpace + 1..];
 					},
+					"/eno", {
+                                                isCommand = false;
+                                                sendType = \plain;
+                                                sendString = "Brian Eno advises: \"" ++ SCLOrkOblique.advise ++ " \"";
+                                        },
 					"/quit", {
 						AppClock.sched(0.1, {
 							this.free;
