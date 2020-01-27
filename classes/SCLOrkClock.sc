@@ -239,7 +239,7 @@ SCLOrkClock : TempoClock {
 	}
 
 	cmdPeriod {
-		super.cmdPeriod;
+		TempoClock.cmdPeriod;
 		// State changes must always happen regardless of if we clear the clock
 		// task list or no.
 		this.prScheduleStateChange;
