@@ -99,9 +99,8 @@ SCLOrkClock : TempoClock {
 						var clock = clockMap.at(state.cohortName);
 						if (clock.isNil, {
 							var beats = state.secs2beats(Main.elapsedTime, timeDiff);
-							var secs = state.beats2secs(secs, timeDiff);
-							clock = super.new.init(state.tempo, beats, secs);
-							clock.currentState = state;
+							var secs = state.beats2secs(beats, timeDiff);
+							clock = super.new.init(state.tempo, beats, secs).prInit(state);
 							clockMap.put(state.cohortName, clock);
 							"/clockUpdate got new clock with state %".format(state.toString()).postln;
 						}, {
@@ -138,9 +137,7 @@ SCLOrkClock : TempoClock {
 					tempo: tempo,
 					beatsPerBar: beatsPerBar);
 
-				clock = super.new;
-				clock.init(tempo);
-				clock.currentState = state;
+				clock = super.new.init(tempo).prInit(state);
 				clockMap.put(name, clock);
 
 				// Inform server of clock creation.
@@ -158,12 +155,12 @@ SCLOrkClock : TempoClock {
 		wire.sendMsg('/clockStop', name);
 	}
 
-	init { |tempo, beats, seconds, queueSize = 256|
-		super.init(tempo, beats, seconds, queueSize);
+	prInit { |state|
+		currentState = state;
 		stateQueue = PriorityQueue.new;
 		CmdPeriod.add(this);
 		beatSyncTask = SkipJack.new({
-			if (currentState.notNil, {
+			if (this.isRunning, {
 				this.beats_(currentState.secs2beats(Main.elapsedTime, timeDiff));
 			});
 		},
@@ -267,11 +264,11 @@ SCLOrkClock : TempoClock {
 	}
 
 	secs2beats { |secs|
-		currentState.secs2beats(secs, timeDiff);
+		^currentState.secs2beats(secs, timeDiff);
 	}
 
 	beats2secs { |beats|
-		currentState.beats2secs(beats, timeDiff);
+		^currentState.beats2secs(beats, timeDiff);
 	}
 
 	setTempoAtBeat { | newTempo, beats |
