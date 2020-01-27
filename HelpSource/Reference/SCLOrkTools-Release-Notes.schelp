@@ -5,6 +5,13 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.9 26 January 2019
+
+list::
+## More work on SCLOrkClock, this time reworking it to be based on TempoClock again, to help with jitter.
+## Adds SCLOrkQuNeo, a graphical and MIDI interface to the QuNeo hardware controller.
+::
+
 subsection:: 0.0.8 - 28 December 2019
 
 Additional repairs to SCLOrkClock, including the addition of a diagnostic tool to look at clock performance across the network.
