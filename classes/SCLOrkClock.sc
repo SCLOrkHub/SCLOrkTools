@@ -98,7 +98,9 @@ SCLOrkClock : TempoClock {
 						var state = SCLOrkClockState.newFromMessage(msg);
 						var clock = clockMap.at(state.cohortName);
 						if (clock.isNil, {
-							clock = super.new.init(state.secs2beats(Main.elapsedTime, timeDiff));
+							var beats = state.secs2beats(Main.elapsedTime, timeDiff);
+							var secs = state.beats2secs(secs, timeDiff);
+							clock = super.new.init(state.tempo, beats, secs);
 							clock.currentState = state;
 							clockMap.put(state.cohortName, clock);
 							"/clockUpdate got new clock with state %".format(state.toString()).postln;
@@ -262,6 +264,14 @@ SCLOrkClock : TempoClock {
 			var nextBeat = this.beats.roundUp.asFloat;
 			this.setTempoAtBeat(floatTempo, nextBeat);
 		});
+	}
+
+	secs2beats { |secs|
+		currentState.secs2beats(secs, timeDiff);
+	}
+
+	beats2secs { |beats|
+		currentState.beats2secs(beats, timeDiff);
 	}
 
 	setTempoAtBeat { | newTempo, beats |
