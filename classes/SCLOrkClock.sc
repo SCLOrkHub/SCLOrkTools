@@ -17,8 +17,9 @@ SCLOrkClock : TempoClock {
 	classvar syncTask;
 	classvar wire;
 
-	var <currentState;
+	var <>currentState;
 	var stateQueue;
+	var beatSyncTask;
 
 	*startSync { |serverName = "sclork-s01.local"|
 		if (syncStarted.isNil, {
@@ -97,8 +98,8 @@ SCLOrkClock : TempoClock {
 						var state = SCLOrkClockState.newFromMessage(msg);
 						var clock = clockMap.at(state.cohortName);
 						if (clock.isNil, {
-							clock = super.new.init;
-							clock.prForceState(state);
+							clock = super.new.init(state.secs2beats(Main.elapsedTime, timeDiff));
+							clock.currentState = state;
 							clockMap.put(state.cohortName, clock);
 							"/clockUpdate got new clock with state %".format(state.toString()).postln;
 						}, {
@@ -136,8 +137,8 @@ SCLOrkClock : TempoClock {
 					beatsPerBar: beatsPerBar);
 
 				clock = super.new;
-				clock.init(tempo, 0.0, thisThread.seconds);
-				clock.prForceState(state);
+				clock.init(tempo);
+				clock.currentState = state;
 				clockMap.put(name, clock);
 
 				// Inform server of clock creation.
@@ -159,6 +160,12 @@ SCLOrkClock : TempoClock {
 		super.init(tempo, beats, seconds, queueSize);
 		stateQueue = PriorityQueue.new;
 		CmdPeriod.add(this);
+		beatSyncTask = SkipJack.new({
+			if (currentState.notNil, {
+				this.beats_(currentState.secs2beats(Main.elapsedTime, timeDiff));
+			});
+		},
+		0.2);
 	}
 
 	free {
@@ -224,10 +231,6 @@ SCLOrkClock : TempoClock {
 		});
 	}
 
-	prForceState { | state |
-		currentState = state;
-	}
-
 	prSendChange { | state |
 		var stateMsg = state.toMessage;
 		stateMsg[0] = '/clockChange';
@@ -261,41 +264,10 @@ SCLOrkClock : TempoClock {
 		});
 	}
 
-	beatDur {
-		^currentState.beatDur;
-	}
-
-	beatsPerBar {
-		^currentState.beatsPerBar;
-	}
-
-	bar {
-		^currentState.beats2bars(this.beats);
-	}
-
-
-	beats2bars { |beats|
-		^currentState.beats2bars(beats);
-	}
-
-	bars2beats { |bars|
-		^currentState.bars2beats(bars);
-	}
-
-	beats2secs { | beats |
-		^currentState.beats2secs(beats, timeDiff);
-	}
-
-	secs2beats { | secs |
-		^currentState.secs2beats(secs, timeDiff);
-	}
-
-	setMeterAtBeat { | newBeatsPerBar, beats |
-	}
-
 	setTempoAtBeat { | newTempo, beats |
 		var state = currentState.setTempoAtBeat(newTempo, beats);
 		this.prSendChange(state);
+		super.setTempoAtBeat(newTempo, beats);
 	}
 
 	sendDiagnostic { |netAddr|
