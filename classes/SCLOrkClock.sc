@@ -1,4 +1,4 @@
-SCLOrkClock : Clock {
+SCLOrkClock : TempoClock {
 	const historySize = 60;
 	const <syncPort = 4249;
 
@@ -17,13 +17,9 @@ SCLOrkClock : Clock {
 	classvar syncTask;
 	classvar wire;
 
-	var <currentState;
+	var <>currentState;
 	var stateQueue;
-
-	var <isRunning;
-	var <>permanent;
-
-	var queue;
+	var beatSyncTask;
 
 	*startSync { |serverName = "sclork-s01.local"|
 		if (syncStarted.isNil, {
@@ -102,8 +98,9 @@ SCLOrkClock : Clock {
 						var state = SCLOrkClockState.newFromMessage(msg);
 						var clock = clockMap.at(state.cohortName);
 						if (clock.isNil, {
-							clock = super.new.init;
-							clock.prForceState(state);
+							var beats = state.secs2beats(Main.elapsedTime, timeDiff);
+							var secs = state.beats2secs(beats, timeDiff);
+							clock = super.new.init(state.tempo, beats, secs).prInit(state);
 							clockMap.put(state.cohortName, clock);
 							"/clockUpdate got new clock with state %".format(state.toString()).postln;
 						}, {
@@ -140,8 +137,7 @@ SCLOrkClock : Clock {
 					tempo: tempo,
 					beatsPerBar: beatsPerBar);
 
-				clock = super.new.init;
-				clock.prForceState(state);
+				clock = super.new.init(tempo).prInit(state);
 				clockMap.put(name, clock);
 
 				// Inform server of clock creation.
@@ -159,16 +155,19 @@ SCLOrkClock : Clock {
 		wire.sendMsg('/clockStop', name);
 	}
 
-	init {
-		isRunning = true;
-		queue = PriorityQueue.new;
+	prInit { |state|
+		currentState = state;
 		stateQueue = PriorityQueue.new;
-		permanent = false;
 		CmdPeriod.add(this);
+		beatSyncTask = SkipJack.new({
+			if (this.isRunning, {
+				this.beats_(currentState.secs2beats(Main.elapsedTime, timeDiff));
+			});
+		},
+		0.2);
 	}
 
 	free {
-		queue.clear;
 		CmdPeriod.remove(this);
 	}
 
@@ -186,9 +185,6 @@ SCLOrkClock : Clock {
 			if (newState.applyAtBeat <= this.beats, {
 				"clobbering current state with new state for cohort %".format(newState.cohortName).postln;
 				currentState = newState;
-				// Change in state can mean change in timing of items in the
-				// queue, re-schedule the next task.
-				this.prScheduleTop;
 			}, {
 				stateQueue.put(newState.applyAtBeat, newState);
 			});
@@ -208,14 +204,6 @@ SCLOrkClock : Clock {
 
 	}
 
-	prScheduleTop {
-		var nextBeat = queue.topPriority;
-		if (nextBeat.notNil, {
-			var nextTime = this.beats2secs(nextBeat);
-			SystemClock.schedAbs(nextTime, { this.prAdvance });
-		});
-	}
-
 	prScheduleStateChange {
 		var nextBeat = stateQueue.topPriority;
 		if (nextBeat.notNil, {
@@ -224,44 +212,7 @@ SCLOrkClock : Clock {
 		});
 	}
 
-	prAdvance {
-		var sec = Main.elapsedTime;
-		var beat = this.beats;
-		var topBeat, next;
-		var threadClock = thisThread.clock;
-		thisThread.clock = this;
 
-		while ({
-			topBeat = queue.topPriority;
-			topBeat.notNil and: { topBeat <= beat }}, {
-			var task = queue.pop;
-
-			try {
-				// Little bit of fudging going on here where we are sending
-				// the scheduled beat count instead of the actual current
-				// beat timing. Some beats can be a bit off due to clock drift
-				// updates from the server.
-				var repeat = task.awake(topBeat, sec, this);
-				if (repeat.isNumber, {
-					queue.put(topBeat + repeat, task);
-				});
-			} {
-				"*** clock scheduling exception".postln;
-			}
-		});
-
-		thisThread.clock = threadClock;
-
-		if (topBeat.notNil, {
-			next = max(this.beats2secs(topBeat) - sec, 0.05);
-		});
-
-		^next;
-	}
-
-	// Coupla key differences - using the stateQueue, always
-	// recomputing beats (because state has changed), no task
-	// requeuing.
 	prAdvanceState {
 		var sec = Main.elapsedTime;
 		var topBeat;
@@ -269,10 +220,6 @@ SCLOrkClock : Clock {
 			topBeat = stateQueue.topPriority;
 			topBeat.notNil and: { topBeat <= this.beats }}, {
 			currentState = stateQueue.pop;
-
-			// Tempo change could mean new timing for tasks, reschedule
-			// task processing.
-			this.prScheduleTop;
 		});
 
 		if (topBeat.notNil, {
@@ -281,10 +228,6 @@ SCLOrkClock : Clock {
 		}, {
 			^nil;
 		});
-	}
-
-	prForceState { | state |
-		currentState = state;
 	}
 
 	prSendChange { | state |
@@ -298,12 +241,7 @@ SCLOrkClock : Clock {
 	}
 
 	cmdPeriod {
-		if (permanent.not, {
-			queue.clear;
-		}, {
-			this.prScheduleTop;
-		});
-
+		TempoClock.cmdPeriod;
 		// State changes must always happen regardless of if we clear the clock
 		// task list or no.
 		this.prScheduleStateChange;
@@ -325,93 +263,18 @@ SCLOrkClock : Clock {
 		});
 	}
 
-	beats {
-		^this.secs2beats(Main.elapsedTime);
-	}
-
-	schedAbs { |beats, item|
-		queue.put(beats, item);
-		this.prScheduleTop;
-	}
-
-	sched { | delta, item |
-		this.schedAbs(this.beats + delta, item);
-	}
-
-	play { |task, quant = 1|
-		this.schedAbs(quant.nextTimeOnGrid(this), task);
-	}
-
-	playNextBar { | task |
-		this.schedAbs(this.nextBar, task);
-	}
-
-	beatDur {
-		^currentState.beatDur;
-	}
-
-	beatsPerBar {
-		^currentState.beatsPerBar;
-	}
-
-	beatsPerBar_ { | newBeatsPerBar |
-	}
-
-	bar {
-		^currentState.beats2bars(this.beats);
-	}
-
-	nextBar { |beat|
-		if (beat.isNil, { beat = this.beats });
-		^this.bars2beats(this.beats2bars(beat).ceil);
-	}
-
-	beatInBar {
-		^this.beats - this.bars2beats(this.bar);
-	}
-
-	beats2bars { |beats|
-		^currentState.beats2bars(beats);
-	}
-
-	bars2beats { |bars|
-		^currentState.bars2beats(bars);
-	}
-
-	timeToNextBeat { |quant = 1.0|
-		^quant.nextTimeOnGrid(this) - this.beats;
-	}
-
-	nextTimeOnGrid { |quant = 1.0, phase = 0.0|
-		if (quant == 0.0, { ^(this.beats + phase); });
-		if (quant < 0.0, { quant = currentState.beatsPerBar * quant.neq });
-		if (phase < 0.0, { phase = phase % quant });
-		^roundUp(this.beats - currentState.baseBarBeat - (
-			phase % quant), quant) + currentState.baseBarBeat + phase;
-	}
-
-	elapsedBeats {
-		this.secs2beats(Main.elapsedTime);
-	}
-
-	seconds {
-		^Main.elapsedTime;
-	}
-
-	beats2secs { | beats |
-		^currentState.beats2secs(beats, timeDiff);
-	}
-
-	secs2beats { | secs |
+	secs2beats { |secs|
 		^currentState.secs2beats(secs, timeDiff);
 	}
 
-	setMeterAtBeat { | newBeatsPerBar, beats |
+	beats2secs { |beats|
+		^currentState.beats2secs(beats, timeDiff);
 	}
 
 	setTempoAtBeat { | newTempo, beats |
 		var state = currentState.setTempoAtBeat(newTempo, beats);
 		this.prSendChange(state);
+		super.setTempoAtBeat(newTempo, beats);
 	}
 
 	sendDiagnostic { |netAddr|
