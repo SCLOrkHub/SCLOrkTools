@@ -158,17 +158,12 @@ SCLOrkClock : TempoClock {
 	prInit { |state|
 		currentState = state;
 		stateQueue = PriorityQueue.new;
-		CmdPeriod.add(this);
 		beatSyncTask = SkipJack.new({
 			if (this.isRunning, {
 				this.beats_(currentState.secs2beats(Main.elapsedTime, timeDiff));
 			});
 		},
 		0.2);
-	}
-
-	free {
-		CmdPeriod.remove(this);
 	}
 
 	prUpdate { | newState |
