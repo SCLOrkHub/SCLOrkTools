@@ -870,6 +870,9 @@ SCLOrkQuNeo {
 
 		^(quneoCmdLine && quneoSC);
 	}
+	
+	preset { |mode| if(mode==\normal, {buttonArray[126].valueAction = 0}); if(mode==\toggle, {buttonArray[126].valueAction = 1}); }
+
 
 	connectQuNeo {
 		var pipe = Pipe.new("jack_lsp", "r");
