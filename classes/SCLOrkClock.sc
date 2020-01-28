@@ -236,15 +236,7 @@ SCLOrkClock : TempoClock {
 		wire.sendMsg(*stateMsg);
 	}
 
-	clear {
-		queue.clear;
-	}
-
-	cmdPeriod {
-		TempoClock.cmdPeriod;
-		// State changes must always happen regardless of if we clear the clock
-		// task list or no.
-		this.prScheduleStateChange;
+	stop {
 	}
 
 	name {
