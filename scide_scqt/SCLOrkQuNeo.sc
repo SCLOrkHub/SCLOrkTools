@@ -724,7 +724,8 @@ SCLOrkQuNeo {
 								sliderArray[ccNumber].valueAction = sliderValue;
 							}, {
 								// ...and for the two knobs:
-								// weird scaling. Ignore knob-bottom numbers (51-77) to mimic SC GUI where knob starts at 5pm and goes up to 4pm.
+								// weird scaling. Ignore knob-bottom numbers (51-77) to mimic SC GUI where
+								// knob starts at 7 o'clock and goes clockwise to 4 o'clock.
 								if(ccValue<51, {
 									knobValue = ccValue.linlin(0, 50, 0.5, 1);
 									sliderArray[ccNumber].valueAction = knobValue;
@@ -778,8 +779,7 @@ SCLOrkQuNeo {
 						}.defer;
 					},
 					noteNum: (36..99), // pads only
-					chan: midiChannel,
-					// srcID: midiPort.uid
+					chan: midiChannel
 				).permanent_(true);
 
 				MIDIdef.noteOff(
@@ -798,7 +798,6 @@ SCLOrkQuNeo {
 					},
 					noteNum: (36..99), // pads only
 					chan: midiChannel
-					// srcID: midiPort.uid
 				).permanent_(true);
 
 				MIDIdef.noteOn(
@@ -807,8 +806,7 @@ SCLOrkQuNeo {
 						{buttonArray[midinote].mouseDownAction.value(velocity)}.defer;
 					},
 					noteNum: (11..18)++(20..26), // all other non-pad buttons except nose
-					chan: midiChannel,
-					// srcID: midiPort.uid
+					chan: midiChannel
 				).permanent_(true);
 
 
@@ -818,8 +816,7 @@ SCLOrkQuNeo {
 						{buttonArray[midinote].valueAction = 0}.defer;
 					},
 					noteNum: (11..18)++(20..26),
-					chan: midiChannel,
-					// srcID: midiPort.uid
+					chan: midiChannel
 				).permanent_(true);
 
 
