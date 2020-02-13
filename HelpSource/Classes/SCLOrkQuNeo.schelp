@@ -25,7 +25,7 @@ INSTANCEMETHODS::
 METHOD:: onSliderChange
 METHOD:: onButtonChange
 
-Methods onSliderChange and onButtonChange allow users to define custom action for sliders and buttons. The function receives two arguments: ccValue and ccNum for sliders; velocity and midinote for buttons. GUI will show the control number or midinote for each slider or button. The two rotary knobs are considered sliders (ccNum 4 and 5).
+Methods onSliderChange and onButtonChange allow users to define custom action for sliders and buttons. The function receives two arguments: slider value (0.0 to 1.0) and slider number for sliders; velocity (0-127) and midinote for buttons. GUI will show the control number or midinote for each slider or button. The two rotary knobs are considered sliders (ccNum 4 and 5).
 
 Note: When playing buttons from the QuNeo, velocity will be a value between 0 and 127. When playing buttons from the GUI, velocity will be either 127 (button push) or 0 (button release).
 
