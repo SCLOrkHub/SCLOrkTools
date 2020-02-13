@@ -62,7 +62,6 @@ SCLOrkQuNeo {
 
 
 	init { |argAction|
-		Window.closeAll;
 
 		// start GUI in \normal preset, bank 0
 		guiPreset = \normal; // options are \normal and \toggle
