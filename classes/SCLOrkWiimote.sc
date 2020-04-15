@@ -91,7 +91,7 @@ SCLOrkWiimote {
 		onButton = {};
 
 		// Build button states map and seed initial values.
-		buttonStates = Dictionary.new;
+		buttonStates = IdentityDictionary.new;
 		buttonStates.put(\dPadLeft, false);
 		buttonStates.put(\dPadRight, false);
 		buttonStates.put(\dPadDown, false);
@@ -216,7 +216,8 @@ SCLOrkWiimote {
 		this.getStatus;
 	}
 
-	enableAccelerometer { | server |
+	enableAccelerometer { |server|
+		server ?? Server.default;
 		isUsingAccelerometer = true;
 		accelerometerBus = Bus.control(server, 3);
 		this.prResetDataReporting;

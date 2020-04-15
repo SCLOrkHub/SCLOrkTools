@@ -1,42 +1,229 @@
 TITLE:: SCLOrkWiimote
-summary:: Wrapper class around HID access to WiiMotes.
+summary:: Wrapper class around HID access to Wiimotes.
 categories:: Quarks>SCLOrkTools
-related:: Classes/HID, Guides/HID-permissions
+related:: Classes/HID, Guides/HID_permissions
 
 DESCRIPTION::
 
+SCLOrkWiimote offers an abstraction around raw Bluetooth HID packet communication with the Wiimote. It was developed and tested on Linux. MacOS support is unknown, and the HID library is not currently supported on Windows.
+
 note::
-Without setting permissions as detailed in in the HID permissions help article the code will not be able to connect to the WiiMote.
+Without setting permissions as detailed in in the link::Guides/HID_permissions:: help article the code will not be able to connect to the Wiimote.
 ::
 
 CLASSMETHODS::
+private::prGetAttachedWiimotes
 
 METHOD:: new
-(describe method here)
-
-returns:: (describe returnvalue here)
+Creates a new SCLOrkWiimote instance and returns it. There is currently only one supported instance of SCLOrkWiimote per computer, so if the SCLOrkWiimote instance has already been created, this method will return that instance. By default the accelerometer is disabled when the SCLOrkWiimote object is first created.
 
 METHOD:: isConnected
-(describe method here)
-
-returns:: (describe returnvalue here)
-
+Returns a boolean which is true if there is a Wiimote detected as connected to the host computer.
 
 INSTANCEMETHODS::
+private::init, getStatus, prParseFirstButtonByte, prParseSecondButtonByte, prResetDataReporting
+
+
+METHOD::onButton
+
+Provide a function to be called whenever a button press or release is detected.
+
+A function to call. The function will be called with three arguments. The first argument is a symbol, and will be one of:
+
+table::
+## code::\dPadLeft::
+## code::\dPadRight::
+## code::\dPadDown::
+## code::\dPadUp::
+## code::\plus::
+## code::\minus::
+## code::\one::
+## code::\two::
+## code::\home::
+## code::\a::
+## code::\b::
+::
+
+depending on which button on the Wiimote has changed state. The second argument is a boolean which will be true if the button has been pressed, and false if the button has been released. The third and final argument is the SCLOrkWiimote instance that detected the button press.
+
+METHOD:: isUsingAccelerometer
+Returns a boolean. If true the accelerometer is currently enabled. If false, it is not.
+
+METHOD:: accelerometerBus
+Returns the link::Classes/Bus:: number that represents the 3-channel bus holding the x,y, and z accelerometer values respectively. The values are updated at approximately 200Hz and range from -1 to +1.
+
+METHOD:: isBatteryLow
+Returns a boolean. If true the battery is critically low on the Wiimote and should be replaced.
+
+METHOD:: batteryLevel
+Returns a number between 0 and 1 indicating the current percentage on the battery level.
+
+METHOD:: leds
+
+Get current state or set the state of the 4 LEDs on the bottom of the front face of the Wiimote. The value is an integer using the first four bits to control the light states. See the examples below for some help setting and clearing bits to control lights.
+
+note::
+For basic usability of the Wiimote its advisable to keep at least one light on while the Wiimote is connected to SuperCollider. This allows a user to easily distinguish an active, connected Wiimote from one that is disconnected and powered down.
+::
+
+
+METHOD:: rumble
+A boolean controlling the state of the rumble motor inside the Wiimote. If true, the rumble motor is enabled. If false it is disabled.
+
+METHOD:: buttonStates
+An link::Classes/IdentityDictionary:: containing the current states of the buttons. The keys are the names of the buttons as documented in the code::onButton:: method, the values are booleans that are true if the button is pressed or false if not pressed.
+
+METHOD:: xAccel
+If the accelerometer is enabled, returns the current value of the x accelerometer.
+
+METHOD:: yAccel
+If the accelerometer is enabled, returns the current value of the y accelerometer.
+
+METHOD:: zAccel
+If the accelerometer is enabled, returns the current value of the z accelerometer.
+
+METHOD:: enableAccelerometer
+
+Enables accelerometer reporting on the Wiimote. The accelerometer reports back 3-axis acceleration data at roughly 200Hz, which drains the battery much faster than when just reporting the buttons. Therefore the accelerometer is disabled by default. In an effort to increase efficiency the data are sent directly to the synthesis server on a control link::Classes/Bus::, and can be accessed in SynthDefs with the link::Classes/InBus:: UGen. If accessing in the language the values are continuously updated and can be accessed by polling the values of the code::xAccel::, code::yAccel::, and code::zAccel:: variables.
+
+argument:: server
+An optional link::Classes/Server:: argument. If not provided, the class uses code::Server.default::.
+
+METHOD:: disableAccelerometer
+Turns off the accelerometer reporting on the Wiimote, to save the battery.
 
 METHOD:: free
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: init
-(describe method here)
-
-returns:: (describe returnvalue here)
+Disconnect from the Wiimote from SuperCollider and free the associated resources. If the accelerometer is required again, it can be re-enabled with another call to code::enableAccelerometer::.
 
 
 EXAMPLES::
 
 code::
-(some example code)
+// Evaluate this line first, to test connectivity:
+(
+SCLOrkWiimote.isConnected;
+)
+// should see something in the console log like:
+// HID: found 4 devices
+// IdentityDictionary[ (0 -> a HIDInfo(, Nintendo RVL-CNT-01-TR, IDs:1406, 816, /dev/hidraw3, <a mac address>, 0, -1)) ]
+// -> true
+
+// Now make the wiimote object:
+(
+~w = SCLOrkWiimote.new;
+)
+
+// Set up a button response function:
+(
+~w.onButton = { |buttonName, buttonState, wiimote|
+	"%: %".format(buttonName, buttonState).postln;
+	// Will only fire with both a and b buttons pressed.
+	if (~w.buttonStates.at(\a) and: { ~w.buttonStates.at(\b) }, {
+		"trigger!".postln;
+	});
+};
+)
+// Some sample output from the Konami code:
+/*
+dPadUp: true
+dPadUp: false
+dPadUp: true
+dPadUp: false
+dPadDown: true
+dPadDown: false
+dPadDown: true
+dPadDown: false
+dPadLeft: true
+dPadLeft: false
+dPadRight: true
+dPadRight: false
+dPadLeft: true
+dPadLeft: false
+dPadRight: true
+dPadRight: false
+b: true
+trigger!
+b: false
+a: true
+a: false
+home: true
+home: false
+*/
+
+// Query status of the battery:
+(
+"battery level: %, battery low warning: %".format(~w.batteryLevel, ~w.isBatteryLow).postln;
+)
+// prints:
+// battery level: 0.46666666666667, battery low warning: false
+
+// Check LED status, each binary bit is an LED on/off state
+(
+~w.leds.postln;
+)
+// Default is the left-most light only on, so this prints:
+// 1
+
+// Night Rider LED effect demo also showing the setBit function
+(
+fork {
+	24.do({ |i|
+		// Moving left
+		if (i % 8 < 4, {
+			~w.leds = 0.setBit(i % 4, true);
+		}, {
+			~w.leds = 0.setBit(3 - (i % 4), true);
+		});
+		0.15.wait;
+	});
+}
+)
+
+// Knock knock with the rumble
+(
+fork {
+	~w.rumble = true;
+	0.2.wait;
+	~w.rumble = false;
+	0.2.wait;
+	~w.rumble = true;
+	0.2.wait;
+	~w.rumble = false;
+}
+)
+// Should buzz the remote twice.
+
+// Boot the audio server
+(
+s.boot;
+)
+
+// Enable the accelerometer on the WiiMote
+(
+~w.enableAccelerometer(s);
+)
+
+// Three axis accelerometer data ranges from -1 to +1 to
+// modulate this PMOsc
+(
+{
+	var x = InBus.kr(~w.accelerometerBus, 1, 0);
+	var y = InBus.kr(~w.accelerometerBus, 1, 1);
+	var z = InBus.kr(~w.accelerometerBus, 1, 2);
+	PMOsc.ar(
+		carfreq: 440 + (220.0 * x),
+		modfreq: 440 + (220.0 * y),
+		pmindex: pi * z);
+}.play;
+)
+
+// Turn off the accelerometer to save battery.
+(
+~w.disableAccelerometer;
+)
+
+// Disconnect from the Wiimote
+(
+~w.free;
+)
 ::
