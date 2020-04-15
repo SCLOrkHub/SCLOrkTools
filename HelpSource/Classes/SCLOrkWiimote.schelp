@@ -1,9 +1,11 @@
 TITLE:: SCLOrkWiimote
 summary:: Wrapper class around HID access to WiiMotes.
 categories:: Quarks>SCLOrkTools
-related:: Classes/HID, Guides/HID-permissions
+related:: Classes/HID, Guides/HID_permissions
 
 DESCRIPTION::
+
+SCLOrkWiimote offers an abstraction around raw Bluetooth HID packet communication with the Wiimote. It was developed and tested on Linux. MacOS support is unknown, and the HID library is not currently supported on Windows.
 
 note::
 Without setting permissions as detailed in in the HID permissions help article the code will not be able to connect to the WiiMote.
@@ -12,27 +14,25 @@ Without setting permissions as detailed in in the HID permissions help article t
 CLASSMETHODS::
 
 METHOD:: new
-(describe method here)
-
-returns:: (describe returnvalue here)
+Creates a new SCLOrkWiimote instance and returns it. There is currently only one supported instance of SCLOrkWiimote per computer, so if the SCLOrkWiimote instance has already been created, this method will return that instance.
 
 METHOD:: isConnected
-(describe method here)
-
-returns:: (describe returnvalue here)
-
+Returns a boolean which is true if there is a Wiimote detected as connected to the host computer.
 
 INSTANCEMETHODS::
+private::init
+
+METHOD:: enableAccelerometer
+
+Enables accelerometer reporting on the Wiimote. The accelerometer reports back 3-axis acceleration data at 100Hz, which drains the battery much faster than when just reporting the buttons. Therefore the accelerometer is disabled by default. In an effort to increase efficiency the data are sent directly to the synthesis server on a control link::Classes/Bus::
+
+argument:: server
 
 METHOD:: free
 (describe method here)
 
 returns:: (describe returnvalue here)
 
-METHOD:: init
-(describe method here)
-
-returns:: (describe returnvalue here)
 
 
 EXAMPLES::
