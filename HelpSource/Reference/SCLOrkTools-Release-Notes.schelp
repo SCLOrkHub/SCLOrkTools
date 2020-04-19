@@ -5,6 +5,10 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.15 19 April 2020
+
+Adds a fix for the link::Classes/SCLOrkWiimote:: to enable the code to work on computers with more than one connected Bluetooth device.
+
 subsection:: 0.0.14 14 April 2020
 
 Adds documentation to link::Classes/SCLOrkWiimote::.
