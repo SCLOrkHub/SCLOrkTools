@@ -63,8 +63,8 @@ SCLOrkWiimote {
 		if (deviceList.size == 0, {
 			^nil;
 		});
-		productId = deviceList.at(0).productID;
-		path = deviceList.at(0).path;
+		productId = deviceList.values.at(0).productID;
+		path = deviceList.values.at(0).path;
 
 		hid = HID.open(wiimoteVendorId, productId, path);
 		if (hid.isNil, {
