@@ -1,34 +1,26 @@
-#include "ConfabCommon.hpp"
 #include "Constants.hpp"
-#include "HttpEndpoint.hpp"
 #include "common/Version.hpp"
 
 #include "gflags/gflags.h"
-#include "glog/logging.h"
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+
+#include <sys/types.h>
+#include <unistd.h>
 
 // Command line flags for the HTTP server.
-DEFINE_int32(http_listen_port, 9080, "HTTP port on localhost to listen to incoming HTTP requests from confab peers.");
-DEFINE_int32(http_listen_threads, 1, "Number of thread to use for listening to HTTP requests.");
+DEFINE_int32(chat_port, 61000, "OSC TCP port for incoming chat messgaes");
 
 int main(int argc, char* argv[]) {
-    Confab::ConfabCommon common;
-    if (!common.initialize(argc, argv)) {
-        return -1;
-    }
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    LOG(INFO) << "Starting confab-server v" << Confab::confabVersion.toString() << " on pid " << getpid();
+    auto logger = spdlog::stdout_color_mt("console");
+    spdlog::set_default_logger(logger);
+    spdlog::info("Starting confab-server v{} on pid {}", Confab::confabVersion.toString(), getpid());
 
-    LOG(INFO) << "Starting HTTP on port " << FLAGS_http_listen_port << ".";
-    Confab::HttpEndpoint httpEndpoint(FLAGS_http_listen_port, FLAGS_http_listen_threads, common.assetDatabase());
 
-    httpEndpoint.startServerThread();
 
-    common.waitForTerminationSignal();
-
-    LOG(INFO) << "termination signal received, exiting normally.";
-
-    httpEndpoint.shutdown();
-    common.shutdown();
+    spdlog::info("Termination signal received, exiting normally.");
     return 0;
 }
 
