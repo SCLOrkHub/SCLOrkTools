@@ -2,11 +2,14 @@
 
 #include "spdlog/spdlog.h"
 
+#include <cstring>
+
 namespace Confab {
 
 ChatServer::ChatServer():
     m_tcpThread(nullptr),
-    m_tcpServer(nullptr) {
+    m_tcpServer(nullptr),
+    m_userSerial(0) {
 }
 
 ChatServer::~ChatServer() {
@@ -60,7 +63,8 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
 }
 
 void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address) {
-    std::string osc = fmt::format("OSC: [ {}", path);
+    std::string osc = fmt::format("{}:{} sent OSC: [ {}", lo_address_get_hostname(address), lo_address_get_port(address),
+            path);
     for (int i = 0; i < argc; ++i) {
         switch (types[i]) {
         case LO_INT32:
@@ -86,6 +90,20 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
     }
     osc += " ]";
     spdlog::info(osc);
+
+    // TODO: consider perfect hashing with gperf, ala Scintillator.
+
+    if (std::strcmp(path, "/chatConnect") == 0) {
+        // This is a request formerly done by SCLOrkWire, which is a request for a unique client ID.
+        // First blast through existing connections map to determine if we have a duplicate connection from existing
+        // client.
+    } else if (std::strcmp(path, "/chatSignIn") == 0) {
+    } else if (std::strcmp(path, "/chatGetAllClients") == 0) {
+    } else if (std::strcmp(path, "/chatSendMessage") == 0) {
+    } else if (std::strcmp(path, "/chatChangeName") == 0) {
+    } else if (std::strcmp(path, "/chatSignOut") == 0) {
+    } else {
+    }
 }
 
 } // namespace Confab

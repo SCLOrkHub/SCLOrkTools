@@ -4,6 +4,7 @@
 #include "lo/lo.h"
 
 #include <string>
+#include <unordered_map>
 
 namespace Confab {
 
@@ -30,6 +31,9 @@ private:
 
     lo_server_thread m_tcpThread;
     lo_server m_tcpServer;
+
+    int m_userSerial;
+    std::unordered_map<int, std::string> m_nameMap;
 };
 
 } // namespace Confab
