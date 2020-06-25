@@ -14,7 +14,7 @@ ChatServer::~ChatServer() {
 
 bool ChatServer::create(const std::string& bindPort) {
     m_tcpThread = lo_server_thread_new_with_proto(bindPort.data(), LO_TCP, loError);
-    if (m_tcpThread) {
+    if (!m_tcpThread) {
         spdlog::error("Unable to create OSC listener on TCP port {}", bindPort);
         return false;
     }
@@ -60,6 +60,32 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
 }
 
 void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address) {
+    std::string osc = fmt::format("OSC: [ {}", path);
+    for (int i = 0; i < argc; ++i) {
+        switch (types[i]) {
+        case LO_INT32:
+            osc += fmt::format(", {}", *reinterpret_cast<int32_t*>(argv[i]));
+            break;
+
+        case LO_FLOAT:
+            osc += fmt::format(", {}", *reinterpret_cast<float*>(argv[i]));
+            break;
+
+        case LO_STRING:
+            osc += fmt::format(", {}", reinterpret_cast<const char*>(argv[i]));
+            break;
+
+        case LO_BLOB:
+            osc += std::string(", <binary blob>");
+            break;
+
+        default:
+            osc += fmt::format(", <unrecognized type {}>", types[i]);
+            break;
+        }
+    }
+    osc += " ]";
+    spdlog::info(osc);
 }
 
 } // namespace Confab

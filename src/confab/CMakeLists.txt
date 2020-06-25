@@ -1,5 +1,7 @@
 set(CMAKE_CXX_STANDARD 17)
 
+include_directories(${EXT_INSTALL_DIR}/include)
+
 # Allow inclusion of headers across project.
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -86,6 +88,8 @@ set(confab_common_src_files
 ###
 # confab server
 add_executable(confab-server
+    ChatServer.hpp
+    ChatServer.cpp
     confab-server.cpp
 #    HttpEndpoint.cpp
 #    HttpEndpoint.hpp
@@ -93,6 +97,7 @@ add_executable(confab-server
 
 target_link_libraries(confab-server
     #    confab_common
+    fmt
     gflags::gflags
     ${EXT_INSTALL_DIR}/lib/liblo.a
     sclorktools_common

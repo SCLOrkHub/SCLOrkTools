@@ -70,6 +70,10 @@ add_subdirectory(googletest)
 #set(YAML_CPP_INSTALL OFF CACHE BOOL "make yaml-cpp install target")
 #add_subdirectory(yaml-cpp)
 
+#### fmt
+add_subdirectory(fmt)
+
 #### spdlog
+set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "require spdlog to use our external fmt")
 add_subdirectory(spdlog)
 
