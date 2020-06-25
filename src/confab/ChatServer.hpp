@@ -33,7 +33,12 @@ private:
     lo_server m_tcpServer;
 
     int m_userSerial;
+
+    // Map of userID to nickname strings.
     std::unordered_map<int, std::string> m_nameMap;
+
+    // Map of userID to pair of <ip>,<port> strings.
+    std::unordered_map<int, std::pair<std::string, std::string>> m_addressMap;
 };
 
 } // namespace Confab

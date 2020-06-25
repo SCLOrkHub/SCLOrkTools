@@ -95,8 +95,28 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
 
     if (std::strcmp(path, "/chatConnect") == 0) {
         // This is a request formerly done by SCLOrkWire, which is a request for a unique client ID.
+        std::string host = fmt::format("{}", lo_address_get_hostname(address));
+        std::string port = fmt::format("{}", lo_address_get_port(address));
+
         // First blast through existing connections map to determine if we have a duplicate connection from existing
         // client.
+        int serial = -1;
+        std::pair addressPair = std::make_pair( host, port);
+        for (auto item : m_addressMap) {
+            if (item.second == addressPair) {
+                serial = item.first;
+                spdlog::info("logged duplicate connection from userID {} at {}:{}", serial, host, port);
+                break;
+            }
+        }
+
+        if (serial < 0) {
+            serial = ++m_userSerial;
+            m_addressMap[serial] = addressPair;
+            spdlog::info("added new connection userID {} at {}:{}", serial, host, port);
+        }
+
+        // want to send back /chatConnected with userID
     } else if (std::strcmp(path, "/chatSignIn") == 0) {
     } else if (std::strcmp(path, "/chatGetAllClients") == 0) {
     } else if (std::strcmp(path, "/chatSendMessage") == 0) {
