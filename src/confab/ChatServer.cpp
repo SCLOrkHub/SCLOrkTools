@@ -91,32 +91,37 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
     osc += " ]";
     spdlog::info(osc);
 
+    uint64_t addressToken = makeAddressToken(address);
+    if (addressToken == 0) {
+        spdlog::error("Unable to convert {}:{} to token.", lo_address_get_hostname(address),
+                lo_address_get_port(address));
+        return;
+    }
+
     // TODO: consider perfect hashing with gperf, ala Scintillator.
-
     if (std::strcmp(path, "/chatConnect") == 0) {
-        // This is a request formerly done by SCLOrkWire, which is a request for a unique client ID.
-        std::string host = fmt::format("{}", lo_address_get_hostname(address));
-        std::string port = fmt::format("{}", lo_address_get_port(address));
+        // This is a request formerly done by SCLOrkWire, which is a request for a unique client ID. We uniquely
+        // identify clients as a tuple of their ip address and port packed into a uint64_t, but keep a map back to
+        // simple integers.
 
-        // First blast through existing connections map to determine if we have a duplicate connection from existing
-        // client.
-        int serial = -1;
-        std::pair addressPair = std::make_pair( host, port);
-        for (auto item : m_addressMap) {
-            if (item.second == addressPair) {
-                serial = item.first;
-                spdlog::info("logged duplicate connection from userID {} at {}:{}", serial, host, port);
-                break;
-            }
-        }
-
-        if (serial < 0) {
+        int serial;
+        auto mapEntry = m_addressMap.find(addressToken);
+        if (mapEntry != m_addressMap.end()) {
+            serial = mapEntry->second;
+            spdlog::info("logged duplicate connection from userID {} at {}:{}", serial,
+                    lo_address_get_hostname(address), lo_address_get_port(address));
+        } else {
             serial = ++m_userSerial;
-            m_addressMap[serial] = addressPair;
-            spdlog::info("added new connection userID {} at {}:{}", serial, host, port);
+            m_addressMap[addressToken] = serial;
+            spdlog::info("added new connection userID {} at {}:{}", serial, lo_address_get_hostname(address),
+                    lo_address_get_port(address));
         }
 
-        // want to send back /chatConnected with userID
+        // Send back a /chatConnected with assigned userID.
+        if (lo_send(address, "/chatConnected", "i", serial) < 0) {
+            spdlog::error("failed to send /chatConnected to {}:{}", lo_address_get_hostname(address),
+                    lo_address_get_port(address));
+        }
     } else if (std::strcmp(path, "/chatSignIn") == 0) {
     } else if (std::strcmp(path, "/chatGetAllClients") == 0) {
     } else if (std::strcmp(path, "/chatSendMessage") == 0) {
@@ -124,6 +129,32 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
     } else if (std::strcmp(path, "/chatSignOut") == 0) {
     } else {
     }
+}
+
+uint64_t ChatServer::makeAddressToken(lo_address address) {
+    const char* ipv4 = lo_address_get_hostname(address);
+    uint64_t token = 0;
+    // Convert IPv4 quad to binary first.
+    for (auto i = 0; i < 4; ++i) {
+        char* nextPart = nullptr;
+        uint32_t part = std::strtoul(ipv4, &nextPart, 10);
+        if (nextPart == ipv4) {
+            spdlog::error("Failed to convert part {} of ipv4 quad {}", i, ipv4);
+            return 0;
+        }
+        token = (token << 8) | static_cast<uint64_t>(part);
+        // Skip over the dot.
+        ipv4 = nextPart + 1;
+    }
+
+    const char* portString = lo_address_get_port(address);
+    uint32_t port = std::strtoul(portString, nullptr, 10);
+    if (port == 0) {
+        spdlog::error("Failed to convert port {} to a number", portString);
+        return 0;
+    }
+    token = (token << 16) | static_cast<uint64_t>(port);
+    return token;
 }
 
 } // namespace Confab

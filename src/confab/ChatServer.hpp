@@ -29,6 +29,10 @@ private:
 
     void handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address);
 
+    // Packs an ipv4 tuple + port from the lo_address into a 48-bit unsigned integer. Probably some endian assumptions
+    // in here, but as long as this value doesn't leave this computer it should be fine. Returns 0 on error.
+    uint64_t makeAddressToken(lo_address address);
+
     lo_server_thread m_tcpThread;
     lo_server m_tcpServer;
 
@@ -37,8 +41,8 @@ private:
     // Map of userID to nickname strings.
     std::unordered_map<int, std::string> m_nameMap;
 
-    // Map of userID to pair of <ip>,<port> strings.
-    std::unordered_map<int, std::pair<std::string, std::string>> m_addressMap;
+    // Map of address/port tokens to userID.
+    std::unordered_map<uint64_t, int> m_addressMap;
 };
 
 } // namespace Confab
