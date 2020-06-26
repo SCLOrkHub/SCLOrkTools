@@ -31,7 +31,9 @@ private:
 
     // Packs an ipv4 tuple + port from the lo_address into a 48-bit unsigned integer. Probably some endian assumptions
     // in here, but as long as this value doesn't leave this computer it should be fine. Returns 0 on error.
-    uint64_t makeAddressToken(lo_address address);
+    uint64_t makeToken(lo_address address);
+    // Need to free the returned address with lo_address_free() once done.
+    lo_address makeAddress(uint64_t token);
 
     lo_server_thread m_tcpThread;
     lo_server m_tcpServer;

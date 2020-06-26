@@ -63,8 +63,7 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
 }
 
 void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address) {
-    std::string osc = fmt::format("{}:{} sent OSC: [ {}", lo_address_get_hostname(address), lo_address_get_port(address),
-            path);
+    std::string osc = fmt::format("{}:{} - [ {}", lo_address_get_hostname(address), lo_address_get_port(address), path);
     for (int i = 0; i < argc; ++i) {
         switch (types[i]) {
         case LO_INT32:
@@ -91,8 +90,8 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
     osc += " ]";
     spdlog::info(osc);
 
-    uint64_t addressToken = makeAddressToken(address);
-    if (addressToken == 0) {
+    uint64_t token = makeToken(address);
+    if (token == 0) {
         spdlog::error("Unable to convert {}:{} to token.", lo_address_get_hostname(address),
                 lo_address_get_port(address));
         return;
@@ -103,35 +102,67 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         // This is a request formerly done by SCLOrkWire, which is a request for a unique client ID. We uniquely
         // identify clients as a tuple of their ip address and port packed into a uint64_t, but keep a map back to
         // simple integers.
-
         int serial;
-        auto mapEntry = m_addressMap.find(addressToken);
+
+        auto mapEntry = m_addressMap.find(token);
         if (mapEntry != m_addressMap.end()) {
             serial = mapEntry->second;
             spdlog::info("logged duplicate connection from userID {} at {}:{}", serial,
                     lo_address_get_hostname(address), lo_address_get_port(address));
         } else {
             serial = ++m_userSerial;
-            m_addressMap[addressToken] = serial;
+            m_addressMap[token] = serial;
             spdlog::info("added new connection userID {} at {}:{}", serial, lo_address_get_hostname(address),
                     lo_address_get_port(address));
         }
 
         // Send back a /chatConnected with assigned userID.
-        if (lo_send(address, "/chatConnected", "i", serial) < 0) {
+        if (lo_send_from(address, m_tcpServer, LO_TT_IMMEDIATE, "/chatConnected", "i", serial) < 0) {
             spdlog::error("failed to send /chatConnected to {}:{}", lo_address_get_hostname(address),
                     lo_address_get_port(address));
         }
     } else if (std::strcmp(path, "/chatSignIn") == 0) {
+        if (argc != 1 || types[0] != LO_STRING) {
+            spdlog::error("/chatSignIn name argument absent or wrong type.");
+            return;
+        }
+        std::string name(reinterpret_cast<const char*>(argv[0]));
+
+        auto mapEntry = m_addressMap.find(token);
+        if (mapEntry == m_addressMap.end()) {
+            spdlog::error("/chatSignIn for name {} with absent userID", name);
+            return;
+        }
+        m_nameMap[mapEntry->second] = name;
+
+        if (lo_send_from(address, m_tcpServer, LO_TT_IMMEDIATE, "/chatSignInComplete", "") < 0) {
+            spdlog::error("failed to send /chatSignInComplete to {}:{}", lo_address_get_hostname(address),
+                    lo_address_get_port(address));
+        }
+
+        lo_message addClient = lo_message_new();
+        lo_message_add_string(addClient, "add");
+        lo_message_add_int32(addClient, mapEntry->second);
+        lo_message_add_string(addClient, name.data());
+        for (auto clientEntry : m_addressMap) {
+            if (clientEntry.first == token) continue;
+            lo_address client = makeAddress(clientEntry.first);
+            spdlog::info("sending /chatChangeClient to {}:{}", lo_address_get_hostname(client),
+                    lo_address_get_port(client));
+            lo_send_message_from(client, m_tcpServer, "/chatChangeClient", addClient);
+            lo_address_free(client);
+        }
+        lo_message_free(addClient);
     } else if (std::strcmp(path, "/chatGetAllClients") == 0) {
     } else if (std::strcmp(path, "/chatSendMessage") == 0) {
     } else if (std::strcmp(path, "/chatChangeName") == 0) {
     } else if (std::strcmp(path, "/chatSignOut") == 0) {
     } else {
+
     }
 }
 
-uint64_t ChatServer::makeAddressToken(lo_address address) {
+uint64_t ChatServer::makeToken(lo_address address) {
     const char* ipv4 = lo_address_get_hostname(address);
     uint64_t token = 0;
     // Convert IPv4 quad to binary first.
@@ -155,6 +186,17 @@ uint64_t ChatServer::makeAddressToken(lo_address address) {
     }
     token = (token << 16) | static_cast<uint64_t>(port);
     return token;
+}
+
+lo_address ChatServer::makeAddress(uint64_t token) {
+    std::string host = fmt::format("{}.{}.{}.{}", (token >> 40) & 0xff, (token >> 32) & 0xff, (token >> 24) & 0xff,
+            (token >> 16) & 0xff);
+    std::string port = fmt::format("{}", token & 0xffff);
+    lo_address address = lo_address_new_with_proto(LO_TCP, host.data(), port.data());
+    if (!address) {
+        spdlog::error("failed to construct valid address from {}:{}", host, port);
+    }
+    return address;
 }
 
 } // namespace Confab
