@@ -15,12 +15,12 @@ namespace {
 %struct-type
 struct CommandPair { const char* name; Confab::ChatCommands command; };
 %%
-chatSignIn,         Confab::ChatCommands::kSignIn
-chatGetAllClients,  Confab::ChatCommands::kGetAllClients
-chatGetMessages,    Confab::ChatCommands::kGetMessages
-chatSendMessage,    Confab::ChatCommands::kSendMessage
-chatChangeName,     Confab::ChatCommands::kChangeName
-chatSignOut,        Confab::ChatCommands::kSignOut
+/chatSignIn,         Confab::ChatCommands::kSignIn
+/chatGetAllClients,  Confab::ChatCommands::kGetAllClients
+/chatGetMessages,    Confab::ChatCommands::kGetMessages
+/chatSendMessage,    Confab::ChatCommands::kSendMessage
+/chatChangeName,     Confab::ChatCommands::kChangeName
+/chatSignOut,        Confab::ChatCommands::kSignOut
 %%
 
 } // namespace

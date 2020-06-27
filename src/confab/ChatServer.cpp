@@ -145,7 +145,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         // so if this is a request for older messages they are lost.
         if (m_messageSerial - messageID > kMessageArraySize) {
             spdlog::info("userID {} requested older messages, truncating request");
-            messageID = m_messageSerial - kMessageArraySize;
+            messageID = std::max(m_messageSerial - kMessageArraySize, 0);
         }
         for (auto i = messageID; i < m_messageSerial; ++i) {
             int index = i % kMessageArraySize;

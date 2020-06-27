@@ -42,7 +42,7 @@ private:
     // Map of userID to nickname strings.
     std::unordered_map<int, std::string> m_nameMap;
 
-    static const size_t kMessageArraySize = 1024;
+    static const int kMessageArraySize = 1024;
     int m_messageSerial;
     std::array<const char*, kMessageArraySize> m_paths;
     std::array<lo_message, kMessageArraySize> m_messages;
