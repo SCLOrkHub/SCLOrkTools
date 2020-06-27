@@ -39,7 +39,7 @@ SCLOrkChat {
 	var clientIdList;
 	var messageViewRingBuffer;
 
-	*new { | name, asDirector = false, chatClient = nil |
+	*new { |name, asDirector = false, chatClient = nil|
 		if (instance.isNil, {
 			instance = super.newCopyArgs(name, asDirector, chatClient).init;
 		});
@@ -51,8 +51,7 @@ SCLOrkChat {
 			name = "noname";
 		});
 		if (chatClient.isNil, {
-			chatClient = SCLOrkChatClient.new("sclork-s01.local",
-				SCLOrkChatServer.defaultBindPort);
+			chatClient = SCLOrkChatClient.new("cmn17.stanford.edu", 61000);
 		});
 		quitTasks = false;
 		wedged = false;

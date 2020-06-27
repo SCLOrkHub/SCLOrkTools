@@ -2,7 +2,7 @@
 	name: "SCLOrkTools",
 	summary: "Tools for use by the Santa Clara Laptop Orchestra",
 	author: "Luke Nihlen, Bruno Ruviaro, others",
-	version: "0.0.15",
+	version: "0.0.16",
 	schelp: "Guides/SCLOrkTools-User-Guide",
 	license: "GPL",
 	copyright: "Santa Clara University 2019-2020",

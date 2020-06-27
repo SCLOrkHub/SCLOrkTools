@@ -1,11 +1,19 @@
 SCLOrkChatClient {
 	var serverAddress;
 	var serverPort;
-	var listenPort;
-	var wire;
-	var <userId;
+	var netAddr;
+
+	var signInCompleteFunc;
+	var setAllClientsFunc;
+	var changeClientFunc;
+	var chatReceiveFunc;
+
+	var pollTask;
 
 	var <name;  // self-assigned name, can be changed.
+	var <userId;
+
+	var messageSerial;
 
 	var <nameMap;  // map of userIds to values.
 
@@ -14,113 +22,100 @@ SCLOrkChatClient {
 	var <>onMessageReceived;  // called with chatMessage object on receipt
 	var <>onUserChanged;  // called with user changes, type, userid, nickname.
 
-	*new { | serverAddress = "sclork-s01.local", serverPort = 8000, listenPort = 7705 |
-		^super.newCopyArgs(serverAddress, serverPort, listenPort).init;
+	*new { |serverAddress = "cmn17.stanford.edu", serverPort = 61000|
+		^super.newCopyArgs(serverAddress, serverPort).init;
 	}
 
 	init {
-		wire = SCLOrkWire.new(listenPort);
-		wire.onConnected = { | wire, state |
-			switch (state,
-				\connected, {
-					wire.sendMsg('/chatSignIn', name);
+		netAddr = NetAddr.new(serverAddress, serverPort);
+
+		signInCompleteFunc = OSCFunc.new({ |msg|
+			userId = msg[1];
+			netAddr.sendMsg('/chatGetAllClients');
+		},
+		path: '/chatSignInComplete',
+		srcID: netAddr);
+
+		setAllClientsFunc = OSCFunc.new({ |msg|
+			nameMap.clear;
+			nameMap.putPairs(msg[1..]);
+			pollTask = SkipJack.new({
+				if (netAddr.isConnected, {
+					netAddr.sendMsg('/chatGetMessages', userId, messageSerial);
+				});
+			});
+			// Since wire is connected and we have a complete user dictionary,
+			// we consider the chat client now connected.
+			onConnected.(true);
+		},
+		path: '/chatSetAllClients',
+		srcID: netAddr);
+
+		changeClientFunc = OSCFunc.new({ |msg|
+			var changeType, id, userName, oldName, changeMade;
+			changeType = msg[1];
+			id = msg[2];
+			userName = msg[3];
+			changeMade = true;
+			switch (changeType,
+				\add, {
+					nameMap.put(id, userName);
+					// Suppress announcement of our own connection.
+					if (id == userId, {
+						changeMade = false;
+					});
 				},
-				\failureTimeout, {
-					onConnected.(false);
+				\remove, {
+					// It is possible with timed out clients we may receive
+					// some few messages from them, so only process clients
+					// when they are still in the dictionary.
+					if (nameMap.at(id).notNil, {
+						nameMap.removeAt(id);
+					}, {
+						changeMade = false;
+					});
 				},
-				\disconnected, {
-					onConnected.(false);
+				\rename, {
+					oldName = nameMap.at(id);
+					nameMap.put(id, userName);
+				},
+				\timeout, {
+					nameMap.removeAt(id);
+				},
+				{
+					"unknown change ordered to client user dict.".postln;
+					changeMade = false;
 				}
 			);
-		};
-		wire.onMessageReceived = { | wire, msg |
-			switch (msg[0],
-				'/chatSignInComplete', {
-					// Our userId is the sever-assigned wire
-					userId = wire.selfId;
-					// Send a request for all currently logged-in clients.
-					wire.sendMsg('/chatGetAllClients');
-				},
-				'/chatSetAllClients', {
-					nameMap.clear;
-					nameMap.putPairs(msg[1..]);
-					// Since wire is connected and we have a complete user
-					// dictionary, we consider the chat client now connected.
-					onConnected.(true);
-				},
-				'/chatChangeClient', {
-					var changeType, id, userName, oldName, changeMade;
-					changeType = msg[1];
-					id = msg[2];
-					userName = msg[3];
-					changeMade = true;
-					switch (changeType,
-						\add, {
-							nameMap.put(id, userName);
-							// Suppress announcement of our own connection.
-							if (id == userId, {
-								changeMade = false;
-							});
-						},
-						\remove, {
-							// It is possible with timed out clients we may receive
-							// some few messages from them, so only process clients
-							// when they are still in the dictionary.
-							if (nameMap.at(id).notNil, {
-								nameMap.removeAt(id);
-							}, {
-								changeMade = false;
-							});
-						},
-						\rename, {
-							oldName = nameMap.at(id);
-							nameMap.put(id, userName);
-						},
-						\timeout, {
-							nameMap.removeAt(id);
-						},
-						{
-							"unknown change ordered to client user dict.".postln;
-							changeMade = false;
-						}
-					);
-					if (changeMade, {
-						onUserChanged.(changeType, id, userName, oldName);
-					});
-				},
-				'/chatReceive', {
-					var chatMessage = SCLOrkChatMessage.new(
-						msg[1],
-						msg[4..],
-						msg[2],
-						msg[3],
-						nameMap.at(msg[1]),
-						false);
-					// Populate list of recipient names if it is not a broadcast.
-					if (chatMessage.recipientIds[0] != 0, {
-						chatMessage.recipientNames = nameMap.atAll(
-							chatMessage.recipientIds);
-					});
-					onMessageReceived.(chatMessage);
-				},
-				'/chatEcho', {
-					var chatMessage = SCLOrkChatMessage.new(
-						msg[1],
-						msg[4..],
-						msg[2],
-						msg[3],
-						nameMap.at(msg[1]),
-						true);
-					// Populate list of recipient names if it is not a broadcast.
-					if (chatMessage.recipientIds[0] != 0, {
-						chatMessage.recipientNames = nameMap.atAll(
-							chatMessage.recipientIds);
-					});
-					onMessageReceived.(chatMessage);
-				}
-			);
-		};
+			messageSerial = messageSerial + 1;
+			if (changeMade, {
+				onUserChanged.(changeType, id, userName, oldName);
+			});
+		},
+		path: '/chatChangeClient',
+		srcID: netAddr);
+
+		chatReceiveFunc = OSCFunc.new({ |msg|
+			var chatMessage = SCLOrkChatMessage.new(
+				msg[1],
+				msg[4..],
+				msg[2],
+				msg[3],
+				nameMap.at(msg[1]),
+				msg[1] == userId);
+			// Populate list of recipient names if it is not a broadcast.
+			if (chatMessage.recipientIds[0] != 0, {
+				chatMessage.recipientNames = nameMap.atAll(
+					chatMessage.recipientIds);
+			});
+			messageSerial = messageSerial + 1;
+			onMessageReceived.(chatMessage);
+		},
+		path: '/chatReceive',
+		srcID: netAddr);
+
 		name = "default-nickname";
+		messageSerial = 0;
 		nameMap = Dictionary.new;
 		onConnected = {};
 		onMessageReceived = {};
@@ -129,36 +124,46 @@ SCLOrkChatClient {
 
 	connect { | clientName |
 		name = clientName;
-		wire.knock(serverAddress, serverPort);
+		netAddr.tryConnectTCP(
+			onComplete: { netAddr.sendMsg('/chatSignIn', name); },
+			onFailure: { onConnected.(false) });
 	}
 
 	disconnect {
-		wire.sendMsg('/chatSignOut');
+		pollTask.stop;
+		netAddr.sendMsg('/chatSignOut', userId);
+		netAddr.disconnect;
 	}
 
 	free {
-		if (wire.connectionState === \connected, {
+		if (netAddr.isConnected, {
 			this.disconnect;
 		});
+		signInCompleteFunc.free;
+		setAllClientsFunc.free;
+		changeClientFunc.free;
+		chatReceiveFunc.free;
 	}
 
 	name_ { | newName |
 		name = newName;
-		wire.sendMsg('/chatChangeName', name);
+		netAddr.sendMsg('/chatChangeName', userId, name);
 	}
 
 	isConnected {
-		^(wire.connectionState === \connected);
+		^netAddr.isConnected;
 	}
 
 	sendMessage { | chatMessage |
 		var message = ['/chatSendMessage',
+			userId,
 			chatMessage.type,
 			chatMessage.contents] ++ chatMessage.recipientIds;
 
-		wire.sendMsg(*message);
+		netAddr.sendMsg(*message);
 	}
 
+/*
 	prForceTimeout {
 		wire.prDropLine;
 		this.sendMessage(SCLOrkChatMessage.new(
@@ -171,4 +176,5 @@ SCLOrkChatClient {
 	prUnwedge {
 		wire.prBindOSC;
 	}
+*/
 }

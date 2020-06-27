@@ -5,6 +5,10 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.16 27 July 2020
+
+This is a testing release. Refactors SCLOrkChatServer to be a C++-based application, in the remnants of the original confab-server binary. This version uses TCP connections, to allow it to run over the open Internet. Chat is now a polling-based model because of some limitations in liblo communication with TCP connections. The server has extensive logging which is likely to be turned down in a subsequent release.
+
 subsection:: 0.0.15 19 April 2020
 
 Adds a fix for the link::Classes/SCLOrkWiimote:: to enable the code to work on computers with more than one connected Bluetooth device.
