@@ -9,7 +9,8 @@ namespace Confab {
 ChatServer::ChatServer():
     m_tcpThread(nullptr),
     m_tcpServer(nullptr),
-    m_userSerial(0) {
+    m_userSerial(0),
+    m_messageSerial(0) {
 }
 
 ChatServer::~ChatServer() {
@@ -58,11 +59,12 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
         void* userData) {
     ChatServer* server = static_cast<ChatServer*>(userData);
     lo_address address = lo_message_get_source(message);
-    server->handleMessage(path, argc, argv, types, address);
+    server->handleMessage(path, argc, argv, types, address, message);
     return 0;
 }
 
-void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address) {
+void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address,
+        lo_message message) {
     std::string osc = fmt::format("{}:{} - [ {}", lo_address_get_hostname(address), lo_address_get_port(address), path);
     for (int i = 0; i < argc; ++i) {
         switch (types[i]) {
@@ -135,6 +137,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         }
         m_nameMap[mapEntry->second] = name;
 
+        // Send back a /chatSignInComplete message to acknowledge receipt.
         if (lo_send_from(address, m_tcpServer, LO_TT_IMMEDIATE, "/chatSignInComplete", "") < 0) {
             spdlog::error("failed to send /chatSignInComplete to {}:{}", lo_address_get_hostname(address),
                     lo_address_get_port(address));
@@ -144,18 +147,48 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         lo_message_add_string(addClient, "add");
         lo_message_add_int32(addClient, mapEntry->second);
         lo_message_add_string(addClient, name.data());
-        for (auto clientEntry : m_addressMap) {
-            if (clientEntry.first == token) continue;
-            lo_address client = makeAddress(clientEntry.first);
-            spdlog::info("sending /chatChangeClient to {}:{}", lo_address_get_hostname(client),
-                    lo_address_get_port(client));
-            lo_send_message_from(client, m_tcpServer, "/chatChangeClient", addClient);
-            lo_address_free(client);
-        }
-        lo_message_free(addClient);
+        queueMessage("/chatChangeClient", addClient);
     } else if (std::strcmp(path, "/chatGetAllClients") == 0) {
+        lo_message clientNames = lo_message_new();
+        for (auto nameEntry : m_nameMap) {
+            lo_message_add_int32(clientNames, nameEntry.first);
+            lo_message_add_string(clientNames, nameEntry.second.data());
+        }
+        lo_send_message_from(address, m_tcpServer, "/chatSetAllClients", clientNames);
+        lo_message_free(clientNames);
     } else if (std::strcmp(path, "/chatSendMessage") == 0) {
+        int userID;
+        auto mapEntry = m_addressMap.find(token);
+        if (mapEntry != m_addressMap.end()) {
+            userID = mapEntry->second;
+        } else {
+            spdlog::error("/chatSendMessage with unknown client at {}:{}", lo_address_get_hostname(address),
+                    lo_address_get_port(address));
+            return;
+        }
+
+        lo_message chatMessage = lo_message_clone(message);
+        queueMessage("/chatReceive", chatMessage);
     } else if (std::strcmp(path, "/chatChangeName") == 0) {
+        if (argc != 1 || types[0] != LO_STRING) {
+            spdlog::error("/chatChangeName name argument absent or wrong type.");
+            return;
+        }
+        std::string newName(reinterpret_cast<const char*>(argv[0]));
+        auto mapEntry = m_addressMap.find(token);
+        if (mapEntry != m_addressMap.end()) {
+            m_nameMap[mapEntry->second] = newName;
+        } else {
+            spdlog::error("/chatChangeName called for unknown client at {}:{}", lo_address_get_hostname(address),
+                    lo_address_get_port(address));
+            return;
+        }
+
+        lo_message rename = lo_message_new();
+        lo_message_add_string(rename, "rename");
+        lo_message_add_int32(rename, mapEntry->second);
+        lo_message_add_string(rename, newName.data());
+        queueMessage("/chatChangeClient", rename);
     } else if (std::strcmp(path, "/chatSignOut") == 0) {
     } else {
 
@@ -188,15 +221,14 @@ uint64_t ChatServer::makeToken(lo_address address) {
     return token;
 }
 
-lo_address ChatServer::makeAddress(uint64_t token) {
-    std::string host = fmt::format("{}.{}.{}.{}", (token >> 40) & 0xff, (token >> 32) & 0xff, (token >> 24) & 0xff,
-            (token >> 16) & 0xff);
-    std::string port = fmt::format("{}", token & 0xffff);
-    lo_address address = lo_address_new_with_proto(LO_TCP, host.data(), port.data());
-    if (!address) {
-        spdlog::error("failed to construct valid address from {}:{}", host, port);
+void ChatServer::queueMessage(const char* path, lo_message message) {
+    int index = m_messageSerial % kMessageArraySize;
+    if (m_messageSerial > kMessageArraySize) {
+        lo_message_free(m_messages[index]);
     }
-    return address;
+    m_paths[index] = path;
+    m_messages[index] = message;
+    ++m_messageSerial;
 }
 
 } // namespace Confab
