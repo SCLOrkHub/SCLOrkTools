@@ -1,5 +1,7 @@
 #include "ChatServer.hpp"
 
+#include "ChatCommands.hpp"
+
 #include "spdlog/spdlog.h"
 
 #include <cstring>
@@ -91,6 +93,18 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
     }
     osc += " ]";
     spdlog::info(osc);
+
+    ChatCommands command = getCommandNamed(std::string(path));
+    switch (command) {
+    case kConnect:
+    case kSignIn:
+    case kGetAllClients:
+    case kSendMessage:
+    case kChangeName:
+    case kSignOut:
+    case kDisconnect:
+    case kNotFound:
+    }
 
     uint64_t token = makeToken(address);
     if (token == 0) {

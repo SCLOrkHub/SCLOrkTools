@@ -34,6 +34,18 @@ configure_file(
 # To pick up the pre-processed ConfabVersion.hpp.
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
+find_program(gperf_program gperf)
+if (NOT gperf_program)
+    message(FATAL_ERROR "Could not find gperf")
+endif()
+
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ChatCommands.cpp"
+    COMMAND ${gperf_program} --output-file=${CMAKE_CURRENT_BINARY_DIR}/ChatCommands.cpp ${CMAKE_CURRENT_SOURCE_DIR}/ChatCommands.cpp.in
+    MAIN_DEPENDENCY ChatCommands.cpp.in
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    VERBATIM
+)
+
 ###
 # confab common files
 set(confab_common_src_files
@@ -88,6 +100,8 @@ set(confab_common_src_files
 ###
 # confab server
 add_executable(confab-server
+    "${CMAKE_CURRENT_BINARY_DIR}/ChatCommands.cpp"
+    ChatCommands.hpp
     ChatServer.hpp
     ChatServer.cpp
     confab-server.cpp

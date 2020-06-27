@@ -1,0 +1,42 @@
+%{
+// Generated file, please edit original file at src/confab/ChatCommands.cpp.in
+#include "ChatCommands.hpp"
+
+#include <cstring>
+
+// Some of the gperf generated code uses the register keyword, which is deprecated in C++17.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wregister"
+
+namespace {
+
+%}
+%language=C++
+%struct-type
+struct CommandPair { const char* name; Confab::ChatCommands command; };
+%%
+chatConnect,        Confab::ChatCommands::kConnect
+chatSignIn,         Confab::ChatCommands::kSignIn
+chatGetAllClients,  Confab::ChatCommands::kGetAllClients
+chatSendMessage,    Confab::ChatCommands::kSendMessage
+chatChangeName,     Confab::ChatCommands::kChangeName
+chatSignOut,        Confab::ChatCommands::kSignOut
+chatDisconnect,     Confab::ChatCommands::kDisconnect
+%%
+
+} // namespace
+
+#pragma clang diagnostic pop
+
+namespace Confab {
+
+ChatCommands getCommandNamed(const std::string& name) {
+    const CommandPair* pair = Perfect_Hash::in_word_set(name.data(), name.size());
+    if (!pair) {
+        return ChatCommands::kNotFound;
+    }
+    return pair->command;
+}
+
+} // namespace Confab
+
