@@ -67,6 +67,7 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
 
 void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address,
         lo_message message) {
+#if 0
     std::string osc = fmt::format("{}:{} - [ {}", lo_address_get_hostname(address), lo_address_get_port(address), path);
     for (int i = 0; i < argc; ++i) {
         switch (types[i]) {
@@ -93,6 +94,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
     }
     osc += " ]";
     spdlog::info(osc);
+#endif
 
     ChatCommands command = getCommandNamed(std::string(path));
     switch (command) {
