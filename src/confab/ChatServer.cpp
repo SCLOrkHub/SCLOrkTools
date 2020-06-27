@@ -96,59 +96,26 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
 
     ChatCommands command = getCommandNamed(std::string(path));
     switch (command) {
-    case kConnect:
-    case kSignIn:
-    case kGetAllClients:
-    case kSendMessage:
-    case kChangeName:
-    case kSignOut:
-    case kDisconnect:
-    case kNotFound:
-    }
-
-    uint64_t token = makeToken(address);
-    if (token == 0) {
-        spdlog::error("Unable to convert {}:{} to token.", lo_address_get_hostname(address),
+    // Input: [ /chatConnect ], server responds with [ /chatConnected userID ]
+    case kConnect: {
+        int serial = ++m_userSerial;
+        spdlog::info("added new connection userID {} at {}:{}", serial, lo_address_get_hostname(address),
                 lo_address_get_port(address));
-        return;
-    }
-
-    // TODO: consider perfect hashing with gperf, ala Scintillator.
-    if (std::strcmp(path, "/chatConnect") == 0) {
-        // This is a request formerly done by SCLOrkWire, which is a request for a unique client ID. We uniquely
-        // identify clients as a tuple of their ip address and port packed into a uint64_t, but keep a map back to
-        // simple integers.
-        int serial;
-
-        auto mapEntry = m_addressMap.find(token);
-        if (mapEntry != m_addressMap.end()) {
-            serial = mapEntry->second;
-            spdlog::info("logged duplicate connection from userID {} at {}:{}", serial,
-                    lo_address_get_hostname(address), lo_address_get_port(address));
-        } else {
-            serial = ++m_userSerial;
-            m_addressMap[token] = serial;
-            spdlog::info("added new connection userID {} at {}:{}", serial, lo_address_get_hostname(address),
-                    lo_address_get_port(address));
-        }
-
-        // Send back a /chatConnected with assigned userID.
         if (lo_send_from(address, m_tcpServer, LO_TT_IMMEDIATE, "/chatConnected", "i", serial) < 0) {
             spdlog::error("failed to send /chatConnected to {}:{}", lo_address_get_hostname(address),
                     lo_address_get_port(address));
         }
-    } else if (std::strcmp(path, "/chatSignIn") == 0) {
-        if (argc != 1 || types[0] != LO_STRING) {
-            spdlog::error("/chatSignIn name argument absent or wrong type.");
-            return;
-        }
-        std::string name(reinterpret_cast<const char*>(argv[0]));
+    } break;
 
-        auto mapEntry = m_addressMap.find(token);
-        if (mapEntry == m_addressMap.end()) {
-            spdlog::error("/chatSignIn for name {} with absent userID", name);
+    // Input: [ /chatSignIn userID name ], response [ /chatSignInComplete ],
+    // queues [ /chatChangeClient add userID name ]
+    case kSignIn: {
+        if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_STRING) {
+            spdlog::error("/chatSignIn argument absent or wrong type.");
             return;
         }
+        int userID = *reinterpret_cast<int32_t*>(argv[0]);
+        std::string name(reinterpret_cast<const char*>(argv[1]));
         m_nameMap[mapEntry->second] = name;
 
         // Send back a /chatSignInComplete message to acknowledge receipt.
@@ -156,13 +123,15 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
             spdlog::error("failed to send /chatSignInComplete to {}:{}", lo_address_get_hostname(address),
                     lo_address_get_port(address));
         }
-
         lo_message addClient = lo_message_new();
         lo_message_add_string(addClient, "add");
-        lo_message_add_int32(addClient, mapEntry->second);
+        lo_message_add_int32(addClient, userID);
         lo_message_add_string(addClient, name.data());
         queueMessage("/chatChangeClient", addClient);
-    } else if (std::strcmp(path, "/chatGetAllClients") == 0) {
+    } break;
+
+    // Input: [ /chatGetAllClients ], response [ /chatSetAllClients (pairs of userID, name) ]
+    case kGetAllClients: {
         lo_message clientNames = lo_message_new();
         for (auto nameEntry : m_nameMap) {
             lo_message_add_int32(clientNames, nameEntry.first);
@@ -170,19 +139,40 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         }
         lo_send_message_from(address, m_tcpServer, "/chatSetAllClients", clientNames);
         lo_message_free(clientNames);
-    } else if (std::strcmp(path, "/chatSendMessage") == 0) {
-        int userID;
-        auto mapEntry = m_addressMap.find(token);
-        if (mapEntry != m_addressMap.end()) {
-            userID = mapEntry->second;
-        } else {
-            spdlog::error("/chatSendMessage with unknown client at {}:{}", lo_address_get_hostname(address),
-                    lo_address_get_port(address));
+    } break;
+
+    // Input: [ /chatSendMessage userID <message contents> ], queues [ /chatRecieve userID <message contents> ]
+    case kSendMessage: {
+        lo_message chatMessage = lo_message_clone(message);
+        queueMessage("/chatReceive", chatMessage);
+    } break;
+
+    // Input: [ /chatChangeName userID newName ], queues [ /chatChangeClient rename userID newName ]
+    case kChangeName: {
+        if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_STRING) {
+            spdlog::error("/chatSignIn argument absent or wrong type.");
             return;
         }
 
-        lo_message chatMessage = lo_message_clone(message);
-        queueMessage("/chatReceive", chatMessage);
+        int userID = *reinterpret_cast<int32_t*>(argv[0]);
+        std::string name(reinterpret_cast<const char*>(argv[1]));
+        m_nameMap[mapEntry->second] = name;
+
+        lo_message rename = lo_message_new();
+        lo_message_add_string(rename, "rename");
+        lo_message_add_int32(rename, userID);
+        lo_message_add_string(rename, newName.data());
+        queueMessage("/chatChangeClient", rename);
+    } break;
+
+    case kSignOut: {
+    } break;
+    case kDisconnect: {
+    } break;
+    case kNotFound: {
+    } break;
+    }
+
     } else if (std::strcmp(path, "/chatChangeName") == 0) {
         if (argc != 1 || types[0] != LO_STRING) {
             spdlog::error("/chatChangeName name argument absent or wrong type.");
