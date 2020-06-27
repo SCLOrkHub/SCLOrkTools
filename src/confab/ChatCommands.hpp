@@ -6,13 +6,12 @@
 namespace Confab {
 
 enum ChatCommands : int {
-    kConnect,
     kSignIn,
     kGetAllClients,
+    kGetMessages,
     kSendMessage,
     kChangeName,
     kSignOut,
-    kDisconnect,
     kNotFound
 };
 

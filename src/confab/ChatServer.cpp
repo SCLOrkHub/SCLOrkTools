@@ -96,30 +96,22 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
 
     ChatCommands command = getCommandNamed(std::string(path));
     switch (command) {
-    // Input: [ /chatConnect ], server responds with [ /chatConnected userID ]
-    case kConnect: {
-        int serial = ++m_userSerial;
-        spdlog::info("added new connection userID {} at {}:{}", serial, lo_address_get_hostname(address),
-                lo_address_get_port(address));
-        if (lo_send_from(address, m_tcpServer, LO_TT_IMMEDIATE, "/chatConnected", "i", serial) < 0) {
-            spdlog::error("failed to send /chatConnected to {}:{}", lo_address_get_hostname(address),
-                    lo_address_get_port(address));
-        }
-    } break;
-
-    // Input: [ /chatSignIn userID name ], response [ /chatSignInComplete ],
+    // Input: [ /chatSignIn name ], response [ /chatSignInComplete userID ],
     // queues [ /chatChangeClient add userID name ]
     case kSignIn: {
-        if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_STRING) {
+        if (argc != 1 || types[0] != LO_STRING) {
             spdlog::error("/chatSignIn argument absent or wrong type.");
             return;
         }
-        int userID = *reinterpret_cast<int32_t*>(argv[0]);
-        std::string name(reinterpret_cast<const char*>(argv[1]));
-        m_nameMap[mapEntry->second] = name;
+        std::string name(reinterpret_cast<const char*>(argv[0]));
+        int userID = ++m_userSerial;
+        spdlog::info("added new connection name {} userID {} from {}:{}", name, userID,
+                lo_address_get_hostname(address), lo_address_get_port(address));
+
+        m_nameMap[userID] = name;
 
         // Send back a /chatSignInComplete message to acknowledge receipt.
-        if (lo_send_from(address, m_tcpServer, LO_TT_IMMEDIATE, "/chatSignInComplete", "") < 0) {
+        if (lo_send_from(address, m_tcpServer, LO_TT_IMMEDIATE, "/chatSignInComplete", "i", userID) < 0) {
             spdlog::error("failed to send /chatSignInComplete to {}:{}", lo_address_get_hostname(address),
                     lo_address_get_port(address));
         }
@@ -141,6 +133,26 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         lo_message_free(clientNames);
     } break;
 
+    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id >= messageID
+    case kGetMessages: {
+        if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_INT32) {
+            spdlog::error("/chatGetMessages arguments absent or wrong type.");
+            return;
+        }
+        int userID = *reinterpret_cast<int32_t*>(argv[0]);
+        int messageID = *reinterpret_cast<int32_t*>(argv[1]);
+        // m_messageSerial points at the first unoccupied message number. We store the last kMessageArraySize elements,
+        // so if this is a request for older messages they are lost.
+        if (m_messageSerial - messageID > kMessageArraySize) {
+            spdlog::info("userID {} requested older messages, truncating request");
+            messageID = m_messageSerial - kMessageArraySize;
+        }
+        for (auto i = messageID; i < m_messageSerial; ++i) {
+            int index = i % kMessageArraySize;
+            lo_send_message_from(address, m_tcpServer, m_paths[index], m_messages[index]);
+        }
+    } break;
+
     // Input: [ /chatSendMessage userID <message contents> ], queues [ /chatRecieve userID <message contents> ]
     case kSendMessage: {
         lo_message chatMessage = lo_message_clone(message);
@@ -156,73 +168,36 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
 
         int userID = *reinterpret_cast<int32_t*>(argv[0]);
         std::string name(reinterpret_cast<const char*>(argv[1]));
-        m_nameMap[mapEntry->second] = name;
+        m_nameMap[userID] = name;
 
         lo_message rename = lo_message_new();
         lo_message_add_string(rename, "rename");
         lo_message_add_int32(rename, userID);
-        lo_message_add_string(rename, newName.data());
+        lo_message_add_string(rename, name.data());
         queueMessage("/chatChangeClient", rename);
     } break;
 
+    // Input: [ /chatSignOut userID ] queues [ /chatChangeClient remove userID ]
     case kSignOut: {
+        if (argc != 1 || types[0] != LO_INT32) {
+            spdlog::error("/chatSignOut argument absent or wrong type.");
+            return;
+        }
+
+        int userID = *reinterpret_cast<int32_t*>(argv[0]);
+        m_nameMap.erase(userID);
+
+        lo_message remove = lo_message_new();
+        lo_message_add_string(remove, "remove");
+        lo_message_add_int32(remove, userID);
+        queueMessage("/chatChangeClient", remove);
     } break;
-    case kDisconnect: {
-    } break;
+
     case kNotFound: {
+        spdlog::error("received unsupported OSC command {} from {}:{}", path, lo_address_get_hostname(address),
+                lo_address_get_port(address));
     } break;
     }
-
-    } else if (std::strcmp(path, "/chatChangeName") == 0) {
-        if (argc != 1 || types[0] != LO_STRING) {
-            spdlog::error("/chatChangeName name argument absent or wrong type.");
-            return;
-        }
-        std::string newName(reinterpret_cast<const char*>(argv[0]));
-        auto mapEntry = m_addressMap.find(token);
-        if (mapEntry != m_addressMap.end()) {
-            m_nameMap[mapEntry->second] = newName;
-        } else {
-            spdlog::error("/chatChangeName called for unknown client at {}:{}", lo_address_get_hostname(address),
-                    lo_address_get_port(address));
-            return;
-        }
-
-        lo_message rename = lo_message_new();
-        lo_message_add_string(rename, "rename");
-        lo_message_add_int32(rename, mapEntry->second);
-        lo_message_add_string(rename, newName.data());
-        queueMessage("/chatChangeClient", rename);
-    } else if (std::strcmp(path, "/chatSignOut") == 0) {
-    } else {
-
-    }
-}
-
-uint64_t ChatServer::makeToken(lo_address address) {
-    const char* ipv4 = lo_address_get_hostname(address);
-    uint64_t token = 0;
-    // Convert IPv4 quad to binary first.
-    for (auto i = 0; i < 4; ++i) {
-        char* nextPart = nullptr;
-        uint32_t part = std::strtoul(ipv4, &nextPart, 10);
-        if (nextPart == ipv4) {
-            spdlog::error("Failed to convert part {} of ipv4 quad {}", i, ipv4);
-            return 0;
-        }
-        token = (token << 8) | static_cast<uint64_t>(part);
-        // Skip over the dot.
-        ipv4 = nextPart + 1;
-    }
-
-    const char* portString = lo_address_get_port(address);
-    uint32_t port = std::strtoul(portString, nullptr, 10);
-    if (port == 0) {
-        spdlog::error("Failed to convert port {} to a number", portString);
-        return 0;
-    }
-    token = (token << 16) | static_cast<uint64_t>(port);
-    return token;
 }
 
 void ChatServer::queueMessage(const char* path, lo_message message) {
