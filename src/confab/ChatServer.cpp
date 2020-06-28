@@ -67,39 +67,10 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
 
 void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address,
         lo_message message) {
-#if 0
-    std::string osc = fmt::format("{}:{} - [ {}", lo_address_get_hostname(address), lo_address_get_port(address), path);
-    for (int i = 0; i < argc; ++i) {
-        switch (types[i]) {
-        case LO_INT32:
-            osc += fmt::format(", {}", *reinterpret_cast<int32_t*>(argv[i]));
-            break;
-
-        case LO_FLOAT:
-            osc += fmt::format(", {}", *reinterpret_cast<float*>(argv[i]));
-            break;
-
-        case LO_STRING:
-            osc += fmt::format(", {}", reinterpret_cast<const char*>(argv[i]));
-            break;
-
-        case LO_BLOB:
-            osc += std::string(", <binary blob>");
-            break;
-
-        default:
-            osc += fmt::format(", <unrecognized type {}>", types[i]);
-            break;
-        }
-    }
-    osc += " ]";
-    spdlog::info(osc);
-#endif
-
     ChatCommands command = getCommandNamed(std::string(path));
     switch (command) {
     // Input: [ /chatSignIn name ], response [ /chatSignInComplete userID ],
-    // queues [ /chatChangeClient add userID name ]
+    // queues [ /chatChangeClient serial add userID name ]
     case kSignIn: {
         if (argc != 1 || types[0] != LO_STRING) {
             spdlog::error("/chatSignIn argument absent or wrong type.");
@@ -118,6 +89,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
                     lo_address_get_port(address));
         }
         lo_message addClient = lo_message_new();
+        lo_message_add_int32(addClient, m_messageSerial);
         lo_message_add_string(addClient, "add");
         lo_message_add_int32(addClient, userID);
         lo_message_add_string(addClient, name.data());
@@ -155,13 +127,30 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         }
     } break;
 
-    // Input: [ /chatSendMessage userID <message contents> ], queues [ /chatRecieve userID <message contents> ]
+    // Input: [ /chatSendMessage userID <message contents> ], queues [ /chatRecieve serial userID <message contents> ]
     case kSendMessage: {
-        lo_message chatMessage = lo_message_clone(message);
+        // lo_message chatMessage = lo_message_clone(message);
+        lo_message chatMessage = lo_message_new();
+        lo_message_add_int32(chatMessage, m_messageSerial);
+        for (auto i = 0; i < argc; ++i) {
+            switch (types[i]) {
+                case LO_INT32:
+                    lo_message_add_int32(chatMessage, *reinterpret_cast<int32_t*>(argv[i]));
+                    break;
+
+                case LO_STRING:
+                    lo_message_add_string(chatMessage, reinterpret_cast<const char*>(argv[i]));
+                    break;
+
+                default:
+                    spdlog::error("need to add support for message type: {}", types[i]);
+                    return;
+            }
+        }
         queueMessage("/chatReceive", chatMessage);
     } break;
 
-    // Input: [ /chatChangeName userID newName ], queues [ /chatChangeClient rename userID newName ]
+    // Input: [ /chatChangeName userID newName ], queues [ /chatChangeClient serial rename userID newName ]
     case kChangeName: {
         if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_STRING) {
             spdlog::error("/chatSignIn argument absent or wrong type.");
@@ -173,13 +162,14 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         m_nameMap[userID] = name;
 
         lo_message rename = lo_message_new();
+        lo_message_add_int32(rename, m_messageSerial);
         lo_message_add_string(rename, "rename");
         lo_message_add_int32(rename, userID);
         lo_message_add_string(rename, name.data());
         queueMessage("/chatChangeClient", rename);
     } break;
 
-    // Input: [ /chatSignOut userID ] queues [ /chatChangeClient remove userID ]
+    // Input: [ /chatSignOut userID ] queues [ /chatChangeClient serial remove userID ]
     case kSignOut: {
         if (argc != 1 || types[0] != LO_INT32) {
             spdlog::error("/chatSignOut argument absent or wrong type.");
@@ -190,6 +180,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         m_nameMap.erase(userID);
 
         lo_message remove = lo_message_new();
+        lo_message_add_int32(remove, m_messageSerial);
         lo_message_add_string(remove, "remove");
         lo_message_add_int32(remove, userID);
         queueMessage("/chatChangeClient", remove);
@@ -203,6 +194,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
 }
 
 void ChatServer::queueMessage(const char* path, lo_message message) {
+    lo_message_add_int32(message, m_messageSerial);
     int index = m_messageSerial % kMessageArraySize;
     if (m_messageSerial > kMessageArraySize) {
         lo_message_free(m_messages[index]);
