@@ -43,7 +43,8 @@ SCLOrkChatClient {
 				if (netAddr.isConnected, {
 					netAddr.sendMsg('/chatGetMessages', userId, messageSerial);
 				});
-			});
+			},
+			dt: 0.5);
 			// Since wire is connected and we have a complete user dictionary,
 			// we consider the chat client now connected.
 			onConnected.(true);
@@ -52,64 +53,70 @@ SCLOrkChatClient {
 		srcID: netAddr);
 
 		changeClientFunc = OSCFunc.new({ |msg|
-			var changeType, id, userName, oldName, changeMade;
-			changeType = msg[1];
-			id = msg[2];
-			userName = msg[3];
-			changeMade = true;
-			switch (changeType,
-				\add, {
-					nameMap.put(id, userName);
-					// Suppress announcement of our own connection.
-					if (id == userId, {
-						changeMade = false;
-					});
-				},
-				\remove, {
-					// It is possible with timed out clients we may receive
-					// some few messages from them, so only process clients
-					// when they are still in the dictionary.
-					if (nameMap.at(id).notNil, {
+			var serial, changeType, id, userName, oldName, changeMade;
+			serial = msg[1];
+			if (serial > messageSerial, {
+				messageSerial = serial;
+				changeType = msg[2];
+				id = msg[3];
+				userName = msg[4];
+				changeMade = true;
+				switch (changeType,
+					\add, {
+						nameMap.put(id, userName);
+						// Suppress announcement of our own connection.
+						if (id == userId, {
+							changeMade = false;
+						});
+					},
+					\remove, {
+						// It is possible with timed out clients we may receive
+						// some few messages from them, so only process clients
+						// when they are still in the dictionary.
+						if (nameMap.at(id).notNil, {
+							nameMap.removeAt(id);
+						}, {
+							changeMade = false;
+						});
+					},
+					\rename, {
+						oldName = nameMap.at(id);
+						nameMap.put(id, userName);
+					},
+					\timeout, {
 						nameMap.removeAt(id);
-					}, {
+					},
+					{
+						"unknown change ordered to client user dict.".postln;
 						changeMade = false;
-					});
-				},
-				\rename, {
-					oldName = nameMap.at(id);
-					nameMap.put(id, userName);
-				},
-				\timeout, {
-					nameMap.removeAt(id);
-				},
-				{
-					"unknown change ordered to client user dict.".postln;
-					changeMade = false;
-				}
-			);
-			messageSerial = messageSerial + 1;
-			if (changeMade, {
-				onUserChanged.(changeType, id, userName, oldName);
+					}
+				);
+				if (changeMade, {
+					onUserChanged.(changeType, id, userName, oldName);
+				});
 			});
 		},
 		path: '/chatChangeClient',
 		srcID: netAddr);
 
 		chatReceiveFunc = OSCFunc.new({ |msg|
-			var chatMessage = SCLOrkChatMessage.new(
-				msg[1],
-				msg[4..],
-				msg[2],
-				msg[3],
-				nameMap.at(msg[1]),
-				msg[1] == userId);
-			// Populate list of recipient names if it is not a broadcast.
-			if (chatMessage.recipientIds[0] != 0, {
-				chatMessage.recipientNames = nameMap.atAll(
-					chatMessage.recipientIds);
+			var serial = msg[1];
+			if (serial > messageSerial, {
+				var chatMessage = SCLOrkChatMessage.new(
+					msg[2],
+					msg[5..],
+					msg[3],
+					msg[4],
+					nameMap.at(msg[2]),
+					msg[2] == userId);
+				messageSerial = serial;
+				// Populate list of recipient names if it is not a broadcast.
+				if (chatMessage.recipientIds[0] != 0, {
+					chatMessage.recipientNames = nameMap.atAll(
+						chatMessage.recipientIds);
+				});
+				onMessageReceived.(chatMessage);
 			});
-			messageSerial = messageSerial + 1;
-			onMessageReceived.(chatMessage);
 		},
 		path: '/chatReceive',
 		srcID: netAddr);
