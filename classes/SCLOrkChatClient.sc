@@ -43,7 +43,8 @@ SCLOrkChatClient {
 				if (netAddr.isConnected, {
 					netAddr.sendMsg('/chatGetMessages', userId, messageSerial);
 				});
-			});
+			},
+			dt: 0.5);
 			// Since wire is connected and we have a complete user dictionary,
 			// we consider the chat client now connected.
 			onConnected.(true);
