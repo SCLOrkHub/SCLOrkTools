@@ -22,7 +22,7 @@ SCLOrkChatClient {
 	var <>onMessageReceived;  // called with chatMessage object on receipt
 	var <>onUserChanged;  // called with user changes, type, userid, nickname.
 
-	*new { |serverAddress = "cmn17.stanford.edu", serverPort = 61000|
+	*new { |serverAddress = "cmn17.stanford.edu", serverPort = 61010|
 		^super.newCopyArgs(serverAddress, serverPort).init;
 	}
 

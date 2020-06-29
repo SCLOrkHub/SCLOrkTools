@@ -13,7 +13,7 @@
 #include <unistd.h>
 
 // Command line flags for the HTTP server.
-DEFINE_int32(chatPort, 61000, "OSC TCP port for incoming chat messgaes");
+DEFINE_int32(chatPort, 61010, "OSC TCP port for incoming chat messgaes");
 
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
