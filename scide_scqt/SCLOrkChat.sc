@@ -51,7 +51,7 @@ SCLOrkChat {
 			name = "noname";
 		});
 		if (chatClient.isNil, {
-			chatClient = SCLOrkChatClient.new("cmn17.stanford.edu", 61000);
+			chatClient = SCLOrkChatClient.new("cmn17.stanford.edu", 61010);
 		});
 		quitTasks = false;
 		wedged = false;
