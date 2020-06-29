@@ -5,6 +5,13 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
+subsection:: 0.0.18 29 July 2020
+
+list::
+## Adds a QuNeo preset by Bruno to the /presets directory
+## Updates the default port for SCLOrkChat to 61010, to avoid potential conflict with jacktrip on 61000.
+::
+
 subsection:: 0.0.16, 0.0.17 27 July 2020
 
 This are testing releases. Refactors SCLOrkChatServer to be a C++-based application, in the remnants of the original confab-server binary. This version uses TCP connections, to allow it to run over the open Internet. Chat is now a polling-based model because of some limitations in liblo communication with TCP connections. The server has extensive logging which is likely to be turned down in a subsequent release.
