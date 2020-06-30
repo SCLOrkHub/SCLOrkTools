@@ -28,6 +28,8 @@ bool ChatServer::create(const std::string& bindPort) {
     m_tcpServer = lo_server_thread_get_server(m_tcpThread);
 
     lo_server_thread_add_method(m_tcpThread, nullptr, nullptr, loHandle, this);
+
+    spdlog::info("ChatServer listening on TCP port {}", bindPort);
     return true;
 }
 
