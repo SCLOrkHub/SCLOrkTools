@@ -5,11 +5,12 @@ related:: Guides/SCLOrkTools-User-Guide
 
 section:: Release Notes
 
-subsection:: 0.0.18 29 July 2020
+subsection:: 0.0.18, 0.0.19 29 July 2020
 
 list::
 ## Adds a QuNeo preset by Bruno to the /presets directory
-## Updates the default port for SCLOrkChat to 61010, to avoid potential conflict with jacktrip on 61000.
+## Updates the default port for SCLOrkChat to 61010, to avoid potential conflict with jacktrip on the previous port 61000.
+## Adds support for SCLOrkChatClient to survive Cmd+. again.
 ::
 
 subsection:: 0.0.16, 0.0.17 27 July 2020
