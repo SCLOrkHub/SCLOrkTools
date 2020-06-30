@@ -532,7 +532,7 @@ SCLOrkChat {
 			});
 		};
 
-		chatClient.onUserChanged = { | changeType, id, name, oldName = nil |
+		chatClient.onUserChanged = { |changeType, id, name, oldName = nil|
 			this.prRebuildClientListView(false);
 			switch (changeType,
 				\add, {

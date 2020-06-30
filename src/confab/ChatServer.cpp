@@ -116,7 +116,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         lo_message_free(clientNames);
     } break;
 
-    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id >= messageID
+    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id > messageID
     case kGetMessages: {
         if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_INT32) {
             spdlog::error("/chatGetMessages arguments absent or wrong type.");
@@ -130,7 +130,9 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
             spdlog::info("userID {} requested older messages, truncating request");
             messageID = std::max(m_messageSerial - kMessageArraySize, 0);
         }
-        for (auto i = messageID; i < m_messageSerial; ++i) {
+
+        // Start on first message after messageID.
+        for (auto i = messageID + 1; i < m_messageSerial; ++i) {
             int index = i % kMessageArraySize;
             lo_send_message_from(address, m_tcpServer, m_paths[index], m_messages[index]);
         }
