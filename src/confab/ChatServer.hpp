@@ -4,6 +4,7 @@
 #include "lo/lo.h"
 
 #include <array>
+#include <chrono>
 #include <string>
 #include <unordered_map>
 
@@ -36,6 +37,8 @@ private:
 
     lo_server_thread m_tcpThread;
     lo_server m_tcpServer;
+
+    std::chrono::system_clock::time_point m_lastUpdateTime;
 
     int m_userSerial;
 

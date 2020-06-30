@@ -12,7 +12,8 @@ ChatServer::ChatServer():
     m_tcpThread(nullptr),
     m_tcpServer(nullptr),
     m_userSerial(0),
-    m_messageSerial(0) {
+    m_messageSerial(0),
+    m_lastUpdateTime(std::chrono::system_clock::now()) {
 }
 
 ChatServer::~ChatServer() {
@@ -67,6 +68,12 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
 
 void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address,
         lo_message message) {
+    auto now = std::chrono::system_clock::now();
+    if (now - m_lastUpdateTime > std::chrono::seconds(60)) {
+        spdlog::info("ssh keepalive, {} users currently online", m_nameMap.size());
+        m_lastUpdateTime = now;
+    }
+
     ChatCommands command = getCommandNamed(std::string(path));
     switch (command) {
     // Input: [ /chatSignIn name ], response [ /chatSignInComplete userID ],
@@ -178,6 +185,9 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
 
         int userID = *reinterpret_cast<int32_t*>(argv[0]);
         m_nameMap.erase(userID);
+
+        spdlog::info("received sign out command from userID {} at {}:{}", userID, lo_address_get_hostname(address),
+                lo_address_get_port(address));
 
         lo_message remove = lo_message_new();
         lo_message_add_int32(remove, m_messageSerial);
