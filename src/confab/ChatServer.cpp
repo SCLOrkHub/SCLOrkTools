@@ -12,7 +12,8 @@ ChatServer::ChatServer():
     m_tcpThread(nullptr),
     m_tcpServer(nullptr),
     m_userSerial(0),
-    m_messageSerial(0) {
+    m_messageSerial(0),
+    m_lastUpdateTime(std::chrono::system_clock::now()) {
 }
 
 ChatServer::~ChatServer() {
@@ -27,6 +28,8 @@ bool ChatServer::create(const std::string& bindPort) {
     m_tcpServer = lo_server_thread_get_server(m_tcpThread);
 
     lo_server_thread_add_method(m_tcpThread, nullptr, nullptr, loHandle, this);
+
+    spdlog::info("ChatServer listening on TCP port {}", bindPort);
     return true;
 }
 
@@ -67,6 +70,12 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
 
 void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address,
         lo_message message) {
+    auto now = std::chrono::system_clock::now();
+    if (now - m_lastUpdateTime > std::chrono::seconds(60)) {
+        spdlog::info("ssh keepalive, {} users currently online", m_nameMap.size());
+        m_lastUpdateTime = now;
+    }
+
     ChatCommands command = getCommandNamed(std::string(path));
     switch (command) {
     // Input: [ /chatSignIn name ], response [ /chatSignInComplete userID ],
@@ -107,7 +116,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         lo_message_free(clientNames);
     } break;
 
-    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id >= messageID
+    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id > messageID
     case kGetMessages: {
         if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_INT32) {
             spdlog::error("/chatGetMessages arguments absent or wrong type.");
@@ -121,7 +130,9 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
             spdlog::info("userID {} requested older messages, truncating request");
             messageID = std::max(m_messageSerial - kMessageArraySize, 0);
         }
-        for (auto i = messageID; i < m_messageSerial; ++i) {
+
+        // Start on first message after messageID.
+        for (auto i = messageID + 1; i < m_messageSerial; ++i) {
             int index = i % kMessageArraySize;
             lo_send_message_from(address, m_tcpServer, m_paths[index], m_messages[index]);
         }
@@ -178,6 +189,9 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
 
         int userID = *reinterpret_cast<int32_t*>(argv[0]);
         m_nameMap.erase(userID);
+
+        spdlog::info("received sign out command from userID {} at {}:{}", userID, lo_address_get_hostname(address),
+                lo_address_get_port(address));
 
         lo_message remove = lo_message_new();
         lo_message_add_int32(remove, m_messageSerial);

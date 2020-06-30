@@ -29,6 +29,15 @@ SCLOrkChatClient {
 	init {
 		netAddr = NetAddr.new(serverAddress, serverPort);
 
+		pollTask = SkipJack.new({
+			if (netAddr.isConnected, {
+				netAddr.sendMsg('/chatGetMessages', userId, messageSerial);
+			});
+		},
+		dt: 0.5,
+		clock: SystemClock,
+		autostart: false);
+
 		signInCompleteFunc = OSCFunc.new({ |msg|
 			userId = msg[1];
 			netAddr.sendMsg('/chatGetAllClients');
@@ -39,18 +48,13 @@ SCLOrkChatClient {
 		setAllClientsFunc = OSCFunc.new({ |msg|
 			nameMap.clear;
 			nameMap.putPairs(msg[1..]);
-			pollTask = SkipJack.new({
-				if (netAddr.isConnected, {
-					netAddr.sendMsg('/chatGetMessages', userId, messageSerial);
-				});
-			},
-			dt: 0.5);
+			pollTask.start;
 			// Since wire is connected and we have a complete user dictionary,
 			// we consider the chat client now connected.
 			onConnected.(true);
 		},
 		path: '/chatSetAllClients',
-		srcID: netAddr);
+		srcID: netAddr).permanent_(true);
 
 		changeClientFunc = OSCFunc.new({ |msg|
 			var serial, changeType, id, userName, oldName, changeMade;
@@ -97,7 +101,7 @@ SCLOrkChatClient {
 			});
 		},
 		path: '/chatChangeClient',
-		srcID: netAddr);
+		srcID: netAddr).permanent_(true);
 
 		chatReceiveFunc = OSCFunc.new({ |msg|
 			var serial = msg[1];
@@ -119,7 +123,7 @@ SCLOrkChatClient {
 			});
 		},
 		path: '/chatReceive',
-		srcID: netAddr);
+		srcID: netAddr).permanent_(true);
 
 		name = "default-nickname";
 		messageSerial = 0;
@@ -169,19 +173,4 @@ SCLOrkChatClient {
 
 		netAddr.sendMsg(*message);
 	}
-
-/*
-	prForceTimeout {
-		wire.prDropLine;
-		this.sendMessage(SCLOrkChatMessage.new(
-			userId,
-			[ 0 ],
-			\system,
-			"% forcing a timeout.".format(name)));
-	}
-
-	prUnwedge {
-		wire.prBindOSC;
-	}
-*/
 }
