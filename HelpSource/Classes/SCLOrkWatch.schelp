@@ -1,7 +1,7 @@
 TITLE:: SCLOrkWatch
-summary:: a basic stopwatch with optional blink and action functionality.
+summary:: a simple stopwatch.
 categories:: Quarks>SCLOrkTools
-related:: link::Classes/SCLOrkClock::
+related:: Classes/SCLOrkClock
 
 DESCRIPTION::
 A basic stopwatch that starts immediately. User can define optional target times for blinking (blinking starts 5 seconds before target time), and actions (functions) to be automatically evaluated at target times.
@@ -19,18 +19,18 @@ code::
 SCLOrkWatch.new(["0:13", "0:30", "01:11"]);
 ::
 
-Optionally, user can enter list of target times and functions:
+The list can also be pairs of target times and functions:
 
 code::
 (
 x = SCLOrkWatch.new([
-	"0:05", { "wow".postln },
-	"0:10", { "boo".posltn },
+	"0:06", { "wow".postln },
+	"0:14", { "boo".postln },
 ]);
 )
 ::
 
-Each function will be evaluated at the corresponding time.
+Each function will be evaluated at the corresponding target time.
 
 
 EXAMPLES::
@@ -44,13 +44,15 @@ x = SCLOrkWatch.new([
 		Ndef(\test, {SinOsc.ar(500) * 0.5}).play;
 	},
 	"0:22", {
-		Ndef(\test, {SinOsc.ar(600) * 0.4}).play
+		Ndef(\test, {SinOsc.ar(600) * 0.4}).play;
 	},
 	"0:30", {
 		Ndef(\test).clear(2)
 	},
-	"0:40", { },
-	"0:55", { }
+	"0:36", {
+		Pbindef(\test, \degree, Pwhite(0, 10), \dur, 0.2).play
+	},
+	"0:42", { Pbindef(\test).stop }
 ]);
 )
 ::

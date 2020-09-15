@@ -42,7 +42,7 @@ SCLOrkWatch {
 		blinkList = {
 			var min, sec, target, start;
 			list.collect({ arg item;
-				if( item.isString, {
+				if(item.isString, {
 					min = item.split($:).at(0).asInteger;
 					sec = item.split($:).at(1).asInteger;
 					target = min * 60 + sec;
@@ -62,11 +62,11 @@ SCLOrkWatch {
 
 		win = Window.new(
 			name: "SCLOrkWatch",
-			bounds: Rect(100, 100, winWidth, winHeight),
+			bounds: Rect(0, 0, winWidth, winHeight),
 			resizable: false
-		).front;
+		).front.alwaysOnTop_(true);
 
-		minutesView = StaticText.new(win)	;
+		minutesView = StaticText.new(win);
 		separatorView = StaticText.new(win);
 		secondsView = StaticText.new(win);
 
@@ -101,8 +101,8 @@ SCLOrkWatch {
 		secondsView.string = formatString.value(ss);
 
 		updateMinSec = {
-			mm = (timeInSeconds / 60).floor;
-			ss = timeInSeconds % 60;
+			mm = (timeInSeconds / 60).floor.asInteger;
+			ss = (timeInSeconds % 60).asInteger;
 		};
 
 		blinkFunction = {
@@ -150,7 +150,8 @@ SCLOrkWatch {
 			}.fork(t);
 		};
 
-		// background tasks to survive cmd-period
+		// SkipJack is a utility to run a function in the background repeatedly;
+		// Function survives cmd-period.
 		SkipJack.new(
 			updateFunc: {
 				// get abs number of seconds now
@@ -164,6 +165,7 @@ SCLOrkWatch {
 				{ secondsView.string = formatString.value(ss) }.defer;
 
 				// blink if needed
+				// note: blinkList stores *blink start times*, not target times
 				{
 					if( blinkList.notNil, {
 						var index = blinkList.indexOf(timeInSeconds);
@@ -172,8 +174,10 @@ SCLOrkWatch {
 							blinkFunction.value;
 							// save corresponding action (if any)
 							if( blinkList.at(index+1).isFunction, {
-								blinkEndAction = blinkList.at(index + 1)
-							}, { nil });
+								blinkEndAction = blinkList.at(index + 1);
+							}, {
+								blinkEndAction = nil
+							});
 						})
 					})
 				}.defer;
@@ -183,6 +187,8 @@ SCLOrkWatch {
 			name: "SCLOrkWatch",
 			clock: t
 		);
+
+		win.onClose = { ("SCLOrkWatch has been closed at " ++ formatString.value(mm) ++ ":" ++ formatString.value(ss)).postln; };
 
 	} // end of init
 } // end of class
