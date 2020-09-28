@@ -20,7 +20,7 @@ The function will be evaluated at the corresponding time.
 
 SCLOrkWatch {
 
-	var win;
+	var <win;
 	var secondsView, minutesView, separatorView;
 	var winWidth = 400, winHeight = 160;
 	var timeInSeconds = 0;
@@ -188,7 +188,11 @@ SCLOrkWatch {
 			clock: t
 		);
 
-		win.onClose = { ("SCLOrkWatch has been closed at " ++ formatString.value(mm) ++ ":" ++ formatString.value(ss)).postln; };
+		win.onClose = {
+			("SCLOrkWatch has been closed at " ++ formatString.value(mm) ++ ":" ++ formatString.value(ss)).postln;
+			SkipJack.stop("SCLOrkWatch");
+
+		};
 
 	} // end of init
 } // end of class
