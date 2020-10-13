@@ -175,6 +175,7 @@ SCLOrkSamples {
 							if((buffer.notNil) && (channels.notNil), {
 								routine = Routine.run(
 									func: {
+										Ndef(playingSynth).fadeTime = 0;
 										Ndef(playingSynth, {
 											Limiter.ar(
 												in: PlayBuf.ar(
@@ -184,7 +185,7 @@ SCLOrkSamples {
 												),
 												level: 0.9)
 										}).play;
-										buffer.duration.wait;
+										(buffer.duration + 0.1).wait;
 										button.value = 0;
 										if( Ndef(playingSynth).source.notNil, {
 											Ndef(playingSynth).clear;
