@@ -1,0 +1,68 @@
+TITLE:: SCLOrkSamples
+summary:: utility to load a large number of sound files into Buffers.
+categories:: Quarks>SCLOrkTools
+
+DESCRIPTION::
+SCLOrkSamples was created to facilitate loading hundreds or thousands of sound samples into Buffers, for example from a folder. If folder contains sub-folders, SCLOrkSamples will use the names of subfolders to "nickname" the samples (ie the keys in the dictionary will be chosen based on sub-folder names, plus a counter number). See below for more information.
+
+An optional GUI makes it easy to browse and audition the sample collection.
+
+You will need to increase the number of buffers available if you are loading more than 1024 samples. See the ServerOptions Help File.
+
+
+First code examples:
+
+code::
+d = SCLOrkSamples.loadFolder("path/to/a/folder/")
+::
+
+NOTE::
+TIPS FOR SAFE FILE NAMES:
+
+* Only letters and numbers, dash or underscore as separators are OK
+
+* No spaces or other characters (punctuation etc)
+
+* Make sure first character is a lowercase letter
+
+* First character cannot be a number
+::
+
+CLASSMETHODS::
+
+METHOD:: dict
+Returns the dictionary from where the samples can be retrieved by key (name). In SCLOrk, by convention, we assign this dictionary to the variable 'd'.
+
+METHOD:: allowedExtensions
+Get or set the list of allowed file types.
+
+METHOD:: loadFile
+Loads a single audio file.
+argument:: path
+A string. Full path to audio file.
+argument:: key
+Optional symbol. It not provided, file name will be used as key in the dictionary.
+
+
+
+
+METHOD:: clear
+Frees all Buffers, and reinitializes SCLOrkSamples.
+
+METHOD:: gui
+Opens the graphical interface (sample browser).
+
+METHOD:: loadFolder
+Loads all samples in the folder provided.
+argument:: path
+
+It's OK if folder contains sub-folders, but not sub-sub-folders. Samples will be loaded into Buffers. Dictionary entries (keys) referring to Buffers will be named automatically using parent folder as main name, and then a number. For example, if a folder named "drums" contains three files called "snare.wav", "kick.wav", "hihat.wav", the dictionary will refer to them as \drums0, \drums1, \drums2. Files will be loaded in alphabetical order.
+
+
+EXAMPLES::
+
+code::
+SCLOrkSamples.loadFolder("path/to/a/folder");
+
+SCLOrkSamples.gui;
+::
