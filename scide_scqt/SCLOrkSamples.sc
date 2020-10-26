@@ -2,6 +2,7 @@ SCLOrkSamples {
 	classvar <dict;
 	classvar <>allowedExtensions;
 	classvar <browseWindow;
+	classvar synthNodesDict;
 
 
 	*initClass {
@@ -144,7 +145,14 @@ SCLOrkSamples {
 		// Window.closeAll;
 		if( (browseWindow.isNil), {
 
-			var alphabeticalSamples;
+			var alphabeticalSamples, currentRoutine = nil, currentSynth = nil, currentButton = nil;
+
+
+			// Create new dictionary to hold synth nodes to be able to stop them at will.
+			// Note that 'collect' does return a *copy* of the dictionary.
+			// Keys are preserved, but all values are filled in with zeroes to start.
+			// synthNodesDict = dict.collect({ 0 });
+
 
 			alphabeticalSamples = dict.keys.asArray.sort; //copyRange(0, 250);
 			browseWindow = Window.new(
@@ -162,43 +170,56 @@ SCLOrkSamples {
 				])
 				// .mouseDownAction_({ |b| b.valueAction = 1 })
 				.action_({ arg button;
-					var playingSynth, routine;
 
-					playingSynth = ("playingSynth" ++ key.asString).asSymbol;
+					// currentSynth = ("currentSynth" ++ key.asString).asSymbol;
 
 					if(button.value==1,
 						{
 							var buffer, channels;
+
 							buffer = dict.at(key);
 							channels = buffer.numChannels;
 							[buffer, channels, key].postln;
+
 							if((buffer.notNil) && (channels.notNil), {
-								routine = Routine.run(
-									func: {
-										Ndef(playingSynth).fadeTime = 0;
-										Ndef(playingSynth, {
-											Limiter.ar(
-												in: PlayBuf.ar(
-													numChannels:  channels,
-													bufnum: buffer,
-													rate: BufRateScale.kr(buffer)
-												),
-												level: 0.9)
-										}).play;
-										(buffer.duration + 0.1).wait;
+
+								// stop currentRoutine if there is one running (nil won't throw error)
+								currentRoutine.stop;
+
+								// free currentSynth if one exists
+								if( currentSynth.notNil, {
+									currentSynth.free; currentSynth = nil;
+									currentButton.value = 0;
+								});
+
+								// create a Routine so that button can be turned off at end of synth
+								currentRoutine = Routine.new({
+										currentSynth = {
+											PlayBuf.ar(
+												numChannels:  channels,
+												bufnum: buffer,
+												rate: BufRateScale.kr(buffer),
+												doneAction: 2
+											)
+										}.play;
+
+										currentButton = button;
+										(buffer.duration).wait;
+
+										// clean up: turn button off, remove node from currentSynth
 										button.value = 0;
-										if( Ndef(playingSynth).source.notNil, {
-											Ndef(playingSynth).clear;
-										});
-									},
-									clock: AppClock
-								);
-							}, { [key, "nil stuff"].postln });
+										currentSynth = nil;
+
+							}).play(clock: AppClock); // end of routine code
+							}, {
+								[key, "either buffer or numChannels was nil"].postln;
+							});
 						}, {
-							if(Ndef(playingSynth).source.notNil, { Ndef(playingSynth).clear(0.5) });
-							routine.stop;
-						}
-					);
+							// if user turns off a button directly,
+							// stop currently playing synth, & stop routine too
+							currentSynth.free; currentSynth = nil;
+							currentRoutine.stop; currentRoutine = nil;
+					});
 				}); // end of .action
 			}); // end of alphabeticalSamples.do (button creation)
 			browseWindow.front;
