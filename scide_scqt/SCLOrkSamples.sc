@@ -4,7 +4,6 @@ SCLOrkSamples {
 	classvar <browseWindow;
 	classvar synthNodesDict;
 
-
 	*initClass {
 
 		allowedExtensions = List[
@@ -33,12 +32,6 @@ SCLOrkSamples {
 	// no spaces or other characters (punctuation etc)
 	// make sure first character is a lowercase letter
 	// first character cannot be a number
-
-	/*
-	key = (thisFolder.folderName ++ count).asString;
-	key = if(key[0].asString.asInteger==0, { key }, {"a"++key});
-	key = key.asSymbol;
-	*/
 
 	*loadFile { |path, key|
 		var buffer, extension;
@@ -70,10 +63,7 @@ SCLOrkSamples {
 		}, {
 			[extension, "not a valid file extension"].postln;
 		});
-
-
-
-	}
+	} // end of loadFile
 
 
 	// *loadFolder
@@ -127,32 +117,13 @@ SCLOrkSamples {
 
 		^dict;
 
-
-
 	} // end of loadFolder
 
 	*gui {
 
-		/*
-		what this file does:
-
-		Assuming Dirt samples are loaded into a dictionary saved under variable 'd',
-
-		this file creates a GUI to browse all samples by name
-
-		*/
-
-		// Window.closeAll;
 		if( (browseWindow.isNil), {
 
 			var alphabeticalSamples, currentRoutine = nil, currentSynth = nil, currentButton = nil;
-
-
-			// Create new dictionary to hold synth nodes to be able to stop them at will.
-			// Note that 'collect' does return a *copy* of the dictionary.
-			// Keys are preserved, but all values are filled in with zeroes to start.
-			// synthNodesDict = dict.collect({ 0 });
-
 
 			alphabeticalSamples = dict.keys.asArray.sort; //copyRange(0, 250);
 			browseWindow = Window.new(
@@ -168,10 +139,7 @@ SCLOrkSamples {
 					[key, Color.black, Color.white],
 					[key, Color.white, Color.black]
 				])
-				// .mouseDownAction_({ |b| b.valueAction = 1 })
 				.action_({ arg button;
-
-					// currentSynth = ("currentSynth" ++ key.asString).asSymbol;
 
 					if(button.value==1,
 						{
@@ -236,49 +204,3 @@ SCLOrkSamples {
 
 
 } // end of SCLOrkSamples definition
-
-
-/*
-if( d.isNil, {
-s.waitForBoot({
-
-p = PathName.new(Quarks.folder ++ "/Dirt-Samples");
-
-d = IdentityDictionary.new(n: 2500, know: true); // know: true makes the dictionary interpret method calls as look ups.
-
-// add a symbol \r for rests
-
-d.put(\r, \rest);
-
-Routine.run({
-
-p.folders.do({ |thisFolder|
-
-thisFolder.entries.do({ |thisFile, count|
-var key, buffer, extension, allowedExtensions;
-extension = thisFile.extension;
-allowedExtensions = ["wav", "WAV", "aif", "AIF", "aiff", "AIFF", "aifc", "AIFC"];
-if(allowedExtensions.includesEqual(extension), {
-key = (thisFolder.folderName ++ count).asString;
-key = if(key[0].asString.asInteger==0, { key }, {"a"++key});
-key = key.asSymbol;
-buffer = Buffer.read(
-server: s,
-path: thisFile.fullPath
-);
-// s.sync;
-0.015.wait;
-[buffer.bufnum, key].postln;
-d.put(key, buffer);
-}, {
-[extension, "not a wav or aif file"].postln;
-});
-});
-});
-});
-}); // end of waitForBoot
-}, {
-"Samples already loaded.".postln;
-"Variable 'd' should contain an Identity Dictionary with % entries:\n".postf(d.size);
-d.postln;
-}); // end of if
