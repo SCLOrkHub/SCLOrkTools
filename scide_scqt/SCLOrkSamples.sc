@@ -59,7 +59,7 @@ SCLOrkSamples {
 			});
 			// add to dict
 			dict.put(key.asSymbol, buffer);
-			[buffer.bufnum, key, buffer].postln;
+			[buffer.bufnum, key, path].postln;
 		}, {
 			[extension, "not a valid file extension"].postln;
 		});
@@ -134,8 +134,8 @@ SCLOrkSamples {
 			alphabeticalSamples = dict.keys.asArray.sort; //copyRange(0, 250);
 			browseWindow = Window.new(
 				name: "Browse SCLOrkSamples [scroll down for more]",
-				bounds: Rect(10, 10, 1265, 700),
-				resizable: false,
+				bounds: Rect(140, 0, 750, 290),
+				resizable: true,
 				scroll: true
 			);
 			browseWindow.onClose = ({ browseWindow = nil; "sample browser has been closed".postln; });
