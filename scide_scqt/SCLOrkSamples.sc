@@ -55,11 +55,11 @@ SCLOrkSamples {
 			);
 			// does entry already exist? Post a warning if yes
 			if(dict[key.asSymbol].notNil, {
-				("WARNING: " ++ key.asString ++ " already exists in the dictionary but will now be overwritten.").postln;
+				("WARNING: " ++ key.asString ++ " already existed in the dictionary and is being overwritten.").postln;
 			});
 			// add to dict
 			dict.put(key.asSymbol, buffer);
-			[buffer.bufnum, key, path].postln;
+			[buffer.bufnum, key, buffer].postln;
 		}, {
 			[extension, "not a valid file extension"].postln;
 		});
@@ -81,12 +81,13 @@ SCLOrkSamples {
 			// p = PathName.new(Quarks.folder ++ "/Dirt-Samples");
 
 			Routine.run({
+				var time = 0.0035;
 
 				p.entries.do({ |thisEntry|
 					if( thisEntry.isFile, {
 						// loads a single file (if a valid extension)
 						SCLOrkSamples.loadFile(thisEntry.fullPath);
-						0.002.wait;
+						time.wait;
 					}, {
 						if( thisEntry.isFolder, {
 							var thisFolder = thisEntry;
@@ -101,9 +102,14 @@ SCLOrkSamples {
 									// if it is, add letter 'a' to begin the name
 									thisKey = if(thisKey[0].asString.asInteger==0, { thisKey }, {"a"++thisKey});
 									thisKey = thisKey.asSymbol;
+
+									if(dict[thisKey.asSymbol].notNil, {
+										thisKey = (thisKey.asString ++ "b").asSymbol;
+									});
+
 									// now we are ready to load this file
 									SCLOrkSamples.loadFile(thisFile.fullPath, thisKey);
-									0.002.wait;
+									time.wait;
 								}, {
 									"**Warning: " ++ thisFile.asString ++ " is not a file! No sub-sub-folders accepted".postln;
 								});
