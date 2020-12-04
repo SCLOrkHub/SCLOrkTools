@@ -8,12 +8,13 @@
 
 namespace Confab {
 
-ChatServer::ChatServer():
+ChatServer::ChatServer(int32_t timeout):
     m_tcpThread(nullptr),
     m_tcpServer(nullptr),
     m_userSerial(0),
     m_messageSerial(0),
-    m_lastUpdateTime(std::chrono::system_clock::now()) {
+    m_lastUpdateTime(std::chrono::system_clock::now()),
+    m_timeout(std::chrono::seconds(timeout)) {
 }
 
 ChatServer::~ChatServer() {
@@ -116,7 +117,8 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         lo_message_free(clientNames);
     } break;
 
-    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id > messageID
+    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id > messageID. Can also queue
+    // timeout messages from stale clients.
     case kGetMessages: {
         if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_INT32) {
             spdlog::error("/chatGetMessages arguments absent or wrong type.");
@@ -136,6 +138,35 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
             int index = i % kMessageArraySize;
             lo_send_message_from(address, m_tcpServer, m_paths[index], m_messages[index]);
         }
+
+        // Update ping time from this client.
+        auto now = std::chrono::system_clock::now();
+        m_clientPings[userID] = now;
+
+        // Now iterate through client list and timeout any stale clients.
+        auto cutTime = now - m_timeout;
+        for (auto i = m_clientPings.begin(); i != m_clientPings.end(); /* */) {
+            if (i->second <= cutTime) {
+                // Could be a stale client, so make sure that the client is still in the name map before timing them
+                // out.
+                auto name = m_nameMap.find(i->first);
+                if (name != m_nameMap.end()) {
+                    spdlog::warn("user {} timed out.", name->second);
+                    lo_message timeout = lo_message_new();
+                    lo_message_add_int32(timeout, m_messageSerial);
+                    lo_message_add_string(timeout, "timeout");
+                    lo_message_add_int32(timeout, i->first);
+                    lo_message_add_string(timeout, name->second.data());
+                    queueMessage("/chatChangeClient", timeout);
+                    m_nameMap.erase(name);
+                }
+
+                i = m_clientPings.erase(i);
+            } else {
+                ++i;
+            }
+        }
+
     } break;
 
     // Input: [ /chatSendMessage userID <message contents> ], queues [ /chatRecieve serial userID <message contents> ]
@@ -188,16 +219,23 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         }
 
         int userID = *reinterpret_cast<int32_t*>(argv[0]);
-        m_nameMap.erase(userID);
+        auto name = m_nameMap.find(userID);
+        if (name == m_nameMap.end()) {
+            spdlog::error("got signout command for unknown userID {}", userID);
+            return;
+        }
 
-        spdlog::info("received sign out command from userID {} at {}:{}", userID, lo_address_get_hostname(address),
+        spdlog::info("received sign out command from {} at {}:{}", name->second, lo_address_get_hostname(address),
                 lo_address_get_port(address));
 
         lo_message remove = lo_message_new();
         lo_message_add_int32(remove, m_messageSerial);
         lo_message_add_string(remove, "remove");
         lo_message_add_int32(remove, userID);
+        lo_message_add_string(remove, name->second.data());
         queueMessage("/chatChangeClient", remove);
+
+        m_nameMap.erase(name);
     } break;
 
     case kNotFound: {

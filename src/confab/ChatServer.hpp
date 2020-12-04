@@ -14,7 +14,7 @@ namespace Confab {
  */
 class ChatServer {
 public:
-    ChatServer();
+    ChatServer(int32_t timeout);
     ~ChatServer();
 
     bool create(const std::string& bindPort);
@@ -44,6 +44,10 @@ private:
 
     // Map of userID to nickname strings.
     std::unordered_map<int, std::string> m_nameMap;
+
+    // Map of userID to most recent ping time, used to check for timeouts.
+    std::chrono::seconds m_timeout;
+    std::unordered_map<int, std::chrono::system_clock::time_point> m_clientPings;
 
     static const int kMessageArraySize = 1024;
     int m_messageSerial;
