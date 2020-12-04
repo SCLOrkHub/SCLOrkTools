@@ -156,6 +156,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
                     lo_message_add_int32(timeout, m_messageSerial);
                     lo_message_add_string(timeout, "timeout");
                     lo_message_add_int32(timeout, i->first);
+                    lo_message_add_string(timeout, name->second.data());
                     queueMessage("/chatChangeClient", timeout);
                     m_nameMap.erase(name);
                 }
@@ -218,16 +219,23 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         }
 
         int userID = *reinterpret_cast<int32_t*>(argv[0]);
-        m_nameMap.erase(userID);
+        auto name = m_nameMap.find(userID);
+        if (name == m_nameMap.end()) {
+            spdlog::error("got signout command for unknown userID {}", userID);
+            return;
+        }
 
-        spdlog::info("received sign out command from userID {} at {}:{}", userID, lo_address_get_hostname(address),
+        spdlog::info("received sign out command from {} at {}:{}", name->second, lo_address_get_hostname(address),
                 lo_address_get_port(address));
 
         lo_message remove = lo_message_new();
         lo_message_add_int32(remove, m_messageSerial);
         lo_message_add_string(remove, "remove");
         lo_message_add_int32(remove, userID);
+        lo_message_add_string(remove, name->second.data());
         queueMessage("/chatChangeClient", remove);
+
+        m_nameMap.erase(name);
     } break;
 
     case kNotFound: {
