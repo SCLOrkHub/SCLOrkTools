@@ -8,12 +8,13 @@
 
 namespace Confab {
 
-ChatServer::ChatServer():
+ChatServer::ChatServer(int32_t timeout):
     m_tcpThread(nullptr),
     m_tcpServer(nullptr),
     m_userSerial(0),
     m_messageSerial(0),
-    m_lastUpdateTime(std::chrono::system_clock::now()) {
+    m_lastUpdateTime(std::chrono::system_clock::now()),
+    m_timeout(std::chrono::seconds(timeout)) {
 }
 
 ChatServer::~ChatServer() {
@@ -116,7 +117,8 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         lo_message_free(clientNames);
     } break;
 
-    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id > messageID
+    // Input: [ /chatGetMessages userID messageID ], responds with all messages with id > messageID. Can also queue
+    // timeout messages from stale clients.
     case kGetMessages: {
         if (argc != 2 || types[0] != LO_INT32 || types[1] != LO_INT32) {
             spdlog::error("/chatGetMessages arguments absent or wrong type.");
@@ -136,6 +138,34 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
             int index = i % kMessageArraySize;
             lo_send_message_from(address, m_tcpServer, m_paths[index], m_messages[index]);
         }
+
+        // Update ping time from this client.
+        auto now = std::chrono::system_clock::now();
+        m_clientPings[userID] = now;
+
+        // Now iterate through client list and timeout any stale clients.
+        auto cutTime = now - m_timeout;
+        for (auto i = m_clientPings.begin(); i != m_clientPings.end(); /* */) {
+            if (i->second <= cutTime) {
+                // Could be a stale client, so make sure that the client is still in the name map before timing them
+                // out.
+                auto name = m_nameMap.find(i->first);
+                if (name != m_nameMap.end()) {
+                    spdlog::warn("user {} timed out.", name->second);
+                    lo_message timeout = lo_message_new();
+                    lo_message_add_int32(timeout, m_messageSerial);
+                    lo_message_add_string(timeout, "timeout");
+                    lo_message_add_int32(timeout, i->first);
+                    queueMessage("/chatChangeClient", timeout);
+                    m_nameMap.erase(name);
+                }
+
+                i = m_clientPings.erase(i);
+            } else {
+                ++i;
+            }
+        }
+
     } break;
 
     // Input: [ /chatSendMessage userID <message contents> ], queues [ /chatRecieve serial userID <message contents> ]
