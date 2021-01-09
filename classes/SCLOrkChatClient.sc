@@ -108,7 +108,6 @@ SCLOrkChatClient {
 			if (serial > messageSerial, {
 				var recipients = msg[5..];
 				var isEcho = msg[2] == userId;
-				msg.postln;
 				messageSerial = serial;
 				if (recipients[0] == 0 or: { isEcho } or: { recipients.indexOf(userId).notNil }, {
 					var chatMessage = SCLOrkChatMessage.new(
@@ -120,8 +119,6 @@ SCLOrkChatClient {
 						isEcho);
 					// Populate list of recipient names if it is not a broadcast.
 					if (chatMessage.recipientIds[0] != 0, {
-						recipients.postln;
-						nameMap.postln;
 						chatMessage.recipientNames = nameMap.atAll(
 							chatMessage.recipientIds);
 					});
@@ -177,7 +174,6 @@ SCLOrkChatClient {
 			userId,
 			chatMessage.type,
 			chatMessage.contents] ++ chatMessage.recipientIds;
-		message.postln;
 		netAddr.sendMsg(*message);
 	}
 }
