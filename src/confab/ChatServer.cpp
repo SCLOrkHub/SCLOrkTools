@@ -246,7 +246,6 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
 }
 
 void ChatServer::queueMessage(const char* path, lo_message message) {
-    lo_message_add_int32(message, m_messageSerial);
     int index = m_messageSerial % kMessageArraySize;
     if (m_messageSerial > kMessageArraySize) {
         lo_message_free(m_messages[index]);
