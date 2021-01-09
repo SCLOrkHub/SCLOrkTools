@@ -106,20 +106,23 @@ SCLOrkChatClient {
 		chatReceiveFunc = OSCFunc.new({ |msg|
 			var serial = msg[1];
 			if (serial > messageSerial, {
-				var chatMessage = SCLOrkChatMessage.new(
-					msg[2],
-					msg[5..],
-					msg[3],
-					msg[4],
-					nameMap.at(msg[2]),
-					msg[2] == userId);
-				messageSerial = serial;
-				// Populate list of recipient names if it is not a broadcast.
-				if (chatMessage.recipientIds[0] != 0, {
-					chatMessage.recipientNames = nameMap.atAll(
-						chatMessage.recipientIds);
+				var recipients = msg[5..];
+				if (recipients[0] == 0 or: { recipients.indexOf(userId).notNil }, {
+					var chatMessage = SCLOrkChatMessage.new(
+						msg[2],
+						recipients,
+						msg[3],
+						msg[4],
+						nameMap.at(msg[2]),
+						msg[2] == userId);
+					messageSerial = serial;
+					// Populate list of recipient names if it is not a broadcast.
+					if (chatMessage.recipientIds[0] != 0, {
+						chatMessage.recipientNames = nameMap.atAll(
+							chatMessage.recipientIds);
+					});
+					onMessageReceived.(chatMessage);
 				});
-				onMessageReceived.(chatMessage);
 			});
 		},
 		path: '/chatReceive',
