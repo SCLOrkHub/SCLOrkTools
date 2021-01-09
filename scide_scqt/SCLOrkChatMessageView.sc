@@ -38,7 +38,7 @@ SCLOrkChatMessageView : View {
 			senderNameLabel.fixedWidth = messageWidth;
 			if (isPrivate, {
 				var toString = chatMessage.senderName ++ " to ";
-				chatMessage.recipientNames.do({ | name, index |
+				chatMessage.recipientNames.do({ |name, index|
 					toString = toString ++ name;
 					if (index < (chatMessage.recipientNames.size - 1), {
 						toString = toString ++ ", ";
