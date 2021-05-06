@@ -8,13 +8,14 @@
 
 namespace Confab {
 
-ChatServer::ChatServer(int32_t timeout):
+ChatServer::ChatServer(int32_t timeout, int32_t maxMessagesPerRequest):
     m_tcpThread(nullptr),
     m_tcpServer(nullptr),
     m_userSerial(0),
     m_messageSerial(0),
-    m_lastUpdateTime(std::chrono::system_clock::now()),
-    m_timeout(std::chrono::seconds(timeout)) {
+    m_lastUpdateTime(std::chrono::steady_clock::now()),
+    m_timeout(std::chrono::seconds(timeout)),
+    m_maxMessagesPerRequest(maxMessagesPerRequest) {
 }
 
 ChatServer::~ChatServer() {
@@ -71,7 +72,7 @@ int ChatServer::loHandle(const char* path, const char* types, lo_arg** argv, int
 
 void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const char* types, lo_address address,
         lo_message message) {
-    auto now = std::chrono::system_clock::now();
+    auto now = std::chrono::steady_clock::now();
     if (now - m_lastUpdateTime > std::chrono::seconds(60)) {
         spdlog::info("ssh keepalive, {} users currently online", m_nameMap.size());
         m_lastUpdateTime = now;
@@ -126,11 +127,12 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         }
         int userID = *reinterpret_cast<int32_t*>(argv[0]);
         int messageID = *reinterpret_cast<int32_t*>(argv[1]);
-        // m_messageSerial points at the first unoccupied message number. We store the last kMessageArraySize elements,
-        // so if this is a request for older messages they are lost.
-        if (m_messageSerial - messageID > kMessageArraySize) {
-            spdlog::info("userID {} requested older messages, truncating request");
-            messageID = std::max(m_messageSerial - kMessageArraySize, 0);
+
+        // Truncate to most recent messages if request is too large.
+        if (m_messageSerial - messageID > m_maxMessagesPerRequest) {
+            spdlog::warn("truncating message request count from userID {} from {} to {}", userID,
+                    m_messageSerial - messageID, m_maxMessagesPerRequest);
+            messageID = std::max(0, m_messageSerial - m_maxMessagesPerRequest - 1);
         }
 
         // Start on first message after messageID.
@@ -140,7 +142,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
         }
 
         // Update ping time from this client.
-        auto now = std::chrono::system_clock::now();
+        auto now = std::chrono::steady_clock::now();
         m_clientPings[userID] = now;
 
         // Now iterate through client list and timeout any stale clients.
@@ -151,7 +153,7 @@ void ChatServer::handleMessage(const char* path, int argc, lo_arg** argv, const 
                 // out.
                 auto name = m_nameMap.find(i->first);
                 if (name != m_nameMap.end()) {
-                    spdlog::warn("user {} timed out.", name->second);
+                    spdlog::warn("userID {}, name {} timed out.", userID, name->second);
                     lo_message timeout = lo_message_new();
                     lo_message_add_int32(timeout, m_messageSerial);
                     lo_message_add_string(timeout, "timeout");

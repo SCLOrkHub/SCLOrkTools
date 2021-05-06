@@ -15,6 +15,7 @@
 // Command line flags for the HTTP server.
 DEFINE_int32(chatPort, 61010, "OSC TCP port for incoming chat messgaes");
 DEFINE_int32(timeout, 10, "The timeout in seconds before automatically disconnecting an unresponsive client.");
+DEFINE_int32(maxMessagesPerRequest, 3, "Maximum number of messages to respond to per update request.");
 
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -35,7 +36,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    Confab::ChatServer chatServer(FLAGS_timeout);
+    Confab::ChatServer chatServer(FLAGS_timeout, FLAGS_maxMessagesPerRequest);
     if (!chatServer.create(fmt::format("{}", FLAGS_chatPort))) {
         spdlog::error("Failed to create chat server on port {}", FLAGS_chatPort);
         return -1;
