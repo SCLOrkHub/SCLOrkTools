@@ -77,35 +77,35 @@ The MIDI channel used to communicate with the QuNeo. In the preset used by SCLOr
 
 EXAMPLES::
 code::
-q = SCLOrkQuNeo.new;
+~myQuneo = SCLOrkQuNeo.new;
 
 // Defining custom actions for buttons and sliders:
 
-q.onButtonChange = { |velocity, midinote| ["BUTTON!", velocity, midinote].postln };
+~myQuneo.onButtonChange = { |velocity, midinote| ["BUTTON!", velocity, midinote].postln };
 
-q.onSliderChange = { |ccValue, ccNum| ["SLIDING...", ccValue, ccNum].postln };
+~myQuneo.onSliderChange = { |ccValue, ccNum| ["SLIDING...", ccValue, ccNum].postln };
 
 // Changing slider labels
 (
-q.changeSliderLabel(ccNum: 0, string: "tomatos");
-q.changeSliderLabel(ccNum: 1, string: "carrots");
-q.changeSliderLabel(ccNum: 2, string: "onions");
-q.changeSliderLabel(ccNum: 3, string: "garlic");
+~myQuneo.changeSliderLabel(ccNum: 0, string: "tomatos");
+~myQuneo.changeSliderLabel(ccNum: 1, string: "carrots");
+~myQuneo.changeSliderLabel(ccNum: 2, string: "onions");
+~myQuneo.changeSliderLabel(ccNum: 3, string: "garlic");
 
-q.changeSliderLabel(ccNum: 6, string: "\nwow\nmany\nlines");
-q.changeSliderLabel(ccNum: 7, string: "\noops");
-q.changeSliderLabel(ccNum: 8, string: "hi", keepNumber: false);
-q.changeSliderLabel(ccNum: 9, string: "bye", keepNumber: false);
+~myQuneo.changeSliderLabel(ccNum: 6, string: "\nwow\nmany\nlines");
+~myQuneo.changeSliderLabel(ccNum: 7, string: "\noops");
+~myQuneo.changeSliderLabel(ccNum: 8, string: "hi", keepNumber: false);
+~myQuneo.changeSliderLabel(ccNum: 9, string: "bye", keepNumber: false);
 
-q.changeSliderLabel(ccNum: 10, string: "maybe this is master volume", keepNumber: false);
+~myQuneo.changeSliderLabel(ccNum: 10, string: "maybe this is master volume", keepNumber: false);
 );
 
 // Changing button labels:
 (
-q.changeButtonLabel(midinote: 36, string: "POPCORN \n WOW");
-q.changeButtonLabel(midinote: 37, string: "REVERB");
-q.changeButtonLabel(midinote: 45, string: "A LOT OF \n DELAY", keepNumber: false);
-q.changeButtonLabel(midinote: 56, string: "meny \n echoes...");
-q.changeButtonLabel(midinote: 67, string: "A BIT OF \n DELAY", keepNumber: false);
+~myQuneo.changeButtonLabel(midinote: 36, string: "POPCORN \n WOW");
+~myQuneo.changeButtonLabel(midinote: 37, string: "REVERB");
+~myQuneo.changeButtonLabel(midinote: 45, string: "A LOT OF \n DELAY", keepNumber: false);
+~myQuneo.changeButtonLabel(midinote: 56, string: "meny \n echoes...");
+~myQuneo.changeButtonLabel(midinote: 67, string: "A BIT OF \n DELAY", keepNumber: false);
 );
 ::
