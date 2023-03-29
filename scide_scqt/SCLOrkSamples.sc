@@ -73,7 +73,7 @@ SCLOrkSamples {
 	// dictionary entries (keys) referring to Buffers will be named automatically using parent folder as main name, and then a number. For example, if a folder named "drums" contains three files called "snare.wav", "kick.wav", "hihat.wav", the dictionary will refer to them as \drums0, \drums1, \drums2. Files will be loaded in alphabetical order.
 
 
-	*loadFolder { |path|
+	*loadFolder { |path, time=0.0035|
 		var p = PathName.new(path);
 
 		Server.default.waitForBoot({
