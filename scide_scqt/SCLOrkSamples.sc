@@ -81,7 +81,6 @@ SCLOrkSamples {
 			// p = PathName.new(Quarks.folder ++ "/Dirt-Samples");
 
 			Routine.run({
-				var time = 0.0035;
 
 				p.entries.do({ |thisEntry|
 					if( thisEntry.isFile, {
